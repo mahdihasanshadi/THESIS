@@ -95,3 +95,6 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   0.251, recall 0.673 / 0.675 / 0.579; seed variance on the probes is large, so probe metrics are
   reported as mean ± std over seeds, never from one seed.
 - **Wikipedia BERT-mini fine-tune-only** started automatically on the CPU (seed 1 of 3).
+- **Wikipedia BERT-mini fine-tune-only, seed 1** (CPU, early stop at epoch 5): test macro-F1 0.8857,
+  acc 0.9555, attack-class F1 0.796, ECE 0.014; above the classical floor (0.8759) and 0.008 below
+  the Phase-2 BERT-large teacher (0.8936). Seeds 2–3 running.
