@@ -6,7 +6,10 @@ same code path with different flags.
   uniform  multi-teacher, equal weights            --mode uniform --teachers a b c
   dmthd    multi-teacher, dynamic weights          --mode dmthd --teachers a b c [--aux --delta 0.3]
 
-Ablations: --per_batch (instead of per-instance), --no_hidden, --from_scratch, --uniform is a mode.
+Ablations: --per_batch (instead of per-instance), --no_hidden, --from_scratch.
+Disagreement-aware variant (datasets with an annotator-fraction column): --disagreement --kappa 1.0
+[--reliability soft].
+Students: any HF encoder name, or `bilstm` for the non-transformer heterogeneous student.
 
     python -m dmthd.train_student --student google/bert_uncased_L-4_H-256_A-4 --data_dir data/tweets \
         --cache cache/tweets --teachers bert-large hatebert irony --mode dmthd --aux --delta 0.3 \
@@ -21,8 +24,8 @@ import torch
 from transformers import get_linear_schedule_with_warmup
 
 from .evaluate import compute_metrics, make_loader, predict_probs
-from .losses import dmthd_loss
-from .models import Student, count_params, load_tokenizer
+from .losses import agreement_from_soft, dmthd_loss
+from .models import Student, count_params, is_bilstm, load_classifier, load_tokenizer, uses_amp
 from .utils import Timer, ensure_dir, get_device, label_names, load_json, map_labels, save_json, set_seed
 
 
@@ -58,9 +61,12 @@ def main():
     ap.add_argument("--per_batch", action="store_true")
     ap.add_argument("--no_hidden", action="store_true")
     ap.add_argument("--from_scratch", action="store_true")
+    ap.add_argument("--disagreement", action="store_true", help="scale CE by annotator agreement and KL by disagreement")
+    ap.add_argument("--kappa", type=float, default=1.0)
+    ap.add_argument("--reliability", default="hard", choices=["hard", "soft"])
     ap.add_argument("--epochs", type=int, default=6)
     ap.add_argument("--patience", type=int, default=2)
-    ap.add_argument("--lr", type=float, default=3e-5)
+    ap.add_argument("--lr", type=float, default=None, help="default 3e-5 for transformers, 1e-3 for the BiLSTM")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--max_len", type=int, default=128)
     ap.add_argument("--warmup", type=float, default=0.1)
@@ -74,9 +80,11 @@ def main():
         raise SystemExit("--mode skd/uniform/dmthd needs --cache and --teachers")
     if args.mode == "skd" and len(args.teachers) != 1:
         raise SystemExit("--mode skd takes exactly one teacher")
+    lr = args.lr or (1e-3 if is_bilstm(args.student) else 3e-5)
 
     set_seed(args.seed)
     device = get_device()
+    print(f"device: {device}" + (f" ({torch.cuda.get_device_name(0)})" if device.type == "cuda" else " (CPU only)"), flush=True)
     names = label_names(args.scheme)
     C = len(names)
     tr = map_labels(pd.read_csv(os.path.join(args.data_dir, "train.csv")), args.label_col, args.scheme)
@@ -84,6 +92,9 @@ def main():
     te = map_labels(pd.read_csv(os.path.join(args.data_dir, "test.csv")), args.label_col, args.scheme)
     if args.limit:
         tr, va, te = tr.head(args.limit), va.head(max(50, args.limit // 5)), te.head(max(50, args.limit // 5))
+    has_soft = args.soft_col in tr.columns and C == 2
+    if args.disagreement and not has_soft:
+        raise SystemExit("--disagreement needs a binary task with an annotator-fraction column")
 
     t_logits, t_pooled, dims = (None, None, [])
     aux_logits = None
@@ -101,10 +112,10 @@ def main():
     val_loader = make_loader(va, tok, args.max_len, args.batch * 2, False)
     test_loader = make_loader(te, tok, args.max_len, args.batch * 2, False)
 
-    opt = torch.optim.AdamW(student.parameters(), lr=args.lr, weight_decay=0.01)
+    opt = torch.optim.AdamW(student.parameters(), lr=lr, weight_decay=0.01)
     total_steps = len(train_loader) * args.epochs
     sched = get_linear_schedule_with_warmup(opt, int(args.warmup * total_steps), total_steps)
-    use_amp = args.fp16 and device.type == "cuda"
+    use_amp = uses_amp(args.student, device, args.fp16)
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     ensure_dir(args.out_dir)
@@ -124,15 +135,19 @@ def main():
                     kw["projections"] = student.proj
                 if aux_logits is not None:
                     kw["aux_teacher_logits"] = aux_logits[idx].to(device)
-            if "soft" in batch and C == 2:
-                kw["soft_targets"] = batch["soft"].to(device)
+            if has_soft and "soft" in batch:
+                soft = batch["soft"].to(device)
+                kw["soft_targets"] = soft
+                if args.disagreement:
+                    kw["agreement"] = agreement_from_soft(soft)
             with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=use_amp):
                 logits, pooled, aux = student(ii, am)
                 loss, parts, w = dmthd_loss(
                     logits.float(), y, T=args.T, tau=args.tau, alpha=args.alpha, beta=args.beta, gamma=args.gamma,
                     per_instance=not args.per_batch, uniform=(args.mode == "uniform"),
                     student_pooled=pooled.float(), use_hidden=use_hidden,
-                    aux_logits=None if aux is None else aux.float(), delta=args.delta, **kw)
+                    aux_logits=None if aux is None else aux.float(), delta=args.delta,
+                    kappa=args.kappa, reliability=args.reliability, **kw)
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
@@ -166,14 +181,13 @@ def main():
                 break
     pd.DataFrame(history).to_csv(os.path.join(args.out_dir, "history.csv"), index=False)
 
-    # reload the best checkpoint's base classifier for the test numbers
-    from .models import load_classifier
     best = load_classifier(args.out_dir, C).to(device).eval()
     probs = predict_probs(lambda ii, am: best(input_ids=ii, attention_mask=am).logits, test_loader, device)
     res = {"student": args.student, "mode": args.mode, "tag": args.tag, "teachers": args.teachers, "aux": bool(aux_logits is not None),
            "per_instance": not args.per_batch, "hidden": use_hidden, "from_scratch": args.from_scratch,
+           "disagreement": args.disagreement, "kappa": args.kappa if args.disagreement else None, "reliability": args.reliability,
            "scheme": args.scheme, "seed": args.seed, "T": args.T, "tau": args.tau, "alpha": args.alpha, "beta": args.beta,
-           "gamma": args.gamma, "delta": args.delta if aux_logits is not None else 0.0, "epochs_run": len(history),
+           "gamma": args.gamma, "delta": args.delta if aux_logits is not None else 0.0, "lr": lr, "epochs_run": len(history),
            "best_val_macro_f1": best_f1, "params": count_params(best), "train_time_s": timer.elapsed(),
            "test": compute_metrics(te["label"].values, probs, names)}
     np.save(os.path.join(args.out_dir, "test_probs.npy"), probs)

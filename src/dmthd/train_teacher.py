@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from transformers import get_linear_schedule_with_warmup
 
 from .evaluate import compute_metrics, make_loader, predict_probs
-from .models import load_classifier, load_tokenizer
+from .models import load_classifier, load_tokenizer, uses_amp
 from .utils import Timer, ensure_dir, get_device, label_names, map_labels, save_json, set_seed
 
 
@@ -51,6 +51,7 @@ def main():
 
     set_seed(args.seed)
     device = get_device()
+    print(f"device: {device}" + (f" ({torch.cuda.get_device_name(0)})" if device.type == "cuda" else " (CPU only)"), flush=True)
     names = label_names(args.scheme)
     C = len(names)
     tr = map_labels(pd.read_csv(os.path.join(args.data_dir, "train.csv")), args.label_col, args.scheme)
@@ -71,7 +72,7 @@ def main():
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     total_steps = len(train_loader) * args.epochs
     sched = get_linear_schedule_with_warmup(opt, int(args.warmup * total_steps), total_steps)
-    use_amp = args.fp16 and device.type == "cuda"
+    use_amp = uses_amp(args.model_name, device, args.fp16)
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     cw = class_weight_tensor(tr["label"].values, C, device) if args.class_weighted else None
 

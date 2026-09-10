@@ -24,6 +24,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--raw", required=True)
 ap.add_argument("--root", default="smoke", help="where data/cache/runs go (use a drive with space, not OneDrive)")
 ap.add_argument("--limit", type=int, default=400)
+ap.add_argument("--wiki_dir", default=None, help="prepared Wikipedia split dir; adds a disagreement-aware run")
 a = ap.parse_args()
 
 ROOT = a.root
@@ -39,7 +40,15 @@ sh(f"python -m dmthd.train_student {common} --mode skd --cache {cache} --teacher
 sh(f"python -m dmthd.train_student {common} --mode uniform --cache {cache} --teachers tiny-a mini-b --out_dir {runs}/tiny/uniform/seed1 --seed 1")
 sh(f"python -m dmthd.train_student {common} --mode dmthd --cache {cache} --teachers tiny-a mini-b --aux --delta 0.3 --out_dir {runs}/tiny/dmthd/seed1 --seed 1")
 sh(f"python -m dmthd.train_student {common} --mode dmthd --cache {cache} --teachers tiny-a mini-b --per_batch --no_hidden --out_dir {runs}/tiny/ablation/seed1 --seed 1 --tag per_batch_no_hidden")
+sh(f"python -m dmthd.train_student --student bilstm --data_dir {data} --limit {a.limit} --epochs 1 --batch 16 --mode dmthd --cache {cache} --teachers tiny-a mini-b --aux --delta 0.3 --out_dir {runs}/bilstm/dmthd/seed1 --seed 1")
 sh(f"python -m dmthd.evaluate --model_dir {runs}/tiny/dmthd/seed1 --csv {data}/test.csv --scheme six --probe_neg {data}/val.csv --probe_pos {data}/val.csv")
+sh(f"python -m dmthd.quantize_eval --model_dir {runs}/tiny/dmthd/seed1 --csv {data}/test.csv --scheme six --n_time 32 --warmup 2 --repeats 2")
+if a.wiki_dir:
+    wd, wc, wr = a.wiki_dir, f"{ROOT}/cache_wiki", f"{ROOT}/runs_wiki"
+    W = "--scheme binary --label_col label --max_len 64"
+    sh(f"python -m dmthd.train_teacher --model_name google/bert_uncased_L-2_H-128_A-2 --data_dir {wd} --out_dir {wr}/teachers/tiny-w --epochs 1 --batch 16 --limit {a.limit} --seed 1 {W}")
+    sh(f"python -m dmthd.cache_teachers --data_dir {wd} --out {wc} --teachers {wr}/teachers/tiny-w --aux_model cardiffnlp/twitter-roberta-base-irony --limit {a.limit} --batch 32 {W}")
+    sh(f"python -m dmthd.train_student --student {S} --data_dir {wd} --limit {a.limit} --epochs 1 --batch 16 --mode dmthd --cache {wc} --teachers tiny-w --aux --delta 0.3 --disagreement --kappa 1.0 --reliability soft --out_dir {wr}/tiny/dmthd_dis/seed1 --seed 1 {W}")
 sh(f"python -m dmthd.bench --model_dirs {runs}/tiny/dmthd/seed1 {runs}/teachers/tiny-a --csv {data}/test.csv --device cpu --n 64 --warmup 3 --repeats 2 --out {runs}/bench_cpu.csv")
 sh(f"python -m dmthd.aggregate --runs {runs} --out {runs}/summary.csv")
 sh(f"python -m dmthd.aggregate --compare {runs}/tiny/ft {runs}/tiny/dmthd")

@@ -3,13 +3,22 @@
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset tweets    --raw /kaggle/input/cyberbullying-classification/cyberbullying_tweets.csv
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset wikipedia --raw /kaggle/working/raw_wikipedia   (downloads from Figshare)
 
-Stages: prepare | teachers | cache | students | probes | bench | aggregate | all. Every stage skips work
-whose results.json already exists, so a killed session resumes where it stopped.
+Stages: prepare | teachers | cache | students | probes | quant | bench | aggregate | all. Every stage
+skips work whose results.json already exists, so a killed session resumes where it stopped.
+
+Design (the comparison grid): two teacher committees x two student families.
+  COMMITTEES=homo,hetero   homo = BERT-large + HateBERT + RoBERTa-irony; hetero = homo + DeBERTa-v3-base
+  STUDENTS (homogeneous)   BERT-mini, BERT-small, DistilBERT
+  HETERO_STUDENTS          DeBERTa-v3-xsmall (another transformer family), bilstm (not a transformer)
+Run directories: runs/<dataset>/<student>/<mode>[_hetero]/seed<k>. Ablations run on the first
+student with the homogeneous committee. On binary datasets with annotator fractions the extra
+mode `dmthd_dis` (disagreement-aware, soft reliability) is added when DISAGREEMENT=1.
 
 Resuming across Kaggle sessions: attach the previous notebook's output as an input and set
-RESUME_FROM=/kaggle/input/<that-output>; its runs/ and cache/ trees are copied in before anything runs.
+RESUME_FROM=/kaggle/input/<that-output>; its runs/ and cache/ trees are copied in first.
 
-Environment overrides: ROOT, TEACHERS, STUDENTS, SEEDS, MODES, GPU, RESUME_FROM, TEACHER_EPOCHS.
+Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HETERO_STUDENTS, SEEDS,
+MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, DISAGREEMENT, KAPPA.
 """
 import argparse
 import glob
@@ -20,18 +29,23 @@ import sys
 
 DATASETS = {
     "tweets": {"scheme": "six", "label_col": "label_name", "max_len": 128, "num_labels": 6,
-               "teacher_epochs": 5, "teacher_batch": 32, "student_batch": 32},
+               "teacher_epochs": 5, "teacher_batch": 32, "student_batch": 32, "soft": False},
     "wikipedia": {"scheme": "binary", "label_col": "label", "max_len": 256, "num_labels": 2,
-                  "teacher_epochs": 3, "teacher_batch": 16, "student_batch": 32},
+                  "teacher_epochs": 3, "teacher_batch": 16, "student_batch": 32, "soft": True},
 }
 ROOT = os.environ.get("ROOT", ".")
 TEACHERS = os.environ.get("TEACHERS", "bert-large-uncased:bert-large,GroNLP/hateBERT:hatebert,cardiffnlp/twitter-roberta-base-irony:irony")
+HETERO_TEACHER = os.environ.get("HETERO_TEACHER", "microsoft/deberta-v3-base:deberta-base")
+COMMITTEES = os.environ.get("COMMITTEES", "homo,hetero").split(",")
 STUDENTS = os.environ.get("STUDENTS", "google/bert_uncased_L-4_H-256_A-4:bert-mini,google/bert_uncased_L-4_H-512_A-8:bert-small,distilbert-base-uncased:distilbert")
+HETERO_STUDENTS = os.environ.get("HETERO_STUDENTS", "microsoft/deberta-v3-xsmall:deberta-xsmall,bilstm:bilstm")
 SEEDS = [int(s) for s in os.environ.get("SEEDS", "1,2,3").split(",")]
 MODES = os.environ.get("MODES", "ft,skd,uniform,dmthd").split(",")
 AUX_MODEL = "cardiffnlp/twitter-roberta-base-irony"
 GPU = os.environ.get("GPU", "1") == "1"
 RESUME_FROM = os.environ.get("RESUME_FROM", "")
+DISAGREEMENT = os.environ.get("DISAGREEMENT", "1") == "1"
+KAPPA = os.environ.get("KAPPA", "1.0")
 PROBES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "probes")
 
 
@@ -43,7 +57,7 @@ def sh(cmd):
 
 
 def pairs(spec):
-    return [tuple(x.split(":")) for x in spec.split(",")]
+    return [tuple(x.split(":")) for x in spec.split(",") if x]
 
 
 def done(d):
@@ -58,8 +72,12 @@ class Bench:
         self.runs = f"{ROOT}/runs/{name}"
         self.common = f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']}"
         self.fp = "--fp16" if GPU else ""
-        self.tags = [tag for _, tag in pairs(TEACHERS)]
+        self.all_teachers = pairs(TEACHERS) + (pairs(HETERO_TEACHER) if "hetero" in COMMITTEES else [])
+        self.committee = {"homo": [t for _, t in pairs(TEACHERS)],
+                          "hetero": [t for _, t in pairs(TEACHERS)] + [t for _, t in pairs(HETERO_TEACHER)]}
+        self.students = pairs(STUDENTS) + pairs(HETERO_STUDENTS)
 
+    # ---- stages ----
     def resume(self):
         if not RESUME_FROM:
             return
@@ -79,7 +97,7 @@ class Bench:
 
     def teachers(self):
         ep = os.environ.get("TEACHER_EPOCHS", self.cfg["teacher_epochs"])
-        for name, tag in pairs(TEACHERS):
+        for name, tag in self.all_teachers:
             out = f"{self.runs}/teachers/{tag}"
             if done(out):
                 continue
@@ -88,56 +106,85 @@ class Bench:
                f"--epochs {ep} --lr 2e-5 --batch {self.cfg['teacher_batch']} {self.fp} {ck} {self.common}")
 
     def cache_teachers(self):
+        tags = [t for _, t in self.all_teachers]
         if os.path.exists(f"{self.cache}/meta.json"):
-            return
-        dirs = " ".join(f"{self.runs}/teachers/{tag}" for tag in self.tags)
+            import json
+            have = {t["tag"] for t in json.load(open(f"{self.cache}/meta.json"))["teachers"]}
+            if set(tags) <= have:
+                return
+        dirs = " ".join(f"{self.runs}/teachers/{tag}" for tag in tags)
         sh(f"python -m dmthd.cache_teachers --data_dir {self.data} --out {self.cache} --teachers {dirs} "
            f"--aux_model {AUX_MODEL} {self.common}")
 
-    def students(self):
-        best_single = self.tags[0]
+    def _student_cmd(self, name, out, seed, mode, tags, extra=""):
         bs = self.cfg["student_batch"]
-        for name, stag in pairs(STUDENTS):
-            for mode in MODES:
-                for seed in SEEDS:
-                    out = f"{self.runs}/{stag}/{mode}/seed{seed}"
-                    if done(out):
-                        continue
-                    base = f"--student {name} --data_dir {self.data} --out_dir {out} --seed {seed} --batch {bs} {self.fp} {self.common}"
-                    if mode == "ft":
-                        sh(f"python -m dmthd.train_student {base} --mode ft")
-                    elif mode == "skd":
-                        sh(f"python -m dmthd.train_student {base} --mode skd --cache {self.cache} --teachers {best_single}")
-                    elif mode == "uniform":
-                        sh(f"python -m dmthd.train_student {base} --mode uniform --cache {self.cache} --teachers {' '.join(self.tags)}")
-                    else:
-                        sh(f"python -m dmthd.train_student {base} --mode dmthd --cache {self.cache} --teachers {' '.join(self.tags)} --aux --delta 0.3")
-        name, stag = pairs(STUDENTS)[0]
+        base = f"--student {name} --data_dir {self.data} --out_dir {out} --seed {seed} --batch {bs} {self.fp} {self.common}"
+        if mode == "ft":
+            return f"python -m dmthd.train_student {base} --mode ft {extra}"
+        if mode == "skd":
+            return f"python -m dmthd.train_student {base} --mode skd --cache {self.cache} --teachers {tags[0]} {extra}"
+        if mode == "uniform":
+            return f"python -m dmthd.train_student {base} --mode uniform --cache {self.cache} --teachers {' '.join(tags)} {extra}"
+        if mode == "dmthd_dis":
+            return (f"python -m dmthd.train_student {base} --mode dmthd --cache {self.cache} --teachers {' '.join(tags)} "
+                    f"--aux --delta 0.3 --disagreement --kappa {KAPPA} --reliability soft --tag disagreement {extra}")
+        return f"python -m dmthd.train_student {base} --mode dmthd --cache {self.cache} --teachers {' '.join(tags)} --aux --delta 0.3 {extra}"
+
+    def students(self):
+        modes = list(MODES) + (["dmthd_dis"] if (DISAGREEMENT and self.cfg["soft"]) else [])
+        for comm in COMMITTEES:
+            tags = self.committee[comm]
+            suffix = "" if comm == "homo" else "_hetero"
+            for name, stag in self.students:
+                for mode in modes:
+                    if mode == "ft" and comm != "homo":
+                        continue  # the control does not depend on the committee
+                    for seed in SEEDS:
+                        out = f"{self.runs}/{stag}/{mode}{suffix}/seed{seed}"
+                        if done(out):
+                            continue
+                        sh(self._student_cmd(name, out, seed, mode, tags))
+        # ablations: first student, homogeneous committee
+        name, stag = self.students[0]
+        tags = self.committee["homo"]
         abl = {"no_dynamic": "--mode uniform --aux --delta 0.3", "no_hidden": "--mode dmthd --no_hidden --aux --delta 0.3",
-               "no_aux": "--mode dmthd", "per_batch": "--mode dmthd --per_batch --aux --delta 0.3"}
+               "no_aux": "--mode dmthd", "per_batch": "--mode dmthd --per_batch --aux --delta 0.3",
+               "from_scratch": "--mode dmthd --aux --delta 0.3 --from_scratch"}
         for tag, flags in abl.items():
             for seed in SEEDS:
                 out = f"{self.runs}/{stag}/ablation_{tag}/seed{seed}"
                 if done(out):
                     continue
                 sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {seed} "
-                   f"--batch {bs} {self.fp} {self.common} --cache {self.cache} --teachers {' '.join(self.tags)} {flags} --tag {tag}")
+                   f"--batch {self.cfg['student_batch']} {self.fp} {self.common} --cache {self.cache} --teachers {' '.join(tags)} {flags} --tag {tag}")
+
+    def _run_dirs(self):
+        dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.all_teachers]
+        for _, stag in self.students:
+            dirs += glob.glob(f"{self.runs}/{stag}/*/seed*")
+        return [d for d in dirs if done(d)]
 
     def probes(self):
-        neg, pos = os.path.join(PROBES, "benign_sarcasm.csv"), os.path.join(PROBES, "ironic_abuse.csv")
+        neg, pos = os.path.join(PROBES, "benign_sarcasm_screened.csv"), os.path.join(PROBES, "ironic_abuse.csv")
+        if not os.path.exists(neg):
+            neg = os.path.join(PROBES, "benign_sarcasm.csv")
         if not (os.path.exists(neg) and os.path.exists(pos)):
             print("no probe sets found, skipping", flush=True)
             return
-        targets = [f"{self.runs}/teachers/{tag}" for tag in self.tags]
-        for _, stag in pairs(STUDENTS):
-            targets += [f"{self.runs}/{stag}/{mode}/seed{s}" for mode in MODES for s in SEEDS]
-        for d in targets:
-            if done(d) and not os.path.exists(os.path.join(d, "eval_test.json")):
+        for d in self._run_dirs():
+            if not os.path.exists(os.path.join(d, "eval_test.json")):
                 sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test.csv --scheme {self.cfg['scheme']} "
                    f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --probe_neg {neg} --probe_pos {pos}")
 
+    def quant(self):
+        for _, stag in self.students:
+            d = f"{self.runs}/{stag}/dmthd/seed{SEEDS[0]}"
+            if done(d) and not os.path.exists(os.path.join(d, "quantize_eval.json")):
+                sh(f"python -m dmthd.quantize_eval --model_dir {d} --csv {self.data}/test.csv --scheme {self.cfg['scheme']} "
+                   f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']}")
+
     def bench(self):
-        dirs = [f"{self.runs}/teachers/{tag}" for tag in self.tags] + [f"{self.runs}/{stag}/dmthd/seed{SEEDS[0]}" for _, stag in pairs(STUDENTS)]
+        dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.all_teachers] + [f"{self.runs}/{stag}/dmthd/seed{SEEDS[0]}" for _, stag in self.students]
         dirs = [d for d in dirs if os.path.exists(d)]
         dev = "cuda" if GPU else "cpu"
         sh(f"python -m dmthd.bench --model_dirs {' '.join(dirs)} --csv {self.data}/test.csv --device {dev} "
@@ -145,8 +192,8 @@ class Bench:
 
     def aggregate(self):
         sh(f"python -m dmthd.aggregate --runs {self.runs} --out {self.runs}/summary.csv")
-        _, stag = pairs(STUDENTS)[0]
-        for cand in ("dmthd", "uniform", "skd"):
+        _, stag = self.students[0]
+        for cand in ("dmthd", "uniform", "skd", "dmthd_hetero", "dmthd_dis"):
             if os.path.isdir(f"{self.runs}/{stag}/{cand}"):
                 sh(f"python -m dmthd.aggregate --compare {self.runs}/{stag}/ft {self.runs}/{stag}/{cand}")
 
@@ -162,6 +209,6 @@ if __name__ == "__main__":
                     "wikipedia": f"{ROOT}/raw_wikipedia"}[a.dataset]
     b = Bench(a.dataset, raw)
     b.resume()
-    order = ["prepare", "teachers", "cache", "students", "probes", "bench", "aggregate"]
+    order = ["prepare", "teachers", "cache", "students", "probes", "quant", "bench", "aggregate"]
     for st in (order if a.stage == "all" else [a.stage]):
         getattr(b, "cache_teachers" if st == "cache" else st)()
