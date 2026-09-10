@@ -38,12 +38,12 @@ Every `[x]` names where the evidence lives.
 
 ## E. Method presentation
 - [x] Loss fully specified with per-instance weights, T^2 KL, projections, soft term, irony head, disagreement variant — `losses.py` docstring, `paper/setup_draft.md`
-- [ ] Notation table and algorithm box in the paper
-- [ ] Posterior interpretation of softmax(-error/tau) (one paragraph)
-- [ ] Homogeneity defined once (architecture family, not tokenizer)
+- [x] Notation table and algorithm box — `paper/method_draft.md` (Sections 3.1, 3.5)
+- [x] Posterior interpretation of softmax(-error/tau) — `paper/method_draft.md` Section 3.2
+- [x] Homogeneity defined once (architecture family, not tokenizer) — `paper/method_draft.md` Section 3.6
 
 ## F. Related work and references
-- [ ] Thematic related work: cyberbullying/toxicity; KD for LMs; multi-teacher/adaptive KD; annotator disagreement
+- [~] Thematic related work: cyberbullying/toxicity; KD for LMs; multi-teacher/adaptive KD; annotator disagreement — skeleton with placed citations in `paper/related_work_draft.md`; prose expansion by the writing lead
 - [x] Verified bibliography: 63 entries, 47 with Crossref-verified DOIs, 16 arXiv/proceedings entries without DOI by design, no anonymous, duplicate or mismatched entries — `paper/references.bib`, `paper/refs_report.csv`
 - [ ] All Phase-2 citation faults closed (table in the plan document)
 
@@ -51,8 +51,8 @@ Every `[x]` names where the evidence lives.
 - [x] Public code with fixed seeds and one-command drivers — github.com/mahdihasanshadi/THESIS
 - [x] Lab notebook — `LOG.md`
 - [ ] Checkpoints and cached teacher outputs released (Kaggle dataset or Zenodo)
-- [ ] Data statement; ethics statement (offensive content, misuse, identity bias, annotator welfare)
-- [ ] CRediT author contributions
+- [~] Data statement; ethics statement; reproducibility statement; limitations — drafts in `paper/statements_draft.md`
+- [ ] CRediT author contributions — template in `paper/statements_draft.md`, names to fill
 
 ## H. Claims discipline
 - [ ] No "student exceeds teachers" claim unless seed statistics support it

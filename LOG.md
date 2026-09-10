@@ -78,3 +78,8 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   Tweets model applied to Wikipedia (500-row check): binary macro-F1 0.273, ROC-AUC 0.511, i.e.
   chance; the six topic-defined classes do not transfer to personal attacks. To be reported as the
   domain-shift finding, not hidden.
+- **Paper drafts written**: `paper/related_work_draft.md` (four themes, every citation from the
+  verified list, gap statements), `paper/statements_draft.md` (ethics, data, reproducibility,
+  limitations, CRediT template), `paper/method_draft.md` (notation table, per-instance reliability
+  with its Bayesian-model-averaging reading, full objective, disagreement-aware variant, irony head,
+  algorithm box, homogeneity definition).
