@@ -83,3 +83,7 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   limitations, CRediT template), `paper/method_draft.md` (notation table, per-instance reliability
   with its Bayesian-model-averaging reading, full objective, disagreement-aware variant, irony head,
   algorithm box, homogeneity definition).
+- **Figures and reporting**: `figures.py` (Pareto, weight trajectories, agreement bands, complementarity
+  heat-map, robustness drops), tested on smoke outputs; Wilcoxon added to `aggregate.py --compare`
+  for five-seed comparisons; `paper/phase2_citation_map.md` maps all 36 Phase-2 references to
+  keep / correct / delete with verified replacement keys.

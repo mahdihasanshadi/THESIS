@@ -24,7 +24,7 @@ Every `[x]` names where the evidence lives.
 
 ## C. Statistics and reporting
 - [x] Mean ± std over seeds and paired bootstrap 95% intervals implemented — `aggregate.py`
-- [ ] Wilcoxon across seeds where five seeds exist (headline configuration only)
+- [x] Wilcoxon across seeds when five seeds exist, otherwise bootstrap only — `aggregate.py --compare`
 - [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
 - [~] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest) — `analysis.py agreement_bands` ready and tested; needs Wikipedia runs
 - [~] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound — `analysis.py complementarity` ready; needs Kaggle teachers
@@ -34,7 +34,7 @@ Every `[x]` names where the evidence lives.
 ## D. Efficiency
 - [x] Benchmark with warm-up, five repeats, median, batch 1 and 32, GPU and CPU — `bench.py`
 - [x] INT8 dynamic quantisation evaluation — `quantize_eval.py` (measure on an idle CPU)
-- [ ] Parameter/FLOP/latency/F1 Pareto figure
+- [~] Parameter/FLOP/latency/F1 Pareto figure — `figures.py pareto` tested on smoke output; needs Kaggle bench
 
 ## E. Method presentation
 - [x] Loss fully specified with per-instance weights, T^2 KL, projections, soft term, irony head, disagreement variant — `losses.py` docstring, `paper/setup_draft.md`
@@ -45,7 +45,7 @@ Every `[x]` names where the evidence lives.
 ## F. Related work and references
 - [~] Thematic related work: cyberbullying/toxicity; KD for LMs; multi-teacher/adaptive KD; annotator disagreement — skeleton with placed citations in `paper/related_work_draft.md`; prose expansion by the writing lead
 - [x] Verified bibliography: 63 entries, 47 with Crossref-verified DOIs, 16 arXiv/proceedings entries without DOI by design, no anonymous, duplicate or mismatched entries — `paper/references.bib`, `paper/refs_report.csv`
-- [ ] All Phase-2 citation faults closed (table in the plan document)
+- [~] All Phase-2 citation faults mapped to keep/correct/delete with replacement keys — `paper/phase2_citation_map.md`; the writing lead applies it to the thesis text
 
 ## G. Reproducibility and ethics
 - [x] Public code with fixed seeds and one-command drivers — github.com/mahdihasanshadi/THESIS

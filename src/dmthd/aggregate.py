@@ -86,6 +86,12 @@ def main():
         print(per_seed.to_string(index=False))
         print(f"macro-F1 difference (candidate - baseline): {mean_delta:+.4f}  95% CI [{lo:+.4f}, {hi:+.4f}]")
         print("SIGNIFICANT" if lo > 0 or hi < 0 else "NOT significant: the interval includes zero")
+        if len(per_seed) >= 5:
+            from scipy.stats import wilcoxon
+            stat, p = wilcoxon(per_seed["delta"].values)
+            print(f"Wilcoxon signed-rank across {len(per_seed)} seeds: statistic {stat:.1f}, p = {p:.4f}")
+        else:
+            print(f"Wilcoxon across seeds skipped: {len(per_seed)} seeds (needs 5); bootstrap intervals are the reported test")
 
 
 if __name__ == "__main__":
