@@ -84,12 +84,12 @@ python scripts\smoke_cpu.py --raw E:\dmthd-work\data\raw\cyberbullying_tweets.cs
 
 ## Kaggle in three steps
 
-1. Push this folder to a GitHub repository (private is fine) so the notebook can clone it.
+1. The code lives at https://github.com/mahdihasanshadi/THESIS. Kaggle can clone it only if the repository is public, or if you attach the code zip (E:\dmthd-work\dmthd-p3-code.zip) as a Kaggle dataset instead. The simplest route is `kaggle/dmthd_tweets.ipynb`: on Kaggle choose Create, Import Notebook, and upload that file.
 2. New notebook → Settings: Accelerator **GPU T4 x2**, Internet **on** → Add data: `andrewmvd/cyberbullying-classification`.
 3. One cell, then **Save Version → Save & Run All (Commit)** so it keeps running for up to 12 h after you close the tab:
 
 ```python
-!git clone https://github.com/<you>/dmthd-p3.git && cd dmthd-p3 && pip install -q -r requirements.txt
+!git clone https://github.com/mahdihasanshadi/THESIS.git dmthd-p3 && cd dmthd-p3 && pip install -q -r requirements.txt
 %cd dmthd-p3
 !ROOT=/kaggle/working PYTHONPATH=src python kaggle/run_tweets.py --stage all \
     --raw /kaggle/input/cyberbullying-classification/cyberbullying_tweets.csv
