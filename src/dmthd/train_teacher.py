@@ -47,6 +47,8 @@ def main():
     ap.add_argument("--grad_ckpt", action="store_true")
     ap.add_argument("--class_weighted", action="store_true")
     ap.add_argument("--limit", type=int, default=0, help="debug: use only the first N training rows")
+    ap.add_argument("--no_resume", action="store_true", help="ignore an existing ckpt_last.pt and start over")
+    ap.add_argument("--keep_ckpt", action="store_true", help="keep ckpt_last.pt after a successful run (testing)")
     args = ap.parse_args()
 
     set_seed(args.seed)
@@ -78,8 +80,18 @@ def main():
 
     ensure_dir(args.out_dir)
     best_f1, history, timer = -1.0, [], Timer()
+    start_epoch, elapsed_before = 1, 0.0
+    ckpt_path = os.path.join(args.out_dir, "ckpt_last.pt")
+    if os.path.exists(ckpt_path) and not args.no_resume:
+        ck = torch.load(ckpt_path, map_location="cpu")
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["opt"])
+        sched.load_state_dict(ck["sched"])
+        scaler.load_state_dict(ck["scaler"])
+        best_f1, history, start_epoch, elapsed_before = ck["best_f1"], ck["history"], ck["epoch"] + 1, ck["elapsed_s"]
+        print(f"resumed from checkpoint after epoch {ck['epoch']} (best val macro-F1 so far {best_f1:.4f})", flush=True)
     logits_fn = lambda ii, am: model(input_ids=ii, attention_mask=am).logits
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         run_loss, n = 0.0, 0
         for batch in train_loader:
@@ -102,13 +114,18 @@ def main():
         model.eval()
         val_metrics = compute_metrics(va["label"].values, predict_probs(logits_fn, val_loader, device), names)
         history.append({"epoch": epoch, "train_loss": run_loss / max(n, 1), "val_macro_f1": val_metrics["macro_f1"],
-                        "val_acc": val_metrics["accuracy"], "elapsed_s": timer.elapsed()})
+                        "val_acc": val_metrics["accuracy"], "elapsed_s": elapsed_before + timer.elapsed()})
         print(f"epoch {epoch}: loss {run_loss / max(n, 1):.4f}  val macro-F1 {val_metrics['macro_f1']:.4f}", flush=True)
         if val_metrics["macro_f1"] > best_f1:
             best_f1 = val_metrics["macro_f1"]
             model.save_pretrained(args.out_dir)
             tok.save_pretrained(args.out_dir)
+        torch.save({"epoch": epoch, "model": model.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+                    "scaler": scaler.state_dict(), "best_f1": best_f1, "history": history,
+                    "elapsed_s": elapsed_before + timer.elapsed()}, ckpt_path)
     pd.DataFrame(history).to_csv(os.path.join(args.out_dir, "history.csv"), index=False)
+    if os.path.exists(ckpt_path) and not args.keep_ckpt:
+        os.remove(ckpt_path)
 
     best = load_classifier(args.out_dir, C).to(device).eval()
     best_fn = lambda ii, am: best(input_ids=ii, attention_mask=am).logits

@@ -74,6 +74,8 @@ def main():
     ap.add_argument("--fp16", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tag", default="", help="free-text label stored in results.json (e.g. ablation name)")
+    ap.add_argument("--no_resume", action="store_true", help="ignore an existing ckpt_last.pt and start over")
+    ap.add_argument("--keep_ckpt", action="store_true", help="keep ckpt_last.pt after a successful run (testing)")
     args = ap.parse_args()
 
     if args.mode != "ft" and not (args.cache and args.teachers):
@@ -121,7 +123,18 @@ def main():
     ensure_dir(args.out_dir)
     logits_fn = lambda ii, am: student(ii, am)[0]
     best_f1, bad_epochs, history, timer = -1.0, 0, [], Timer()
-    for epoch in range(1, args.epochs + 1):
+    start_epoch, elapsed_before, stopped = 1, 0.0, False
+    ckpt_path = os.path.join(args.out_dir, "ckpt_last.pt")
+    if os.path.exists(ckpt_path) and not args.no_resume:
+        ck = torch.load(ckpt_path, map_location="cpu")
+        student.load_state_dict(ck["student"])
+        opt.load_state_dict(ck["opt"])
+        sched.load_state_dict(ck["sched"])
+        scaler.load_state_dict(ck["scaler"])
+        best_f1, bad_epochs, history = ck["best_f1"], ck["bad_epochs"], ck["history"]
+        start_epoch, elapsed_before = ck["epoch"] + 1, ck["elapsed_s"]
+        print(f"resumed from checkpoint after epoch {ck['epoch']} (best val macro-F1 so far {best_f1:.4f})", flush=True)
+    for epoch in range(start_epoch, args.epochs + 1):
         student.train()
         sums, n, wsum = {}, 0, None
         for batch in train_loader:
@@ -164,7 +177,7 @@ def main():
             n += bs
         student.eval()
         vm = compute_metrics(va["label"].values, predict_probs(logits_fn, val_loader, device), names)
-        row = {"epoch": epoch, "val_macro_f1": vm["macro_f1"], "val_acc": vm["accuracy"], "elapsed_s": timer.elapsed()}
+        row = {"epoch": epoch, "val_macro_f1": vm["macro_f1"], "val_acc": vm["accuracy"], "elapsed_s": elapsed_before + timer.elapsed()}
         row.update({f"loss_{k}": v / max(n, 1) for k, v in sums.items()})
         if wsum is not None:
             for k, tag in enumerate(args.teachers):
@@ -176,10 +189,17 @@ def main():
             student.save(args.out_dir, tok)
         else:
             bad_epochs += 1
-            if bad_epochs >= args.patience:
-                print(f"early stop at epoch {epoch}")
-                break
+            stopped = bad_epochs >= args.patience
+        # power-cut insurance: everything needed to continue from the next epoch
+        torch.save({"epoch": epoch, "student": student.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+                    "scaler": scaler.state_dict(), "best_f1": best_f1, "bad_epochs": bad_epochs, "history": history,
+                    "elapsed_s": elapsed_before + timer.elapsed()}, ckpt_path)
+        if stopped:
+            print(f"early stop at epoch {epoch}")
+            break
     pd.DataFrame(history).to_csv(os.path.join(args.out_dir, "history.csv"), index=False)
+    if os.path.exists(ckpt_path) and not args.keep_ckpt:
+        os.remove(ckpt_path)
 
     best = load_classifier(args.out_dir, C).to(device).eval()
     probs = predict_probs(lambda ii, am: best(input_ids=ii, attention_mask=am).logits, test_loader, device)
@@ -188,7 +208,7 @@ def main():
            "disagreement": args.disagreement, "kappa": args.kappa if args.disagreement else None, "reliability": args.reliability,
            "scheme": args.scheme, "seed": args.seed, "T": args.T, "tau": args.tau, "alpha": args.alpha, "beta": args.beta,
            "gamma": args.gamma, "delta": args.delta if aux_logits is not None else 0.0, "lr": lr, "epochs_run": len(history),
-           "best_val_macro_f1": best_f1, "params": count_params(best), "train_time_s": timer.elapsed(),
+           "best_val_macro_f1": best_f1, "params": count_params(best), "train_time_s": elapsed_before + timer.elapsed(),
            "test": compute_metrics(te["label"].values, probs, names)}
     np.save(os.path.join(args.out_dir, "test_probs.npy"), probs)
     np.save(os.path.join(args.out_dir, "test_labels.npy"), te["label"].values)
