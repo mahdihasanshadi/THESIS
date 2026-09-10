@@ -49,9 +49,12 @@ KAPPA = os.environ.get("KAPPA", "1.0")
 PROBES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "probes")
 
 
+QUIET = {"HF_HUB_DISABLE_PROGRESS_BARS": "1", "TRANSFORMERS_VERBOSITY": "error", "TOKENIZERS_PARALLELISM": "false"}
+
+
 def sh(cmd):
     print("\n$", cmd, flush=True)
-    r = subprocess.run(cmd, shell=True)
+    r = subprocess.run(cmd, shell=True, env={**os.environ, **QUIET})
     if r.returncode != 0:
         sys.exit(f"command failed ({r.returncode}): {cmd}")
 
