@@ -98,3 +98,8 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
 - **Wikipedia BERT-mini fine-tune-only, seed 1** (CPU, early stop at epoch 5): test macro-F1 0.8857,
   acc 0.9555, attack-class F1 0.796, ECE 0.014; above the classical floor (0.8759) and 0.008 below
   the Phase-2 BERT-large teacher (0.8936). Seeds 2–3 running.
+- **Kaggle versions #1 and #2 (user's account) failed at data preparation**: the dataset file was not at
+  `/kaggle/input/cyberbullying-classification/cyberbullying_tweets.csv` (not attached to the committed
+  version, or a different path), and `!python` failures do not fail a Kaggle notebook, so both showed
+  "Successful" after two minutes. Fix: the notebook now locates the CSV under `/kaggle/input` by name,
+  downloads it from the Hugging Face mirror when absent, and raises so a failed benchmark shows as Failed.
