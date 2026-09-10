@@ -10,8 +10,9 @@ Every `[x]` names where the evidence lives.
 - [x] Classical floor on every benchmark — TF-IDF+LR results.json under `runs/*/tfidf_lr`
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
-- [ ] Obfuscation test variant (leetspeak, character swaps, spacing)
-- [ ] Cross-dataset transfer evaluation (tweets -> Wikipedia binarised, and reverse)
+- [~] Obfuscation test variants (leet, swap, space, mixed) — `obfuscate.py`; built for tweets; BERT-mini fine-tune-only drops 0.878 -> 0.725 macro-F1 on the mixed variant; D-MTHD comparison pending Kaggle
+- [~] Cross-dataset transfer evaluation — `transfer_eval.py`; driver stage `robustness`; tweets-model -> Wikipedia is near chance (ROC-AUC 0.51 on a 500-row check), to be reported as the domain-shift finding
+- [~] Hyper-parameter sweeps (tau, T, alpha/beta, delta) on validation — driver stage `sweep`, pending Kaggle
 
 ## B. Baselines, controls, ablations
 - [~] Fine-tune-only control for every student, three seeds — tweets BERT-mini running locally; rest on Kaggle
@@ -19,7 +20,6 @@ Every `[x]` names where the evidence lives.
 - [!] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — Kaggle run 1/2
 - [!] Homogeneity 2x2: BERT-mini vs DeBERTa-v3-xsmall student x hidden term; heterogeneous committee with DeBERTa-v3-base; BiLSTM student — Kaggle run 2 (driver ready)
 - [!] Disagreement-aware variant on Wikipedia (`dmthd_dis`) — Kaggle Wikipedia run
-- [ ] Sweeps of tau, T, alpha, delta on validation, one seed — add to driver as `sweep` stage
 - [ ] Optional: zero-shot LLM baseline on a 2,000-item test sample
 
 ## C. Statistics and reporting

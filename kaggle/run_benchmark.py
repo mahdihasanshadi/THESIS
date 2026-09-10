@@ -176,6 +176,44 @@ class Bench:
                 sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test.csv --scheme {self.cfg['scheme']} "
                    f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --probe_neg {neg} --probe_pos {pos}")
 
+    def sweep(self):
+        """Validation-only hyper-parameter sweeps on the headline student, one seed, homogeneous
+        committee. Test numbers are written too but the paper reports the validation column."""
+        name, stag = self.students[0]
+        tags = self.committee["homo"]
+        grid = [("tau", v, f"--tau {v}") for v in (0.5, 2.0, 5.0)] + [("T", v, f"--T {v}") for v in (1.0, 2.0, 8.0)] + \
+               [("alpha", v, f"--alpha {v} --beta {round(0.8 - v, 2)}") for v in (0.2, 0.6)] + [("delta", v, f"--delta {v}") for v in (0.1, 0.5)]
+        for param, value, flags in grid:
+            out = f"{self.runs}/{stag}/sweep_{param}_{value}/seed{SEEDS[0]}"
+            if done(out):
+                continue
+            sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {SEEDS[0]} "
+               f"--batch {self.cfg['student_batch']} {self.fp} {self.common} --mode dmthd --cache {self.cache} "
+               f"--teachers {' '.join(tags)} --aux --delta 0.3 {flags} --tag sweep_{param}_{value}")
+
+    def robustness(self):
+        """Obfuscated test variants and cross-dataset transfer for the headline D-MTHD and
+        fine-tune-only students (first seed)."""
+        obf_dir = self.data
+        if not os.path.exists(os.path.join(obf_dir, "test_obf_mixed.csv")):
+            sh(f"python -m dmthd.obfuscate --csv {self.data}/test.csv --out_dir {obf_dir} --scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']}")
+        _, stag = self.students[0]
+        for mode in ("ft", "dmthd"):
+            d = f"{self.runs}/{stag}/{mode}/seed{SEEDS[0]}"
+            if not done(d):
+                continue
+            for variant in ("leet", "swap", "space", "mixed"):
+                out = os.path.join(d, f"eval_test_obf_{variant}.json")
+                if not os.path.exists(out):
+                    sh(f"python -m dmthd.evaluate --model_dir {d} --csv {obf_dir}/test_obf_{variant}.csv --scheme {self.cfg['scheme']} "
+                       f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --out {out}")
+            other = "wikipedia" if self.name == "tweets" else "tweets"
+            other_cfg = DATASETS[other]
+            other_test = f"{ROOT}/data/{other}/test.csv"
+            if os.path.exists(other_test) and not os.path.exists(os.path.join(d, f"transfer_{other}.json")):
+                sh(f"python -m dmthd.transfer_eval --model_dir {d} --model_scheme {self.cfg['scheme']} --csv {other_test} "
+                   f"--csv_scheme {other_cfg['scheme']} --csv_label_col {other_cfg['label_col']} --max_len {other_cfg['max_len']}")
+
     def quant(self):
         for _, stag in self.students:
             d = f"{self.runs}/{stag}/dmthd/seed{SEEDS[0]}"
@@ -209,6 +247,6 @@ if __name__ == "__main__":
                     "wikipedia": f"{ROOT}/raw_wikipedia"}[a.dataset]
     b = Bench(a.dataset, raw)
     b.resume()
-    order = ["prepare", "teachers", "cache", "students", "probes", "quant", "bench", "aggregate"]
+    order = ["prepare", "teachers", "cache", "students", "probes", "sweep", "robustness", "quant", "bench", "aggregate"]
     for st in (order if a.stage == "all" else [a.stage]):
         getattr(b, "cache_teachers" if st == "cache" else st)()

@@ -72,3 +72,9 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
 - **Analysis tools added** (`src/dmthd/analysis.py`): teacher complementarity (pairwise kappa, error
   overlap, oracle bound), per-agreement-band F1, dynamic-weight trajectories, Pareto join; all four
   exercised on the smoke-test outputs.
+- **Robustness tooling** (`obfuscate.py`, `transfer_eval.py`, driver stages `sweep` and `robustness`).
+  Tweets test obfuscated (leet/swap/space/mixed; 3,599–3,659 of 3,709 bullying items edited).
+  BERT-mini fine-tune-only seed 1 on the mixed variant: macro-F1 0.7247 (clean 0.8779), a 15-point drop.
+  Tweets model applied to Wikipedia (500-row check): binary macro-F1 0.273, ROC-AUC 0.511, i.e.
+  chance; the six topic-defined classes do not transfer to personal attacks. To be reported as the
+  domain-shift finding, not hidden.
