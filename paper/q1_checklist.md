@@ -15,7 +15,7 @@ Every `[x]` names where the evidence lives.
 - [~] Hyper-parameter sweeps (tau, T, alpha/beta, delta) on validation — driver stage `sweep`, pending Kaggle
 
 ## B. Baselines, controls, ablations
-- [~] Fine-tune-only control for every student, three seeds — tweets BERT-mini running locally; rest on Kaggle
+- [~] Fine-tune-only control for every student, three seeds — tweets BERT-mini done locally (0.8770 ± 0.0010); Wikipedia BERT-mini running locally; BERT-small, DistilBERT, DeBERTa-xsmall, BiLSTM on Kaggle
 - [!] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, three students — Kaggle run 1
 - [!] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — Kaggle run 1/2
 - [!] Homogeneity 2x2: BERT-mini vs DeBERTa-v3-xsmall student x hidden term; heterogeneous committee with DeBERTa-v3-base; BiLSTM student — Kaggle run 2 (driver ready)

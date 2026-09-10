@@ -87,3 +87,11 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   heat-map, robustness drops), tested on smoke outputs; Wilcoxon added to `aggregate.py --compare`
   for five-seed comparisons; `paper/phase2_citation_map.md` maps all 36 Phase-2 references to
   keep / correct / delete with verified replacement keys.
+- **BERT-mini fine-tune-only, tweets, three seeds complete** (`runs/tweets/bert-mini/ft`): test macro-F1
+  0.8779 / 0.8770 / 0.8760, mean 0.8770 ± 0.0010; accuracy 0.8902. Against the classical floor
+  (0.8798) the paired bootstrap on seed 1 gives −0.0018, 95% CI [−0.0108, +0.0070]: the compact
+  student alone does not beat TF-IDF+LR. This is the headroom that distillation must fill; it is
+  reported as such. Probes (screened benign set n=883; ironic abuse n=1,560): FPR 0.284 / 0.343 /
+  0.251, recall 0.673 / 0.675 / 0.579; seed variance on the probes is large, so probe metrics are
+  reported as mean ± std over seeds, never from one seed.
+- **Wikipedia BERT-mini fine-tune-only** started automatically on the CPU (seed 1 of 3).
