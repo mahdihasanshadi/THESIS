@@ -1,0 +1,18 @@
+{
+  "benign_sarcasm": 1064,
+  "ironic_abuse": 1560,
+  "implicit_abuse": 763,
+  "ironic_abuse_by_source": {
+    "ImplicitHate-stg2-irony": 797,
+    "mconan": 291,
+    "wsf": 173,
+    "hateval": 110,
+    "youtube": 109,
+    "conan": 80
+  },
+  "excluded_sources": [
+    "ihc",
+    "toxigen"
+  ],
+  "note": "benign_sarcasm needs one manual screening pass to drop sarcastic tweets that are also abusive"
+}
