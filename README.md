@@ -1,0 +1,125 @@
+# D-MTHD Phase 3 — codebase and runbook
+
+Code for the two-week plan: data fix, teacher adaptation, teacher caching, student
+distillation (fine-tune only / single-teacher / uniform / D-MTHD), sarcasm probes, an
+efficiency benchmark reviewers can trust, and result aggregation with bootstrap intervals.
+
+Every entry point is `python -m dmthd.<name> --help`. Every run writes a `results.json`,
+so the Kaggle driver can be killed and restarted and it resumes where it stopped.
+
+## Where things run (no local GPU)
+
+| Work | Where | Why |
+|---|---|---|
+| Data fix, probes, statistics, figures, writing | this laptop (16 cores, CPU) | no GPU needed |
+| BERT-tiny / BERT-mini students | this laptop, CPU, overnight | 11M-parameter models train in minutes per epoch on 16 cores |
+| Teachers (BERT-large, HateBERT, irony), BERT-small, DistilBERT, Wikipedia runs | Kaggle (T4 x2 or P100, 30 GPU-h per account per week, sessions to 12 h) and Colab | the only real GPU need |
+| Overflow | Colab Pro (about USD 10/month) or a RunPod / Vast.ai rental (RTX 3090 at about USD 0.3/h) | if Kaggle queues stall; the whole plan is 60–80 GPU-hours |
+
+Four Kaggle accounts (one per team member) give 120 GPU-hours a week, more than the plan needs.
+The tweet corpus is already a Kaggle dataset (`andrewmvd/cyberbullying-classification`), so on
+Kaggle it is attached, not downloaded.
+
+**Disk on this laptop:** C: has under 7 GB free. Everything large lives on E:
+`E:\dmthd-work\{data,cache,runs,hf-cache}`. Keep only the code in this OneDrive folder;
+never put runs or caches here or OneDrive will sync gigabytes.
+
+## Local setup (done on 10 Sep)
+
+```powershell
+$env:PYTHONPATH = "C:\Users\Sadi\OneDrive\Desktop\dmthd-p3\src"
+$env:HF_HOME    = "E:\dmthd-work\hf-cache"      # model downloads go to E:
+pip install -r requirements.txt                 # torch CPU wheel already installed
+```
+
+Corpus: downloaded from the Hugging Face mirror `mattematics/cyberbullying`
+(47,692 rows, identical columns to the Kaggle file) to `E:\dmthd-work\data\raw\cyberbullying_tweets.csv`.
+
+## Pipeline
+
+```powershell
+# 1. Day-1 data fix: de-duplicate, drop conflicting labels, stratified 80/10/10, leakage assertions
+python -m dmthd.prepare_tweets --raw E:\dmthd-work\data\raw\cyberbullying_tweets.csv --out E:\dmthd-work\data\tweets
+#    -> train.csv val.csv test.csv label_info.json report.json (every removal count for the paper)
+
+# 2. Teachers (GPU): task-adapt each checkpoint on the training split, keep best validation epoch
+python -m dmthd.train_teacher --model_name bert-large-uncased --data_dir data/tweets --out_dir runs/tweets/teachers/bert-large --epochs 5 --lr 2e-5 --batch 32 --fp16 --grad_ckpt
+python -m dmthd.train_teacher --model_name GroNLP/hateBERT   --data_dir data/tweets --out_dir runs/tweets/teachers/hatebert   --epochs 5 --lr 2e-5 --batch 32 --fp16
+python -m dmthd.train_teacher --model_name cardiffnlp/twitter-roberta-base-irony --data_dir data/tweets --out_dir runs/tweets/teachers/irony --epochs 5 --lr 2e-5 --batch 32 --fp16
+
+# 3. Cache teacher logits + pooled states once; also the frozen irony teacher's own logits
+python -m dmthd.cache_teachers --data_dir data/tweets --out cache/tweets --teachers runs/tweets/teachers/bert-large runs/tweets/teachers/hatebert runs/tweets/teachers/irony --aux_model cardiffnlp/twitter-roberta-base-irony
+
+# 4. Students: the four modes are one script with different flags (seeds 1 2 3)
+S=google/bert_uncased_L-4_H-256_A-4
+python -m dmthd.train_student --student $S --data_dir data/tweets --mode ft      --out_dir runs/tweets/bert-mini/ft/seed1      --seed 1
+python -m dmthd.train_student --student $S --data_dir data/tweets --mode skd     --cache cache/tweets --teachers bert-large --out_dir runs/tweets/bert-mini/skd/seed1 --seed 1
+python -m dmthd.train_student --student $S --data_dir data/tweets --mode uniform --cache cache/tweets --teachers bert-large hatebert irony --out_dir runs/tweets/bert-mini/uniform/seed1 --seed 1
+python -m dmthd.train_student --student $S --data_dir data/tweets --mode dmthd   --cache cache/tweets --teachers bert-large hatebert irony --aux --delta 0.3 --out_dir runs/tweets/bert-mini/dmthd/seed1 --seed 1
+#    ablations: --per_batch   --no_hidden   (drop --aux)   --from_scratch   --mode uniform
+
+# 5. Sarcasm probes and per-class metrics for any saved model directory
+python -m dmthd.evaluate --model_dir runs/tweets/bert-mini/dmthd/seed1 --csv data/tweets/test.csv --scheme six --probe_neg data/probes/benign_sarcasm.csv --probe_pos data/probes/ironic_abuse.csv
+
+# 6. Efficiency: warm-up, 5 repeats, median; run on Kaggle (--device cuda) and here (--device cpu)
+python -m dmthd.bench --model_dirs runs/tweets/bert-mini/dmthd/seed1 runs/tweets/teachers/bert-large --csv data/tweets/test.csv --device cpu --out runs/tweets/bench_cpu.csv
+
+# 7. Tables and paired bootstrap intervals
+python -m dmthd.aggregate --runs runs/tweets --out runs/tweets/summary.csv
+python -m dmthd.aggregate --compare runs/tweets/bert-mini/ft runs/tweets/bert-mini/dmthd
+```
+
+`--limit N` on the training scripts uses only N rows: use it for debugging.
+`--scheme five` drops `other_cyberbullying`; `--scheme binary` collapses to bullying / not.
+For Wikipedia, export the Phase-2 splits as `text,label_name,label,soft_label` CSVs and add
+`--scheme binary --label_col label`; the soft-label BCE term switches on automatically.
+
+## Smoke test (CPU, a few minutes)
+
+Runs every stage on tiny models and 400 rows. Do this after any code change, before Kaggle.
+
+```powershell
+python scripts\smoke_cpu.py --raw E:\dmthd-work\data\raw\cyberbullying_tweets.csv --root E:\dmthd-work\smoke
+```
+
+## Kaggle in three steps
+
+1. Push this folder to a GitHub repository (private is fine) so the notebook can clone it.
+2. New notebook → Settings: Accelerator **GPU T4 x2**, Internet **on** → Add data: `andrewmvd/cyberbullying-classification`.
+3. One cell, then **Save Version → Save & Run All (Commit)** so it keeps running for up to 12 h after you close the tab:
+
+```python
+!git clone https://github.com/<you>/dmthd-p3.git && cd dmthd-p3 && pip install -q -r requirements.txt
+%cd dmthd-p3
+!ROOT=/kaggle/working PYTHONPATH=src python kaggle/run_tweets.py --stage all \
+    --raw /kaggle/input/cyberbullying-classification/cyberbullying_tweets.csv
+```
+
+Environment overrides for the driver: `TEACHERS`, `STUDENTS`, `SEEDS`, `MODES`, `ROOT`, `GPU`.
+Split work across accounts by setting `STUDENTS` differently on each (e.g. one account runs
+`distilbert-base-uncased:distilbert`, another `google/bert_uncased_L-4_H-512_A-8:bert-small`).
+After the teachers stage finishes once, publish `runs/tweets/teachers` and `cache/tweets` as a
+Kaggle dataset so the other accounts skip straight to students. Download `runs/` at the end;
+`aggregate` works on any merged `runs/` tree.
+
+## Output layout
+
+```
+runs/tweets/teachers/<tag>/           model + results.json + history.csv + test_probs.npy
+runs/tweets/<student>/<mode>/seed<k>/ model + dmthd_heads.pt + results.json + history.csv (loss parts, mean teacher weights per epoch)
+runs/tweets/<student>/ablation_<tag>/seed<k>/
+runs/tweets/summary.csv               mean ± std over seeds
+runs/tweets/bench_{cuda,cpu}.csv      efficiency table
+cache/tweets/<tag>.npz                teacher logits + pooled states, aux_irony.npz, meta.json
+data/tweets/report.json               de-duplication counts for the paper
+```
+
+## Day-1 checklist mapping
+
+| Plan item | Command |
+|---|---|
+| Rebuild splits, removal counts, leakage assertions | `prepare_tweets` (done 10 Sep; see `report.json`) |
+| Explain the 0.94 vs 0.86 validation gap | compare `val_macro_f1` in `history.csv` with `results.json` test on the clean split |
+| Corrected latency benchmark | `bench` |
+| Teacher adaptation script | `train_teacher` |
+| Fine-tune-only baselines | `train_student --mode ft` |

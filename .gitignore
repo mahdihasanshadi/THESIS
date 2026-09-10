@@ -1,0 +1,26 @@
+# data, caches, runs and model files never go to GitHub
+data/
+cache/
+runs/
+smoke/
+hf-cache/
+*.npz
+*.npy
+*.safetensors
+*.bin
+*.pt
+*.vhdx
+*.log
+*.err
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

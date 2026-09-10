@@ -1,0 +1,10 @@
+torch>=2.2
+transformers>=4.44
+datasets>=2.19
+scikit-learn>=1.4
+pandas>=2.0
+numpy>=1.26
+scipy>=1.11
+tqdm>=4.66
+sentencepiece>=0.2
+protobuf>=4.25
