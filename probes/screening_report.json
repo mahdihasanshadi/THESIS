@@ -1,0 +1,8 @@
+{
+  "rows": 1064,
+  "threshold": 0.8,
+  "flagged_for_review": 181,
+  "kept_unflagged": 883,
+  "mean_p_bullying": 0.5609493948999882,
+  "note": "a person reads benign_sarcasm_review.csv and deletes the rows that are truly abusive; the survivors are appended back to benign_sarcasm_screened.csv"
+}
