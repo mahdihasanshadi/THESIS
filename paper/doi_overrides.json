@@ -1,0 +1,30 @@
+{
+ "_comment": "Known DOIs for entries the title search matched badly. Each is verified by fetching Crossref works/{doi} and comparing the title; a mismatch is reported as CHECK, never written to the .bib.",
+ "rosa2019automatic": "10.1016/j.chb.2018.12.021",
+ "wulczyn2017exmachina": "10.1145/3038912.3052591",
+ "bucilua2006model": "10.1145/1150402.1150464",
+ "gou2021knowledge": "10.1007/s11263-021-01453-z",
+ "wolf2020transformers": "10.18653/v1/2020.emnlp-demos.6",
+ "schwartz2020green": "10.1145/3381831",
+ "dror2018hitchhiker": "10.18653/v1/P18-1128",
+ "yin2021towards": "10.7717/peerj-cs.598",
+ "zou2025dynamic": "10.1016/j.eswa.2024.125599",
+ "_no_doi_by_design": {
+  "koehn2004statistical": "https://aclanthology.org/W04-3250",
+  "guo2017calibration": "https://proceedings.mlr.press/v70/guo17a.html",
+  "wang2020minilm": "NeurIPS proceedings; cite with arXiv id",
+  "stanton2021does": "NeurIPS proceedings; cite with arXiv id",
+  "du2020agree": "NeurIPS proceedings",
+  "paszke2019pytorch": "NeurIPS proceedings; cite with arXiv id",
+  "brown2020language": "NeurIPS proceedings; cite with arXiv id",
+  "romero2015fitnets": "ICLR; cite with arXiv id",
+  "he2023debertav3": "ICLR; cite with arXiv id",
+  "loshchilov2019decoupled": "ICLR; cite with arXiv id",
+  "hinton2015distilling": "arXiv only",
+  "sanh2019distilbert": "arXiv only",
+  "turc2019wellread": "arXiv only",
+  "tang2019distilling": "arXiv only",
+  "liu2019roberta": "arXiv only",
+  "patterson2021carbon": "arXiv only"
+ }
+}

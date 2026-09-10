@@ -1,0 +1,59 @@
+# Q1 readiness checklist
+
+Status: `[x]` done, `[~]` in progress, `[ ]` not started, `[!]` blocked on a person or on GPU results.
+Every `[x]` names where the evidence lives.
+
+## A. Data and evaluation integrity
+- [x] Primary corpus de-duplicated, conflicting labels removed, counts reported — `data/tweets/report.json`, LOG 2026-09-10
+- [x] Second benchmark with an official split and leakage assertions — `data/wikipedia/report.json`
+- [x] Teacher provenance rule written and enforced (no test set overlaps any teacher's training data) — `paper/setup_draft.md`, `build_probes.py`
+- [x] Classical floor on every benchmark — TF-IDF+LR results.json under `runs/*/tfidf_lr`
+- [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
+- [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
+- [ ] Obfuscation test variant (leetspeak, character swaps, spacing)
+- [ ] Cross-dataset transfer evaluation (tweets -> Wikipedia binarised, and reverse)
+
+## B. Baselines, controls, ablations
+- [~] Fine-tune-only control for every student, three seeds — tweets BERT-mini running locally; rest on Kaggle
+- [!] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, three students — Kaggle run 1
+- [!] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — Kaggle run 1/2
+- [!] Homogeneity 2x2: BERT-mini vs DeBERTa-v3-xsmall student x hidden term; heterogeneous committee with DeBERTa-v3-base; BiLSTM student — Kaggle run 2 (driver ready)
+- [!] Disagreement-aware variant on Wikipedia (`dmthd_dis`) — Kaggle Wikipedia run
+- [ ] Sweeps of tau, T, alpha, delta on validation, one seed — add to driver as `sweep` stage
+- [ ] Optional: zero-shot LLM baseline on a 2,000-item test sample
+
+## C. Statistics and reporting
+- [x] Mean ± std over seeds and paired bootstrap 95% intervals implemented — `aggregate.py`
+- [ ] Wilcoxon across seeds where five seeds exist (headline configuration only)
+- [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
+- [ ] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest)
+- [ ] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound
+- [ ] Weight trajectories per teacher per epoch (logged in `history.csv`; plot pending)
+
+## D. Efficiency
+- [x] Benchmark with warm-up, five repeats, median, batch 1 and 32, GPU and CPU — `bench.py`
+- [x] INT8 dynamic quantisation evaluation — `quantize_eval.py` (measure on an idle CPU)
+- [ ] Parameter/FLOP/latency/F1 Pareto figure
+
+## E. Method presentation
+- [x] Loss fully specified with per-instance weights, T^2 KL, projections, soft term, irony head, disagreement variant — `losses.py` docstring, `paper/setup_draft.md`
+- [ ] Notation table and algorithm box in the paper
+- [ ] Posterior interpretation of softmax(-error/tau) (one paragraph)
+- [ ] Homogeneity defined once (architecture family, not tokenizer)
+
+## F. Related work and references
+- [ ] Thematic related work: cyberbullying/toxicity; KD for LMs; multi-teacher/adaptive KD; annotator disagreement
+- [~] Verified bibliography (every entry with venue, year, DOI; no anonymous, duplicate or mismatched entries) — `paper/refs.json`, `paper/verify_refs.py`
+- [ ] All Phase-2 citation faults closed (table in the plan document)
+
+## G. Reproducibility and ethics
+- [x] Public code with fixed seeds and one-command drivers — github.com/mahdihasanshadi/THESIS
+- [x] Lab notebook — `LOG.md`
+- [ ] Checkpoints and cached teacher outputs released (Kaggle dataset or Zenodo)
+- [ ] Data statement; ethics statement (offensive content, misuse, identity bias, annotator welfare)
+- [ ] CRediT author contributions
+
+## H. Claims discipline
+- [ ] No "student exceeds teachers" claim unless seed statistics support it
+- [ ] "Robust" in the title only if section A's robustness items are done
+- [ ] "Homogeneous" in the abstract only as a measured finding
