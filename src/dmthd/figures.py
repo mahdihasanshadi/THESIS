@@ -44,6 +44,9 @@ def pareto(csv, out):
         for _, r in s.iterrows():
             ax.annotate(r["dir_tag"], (r[lat], r["macro_f1"]), fontsize=5.5, xytext=(3, 2), textcoords="offset points")
     ax.set_xscale("log")
+    from matplotlib.ticker import NullFormatter, ScalarFormatter
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.xaxis.set_minor_formatter(NullFormatter())
     ax.set_xlabel("Latency, ms per sample, batch 1")
     ax.set_ylabel("Macro-F1")
     ax.legend(fontsize=6, ncol=2, loc="lower right")
