@@ -26,9 +26,10 @@ Every `[x]` names where the evidence lives.
 - [x] Mean ± std over seeds and paired bootstrap 95% intervals implemented — `aggregate.py`
 - [ ] Wilcoxon across seeds where five seeds exist (headline configuration only)
 - [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
-- [ ] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest)
-- [ ] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound
-- [ ] Weight trajectories per teacher per epoch (logged in `history.csv`; plot pending)
+- [~] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest) — `analysis.py agreement_bands` ready and tested; needs Wikipedia runs
+- [~] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound — `analysis.py complementarity` ready; needs Kaggle teachers
+- [~] Weight trajectories per teacher per epoch — `analysis.py weights` ready; needs D-MTHD runs
+- [~] Macro-F1 vs latency vs parameters table for the Pareto figure — `analysis.py pareto` ready; needs bench output
 
 ## D. Efficiency
 - [x] Benchmark with warm-up, five repeats, median, batch 1 and 32, GPU and CPU — `bench.py`
@@ -43,7 +44,7 @@ Every `[x]` names where the evidence lives.
 
 ## F. Related work and references
 - [ ] Thematic related work: cyberbullying/toxicity; KD for LMs; multi-teacher/adaptive KD; annotator disagreement
-- [~] Verified bibliography (every entry with venue, year, DOI; no anonymous, duplicate or mismatched entries) — `paper/refs.json`, `paper/verify_refs.py`
+- [x] Verified bibliography: 63 entries, 47 with Crossref-verified DOIs, 16 arXiv/proceedings entries without DOI by design, no anonymous, duplicate or mismatched entries — `paper/references.bib`, `paper/refs_report.csv`
 - [ ] All Phase-2 citation faults closed (table in the plan document)
 
 ## G. Reproducibility and ethics

@@ -67,3 +67,8 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   volume 237 / 121393 DOI in the Phase-2 bibliography resolves to an unrelated pipe-jacking paper.
   Output: `paper/references.bib`, `paper/refs_report.csv`.
 - **BERT-mini fine-tune-only, tweets, seed 2**: test macro-F1 0.8770, acc 0.8904. Seed 3 running.
+- **Bibliography re-verified with retries**: 38 title-matched DOIs, 9 known DOIs confirmed through
+  works/{doi}, 16 no-DOI-by-design, 0 unresolved (`paper/refs_report.csv`).
+- **Analysis tools added** (`src/dmthd/analysis.py`): teacher complementarity (pairwise kappa, error
+  overlap, oracle bound), per-agreement-band F1, dynamic-weight trajectories, Pareto join; all four
+  exercised on the smoke-test outputs.

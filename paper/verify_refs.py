@@ -40,9 +40,17 @@ def similarity(a, b):
     return difflib.SequenceMatcher(None, na, nb).ratio()
 
 
-def get_json(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=40) as r:
-        return json.load(r)
+def get_json(url, attempts=4):
+    """Crossref occasionally answers with a transient error; retry with a short back-off."""
+    last = None
+    for i in range(attempts):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=40) as r:
+                return json.load(r)
+        except Exception as ex:  # HTTP 5xx, timeouts, malformed bodies
+            last = ex
+            time.sleep(1.5 * (i + 1))
+    raise last
 
 
 def year_of(it):
