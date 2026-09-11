@@ -26,11 +26,20 @@ from transformers import get_linear_schedule_with_warmup
 from .evaluate import compute_metrics, make_loader, predict_probs
 from .losses import agreement_from_soft, dmthd_loss
 from .models import Student, count_params, is_bilstm, load_classifier, load_tokenizer, uses_amp
-from .utils import Timer, ensure_dir, get_device, label_names, load_json, map_labels, save_json, set_seed
+from .utils import Timer, ensure_dir, get_device, label_names, load_json, map_labels, save_json, set_seed, split_fingerprint
 
 
-def load_caches(cache_dir, tags):
-    metas = {t["tag"]: t for t in load_json(os.path.join(cache_dir, "meta.json"))["teachers"]}
+def load_caches(cache_dir, tags, train_df=None):
+    meta = load_json(os.path.join(cache_dir, "meta.json"))
+    if train_df is not None and meta.get("fingerprint"):
+        fp = split_fingerprint(train_df["text"].tolist(), train_df["label"].tolist())
+        if fp != meta["fingerprint"]:
+            raise SystemExit(
+                f"cache/split mismatch: {cache_dir} was built on a different training split "
+                f"(cache {meta['fingerprint']}, current {fp}). Teacher logits are indexed by row "
+                f"position, so training on this pairing would be silently wrong. Rebuild the cache "
+                f"with dmthd.cache_teachers on the current split.")
+    metas = {t["tag"]: t for t in meta["teachers"]}
     logits, pooled, dims = [], [], []
     for tag in tags:
         z = np.load(os.path.join(cache_dir, f"{tag}.npz"))
@@ -101,7 +110,7 @@ def main():
     t_logits, t_pooled, dims = (None, None, [])
     aux_logits = None
     if args.mode != "ft":
-        t_logits, t_pooled, dims = load_caches(args.cache, args.teachers)
+        t_logits, t_pooled, dims = load_caches(args.cache, args.teachers, train_df=tr)
         assert t_logits.shape[1] >= len(tr), "cache shorter than training split: rebuild the cache on this split"
         if args.aux:
             aux_logits = torch.from_numpy(np.load(os.path.join(args.cache, "aux_irony.npz"))["logits"].astype(np.float32))

@@ -130,3 +130,9 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   three teachers were retrained once, dropped, recorded in `dropped_teachers.json`, and the
   students stage still ran the fine-tune-only control without error. DeBERTa-v3-xsmall trained
   with a finite loss (1.79) under the fp32 fix, confirming the NaN cause.
+- **Cache/split integrity check added.** Teacher caches are indexed by training-row position, so
+  pairing a cache with a different split would train on silently mismatched targets. `cache_teachers`
+  now records a SHA-256 fingerprint of the training split (texts and labels, in order) in `meta.json`,
+  and `train_student` refuses to start when it does not match. Verified both ways: the matching split
+  trains, a different split exits with the mismatch message. This matters for the Kaggle resume, where
+  the cache comes from an earlier session and the split is rebuilt from scratch.

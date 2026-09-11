@@ -15,7 +15,7 @@ import torch
 
 from .evaluate import make_loader
 from .models import encode_batch, load_classifier, load_tokenizer
-from .utils import ensure_dir, get_device, label_names, map_labels, save_json
+from .utils import ensure_dir, get_device, label_names, map_labels, save_json, split_fingerprint
 
 
 @torch.no_grad()
@@ -56,7 +56,8 @@ def main():
     if args.limit:
         df = df.head(args.limit)
     ensure_dir(args.out)
-    meta = {"split": args.split, "n": int(len(df)), "scheme": args.scheme, "teachers": [], "aux": None}
+    meta = {"split": args.split, "n": int(len(df)), "scheme": args.scheme, "teachers": [], "aux": None,
+            "fingerprint": split_fingerprint(df["text"].tolist(), df["label"].tolist())}
     for tdir in args.teachers:
         tag = os.path.basename(os.path.normpath(tdir))
         logits, pooled = run_teacher(tdir, C, df, args.max_len, args.batch, device)

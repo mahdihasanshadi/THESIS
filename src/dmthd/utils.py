@@ -105,3 +105,16 @@ class Timer:
 
     def elapsed(self) -> float:
         return time.time() - self.t0
+
+
+def split_fingerprint(texts, labels=None) -> str:
+    """Stable hash of a training split's row order. Teacher caches are indexed by position, so a
+    cache may only be used with the split it was built on; this is what the check compares."""
+    import hashlib
+    h = hashlib.sha256()
+    for i, t in enumerate(texts):
+        h.update(str(t).encode("utf-8", "ignore"))
+        if labels is not None:
+            h.update(b"|" + str(labels[i]).encode())
+        h.update(b"\n")
+    return h.hexdigest()[:32]
