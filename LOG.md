@@ -143,3 +143,10 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
 - **Wikipedia BERT-mini fine-tune-only, seed 2** (resumed after the power cut, early stop at epoch 5):
   test macro-F1 0.8861, acc 0.9558, attack-class F1 0.797. Seed 1 was 0.8857; the two agree to
   0.0004. Seed 3 running.
+- **Paper tables generated from the runs tree** (`src/dmthd/tables.py`): teachers with the classical
+  floor, main table (student x method, mean +- std, probe metrics), ablations with deltas,
+  homogeneity (hidden-term gain by student family), committee (homogeneous vs heterogeneous),
+  efficiency with INT8, robustness (obfuscation and transfer), sweeps, dataset counts. LaTeX with
+  booktabs plus CSV; every number read from results.json / eval_*.json / bench_*.csv. Tables whose
+  data is missing are skipped, so it runs mid-experiment. Fixture test `scripts/smoke_tables.py`
+  builds a synthetic 111-run tree and asserts all nine tables render.
