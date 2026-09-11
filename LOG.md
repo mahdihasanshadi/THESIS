@@ -329,3 +329,34 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   benign class per scheme (`BENIGN`) instead of assuming `not_cyberbullying`, which also fixed
   `obfuscate.py`, where a non-tweet scheme would have obfuscated the benign rows as well.
   `implicit_analysis.py` takes its hard classes from the scheme.
+- **The specialist forms its own committee (`spec`), rather than joining `homo`.** Adding a fourth
+  teacher to the homogeneous committee would have changed what `homo` means, so every finished
+  three-teacher run would have had to be repeated to stay comparable - about ten GPU-hours - and the
+  specialist's contribution would then only be visible as a one-seed ablation. As a separate
+  committee it is instead a controlled three-seed comparison of `homo` against `spec` on the same
+  students, and nothing already finished is invalidated. `SPEC_STUDENTS` restricts it to the headline
+  student by default, because the question is about the committee rather than the student. The
+  `no_spec` ablation is therefore dropped: it is the `homo` run, measured over three seeds instead of
+  one. Driver docstring, `aggregate --compare` list and `tables.py` mode labels updated with it.
+- **Two controls added for the implicit claim.** `ablation_spec_only` distils from the specialist
+  alone; `ablation_implicit_pretrain` takes the same student, fine-tuned on the implicit corpus and
+  then on the task, with no teachers at all. The second is the one a reviewer asks for first: if it
+  matches the `spec` committee then the implicit knowledge came from the data and the committee is
+  decoration. Both are trained in the `specialist` stage and resumed across Kaggle sessions with it.
+- **Tables extended to the metrics the claim is argued on.** `tables.py` now collects F1 on whichever
+  class holds abuse-by-implication in each corpus, sarcasm-discrimination AUC, the operating point at
+  0.5, the recall left when the false-positive rate is held under 10 per cent, and focus-class
+  transfer. Two new tables: `implicit` and `routing`. Verified on the existing BERT-mini
+  fine-tune-only run, which renders as macro-F1 0.8770, other_cyberbullying F1 0.741,
+  sarcasm-discrimination AUC 0.776, recall 0.704 at FPR 0.317, recall 0.427 at FPR under 0.10. That
+  row is the baseline every later variant is measured against.
+- **`weight_routing.py` added.** For each tau it reports, per teacher, the mean weight on
+  implicit-like rows minus explicit-like rows with a 2,000-sample percentile bootstrap interval. This
+  is the mechanism evidence: a committee of specialists is only a committee if the weights go
+  somewhere sensible. Tested on the smoke cache; at tau = 1 the contrasts are 0.01-0.04 and at
+  tau = 0.1 they are 0.11-0.27, which is Finding 6 measured on routing rather than on entropy.
+- **`paper/OPEN_DECISIONS.md` written**, at Mahdi's request that crucial decisions wait for him with
+  the options and the logic set out. Six: what the paper is about; how the remaining GPU quota is
+  spent (the only one needed now); whether "Homogeneous" and "Robust" stay in the title; what the
+  paper says if the dynamic weighting turns out to do nothing; whether and how to release the
+  implicit benchmark; and the target venue.

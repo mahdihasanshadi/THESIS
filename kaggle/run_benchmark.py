@@ -8,15 +8,19 @@ Stages: prepare | specialist | teachers | cache | students | probes | sweep | ro
 bench | aggregate | all.
 Every stage skips work whose results.json already exists, so a killed session resumes where it stopped.
 
-Design (the comparison grid): two teacher committees x two student families.
-  COMMITTEES=homo,hetero   homo = BERT-large + HateBERT + RoBERTa-irony; hetero = homo + DeBERTa-v3-base
+Design (the comparison grid): three teacher committees x two student families.
+  COMMITTEES               homo = BERT-large + HateBERT + RoBERTa-irony;
+                           spec = homo + the implicit-abuse specialist (headline student only);
+                           hetero = homo + DeBERTa-v3-base
   STUDENTS (homogeneous)   BERT-mini, BERT-small, DistilBERT
   HETERO_STUDENTS          DeBERTa-v3-xsmall (another transformer family), bilstm (not a transformer)
-On the tweet and Wikipedia benchmarks the homogeneous committee also holds the implicit-abuse
-specialist: HateBERT trained on the implicit benchmark, then task-adapted like any other teacher.
-It is the only committee member that has seen abuse-by-implication labelled as such.
-Run directories: runs/<dataset>/<student>/<mode>[_hetero]/seed<k>. Ablations run on the first
-student with the homogeneous committee. On binary datasets with annotator fractions the extra
+The implicit-abuse specialist is HateBERT trained on the implicit benchmark, then task-adapted like
+any other teacher. It is the only committee member that has seen abuse-by-implication labelled as
+such, and it forms the `spec` committee. Keeping it out of `homo` means every run already finished
+with the three-teacher committee stays valid, and "does the specialist help?" becomes a controlled
+comparison of two full committees over three seeds rather than a single-seed ablation.
+Run directories: runs/<dataset>/<student>/<mode>[_spec|_hetero]/seed<k>. Ablations run on the
+first student with the homogeneous committee. On binary datasets with annotator fractions the extra
 mode `dmthd_dis` (disagreement-aware, soft reliability) is added when DISAGREEMENT=1.
 
 Teacher safety: a teacher whose test macro-F1 is below MIN_TEACHER_F1 (default 0.5) is treated as
@@ -29,7 +33,7 @@ RESUME_FROM=/kaggle/input/<that-output>; its runs/ and cache/ trees are copied i
 
 Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HETERO_STUDENTS, SEEDS,
 MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1,
-SPECIALIST, SPECIALIST_BASE, IMPLICIT_RAW, LIMIT (debug).
+SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug).
 """
 import argparse
 import glob
@@ -53,7 +57,14 @@ DATASETS = {
 ROOT = os.environ.get("ROOT", ".")
 TEACHERS = os.environ.get("TEACHERS", "bert-large-uncased:bert-large,GroNLP/hateBERT:hatebert,cardiffnlp/twitter-roberta-base-irony:irony")
 HETERO_TEACHER = os.environ.get("HETERO_TEACHER", "microsoft/deberta-v3-base:deberta-base")
-COMMITTEES = [c for c in os.environ.get("COMMITTEES", "homo,hetero").split(",") if c]
+COMMITTEES = [c for c in os.environ.get("COMMITTEES", "homo,spec,hetero").split(",") if c]
+# `spec` is the homogeneous committee plus the implicit specialist. It is a separate committee rather
+# than an extra member of `homo` for two reasons. It leaves every run already finished with the
+# three-teacher committee valid, which is worth about ten GPU-hours; and it turns "does the specialist
+# help?" into a controlled multi-seed comparison of two full committees instead of a one-seed
+# ablation. Restricted by default to the headline student, because the question is about the
+# committee and not about the student.
+SPEC_STUDENTS = [s for s in os.environ.get("SPEC_STUDENTS", "bert-mini").split(",") if s]
 STUDENTS = os.environ.get("STUDENTS", "google/bert_uncased_L-4_H-256_A-4:bert-mini,google/bert_uncased_L-4_H-512_A-8:bert-small,distilbert-base-uncased:distilbert")
 HETERO_STUDENTS = os.environ.get("HETERO_STUDENTS", "microsoft/deberta-v3-xsmall:deberta-xsmall,bilstm:bilstm")
 SEEDS = [int(s) for s in os.environ.get("SEEDS", "1,2,3").split(",")]
@@ -64,6 +75,7 @@ AUX_MODEL = "cardiffnlp/twitter-roberta-base-irony"
 # knowledge, and the committee has no member able to recognise it. This teacher is HateBERT trained
 # first on the implicit benchmark; the usual task adaptation then re-heads it for the target
 # benchmark, so it enters the committee in the target label space while keeping what it learned.
+# It forms the `spec` committee rather than joining `homo`; see COMMITTEES above.
 # It is the mechanism the paper's implicit claim rests on. SPECIALIST=0 turns it off.
 SPECIALIST = os.environ.get("SPECIALIST", "1") == "1"
 SPECIALIST_BASE = os.environ.get("SPECIALIST_BASE", "GroNLP/hateBERT")
@@ -160,9 +172,11 @@ class Bench:
 
     # ---- committees (recomputed so dropped teachers disappear everywhere) ----
     def committee(self, comm):
-        homo = [t for _, t in pairs(TEACHERS) + self.spec if t not in self.dropped]
+        homo = [t for _, t in pairs(TEACHERS) if t not in self.dropped]
         if comm == "homo":
             return homo
+        if comm == "spec":
+            return homo + [t for _, t in self.spec if t not in self.dropped]
         return homo + [t for _, t in pairs(HETERO_TEACHER) if t not in self.dropped]
 
     def active_committees(self):
@@ -172,8 +186,8 @@ class Bench:
             if not tags:
                 print(f"committee {comm}: no teachers left, skipped", flush=True)
                 continue
-            if comm == "hetero" and tags == self.committee("homo"):
-                print("committee hetero: identical to homo after drops, skipped", flush=True)
+            if comm != "homo" and tags == self.committee("homo"):
+                print(f"committee {comm}: identical to homo after drops, skipped", flush=True)
                 continue
             out.append((comm, tags))
         return out
@@ -402,8 +416,10 @@ class Bench:
                         check_budget(f"{stag}/{mode}/seed{seed}")
                         sh(self._student_cmd(name, out, seed, mode, self.committee("homo")))
         for comm, tags in committees:
-            suffix = "" if comm == "homo" else "_hetero"
+            suffix = "" if comm == "homo" else f"_{comm}"
             for name, stag in self.student_list:
+                if comm == "spec" and SPEC_STUDENTS and stag not in SPEC_STUDENTS:
+                    continue
                 for mode in [m for m in modes if m not in committee_free]:
                     for seed in SEEDS:
                         out = f"{self.runs}/{stag}/{mode}{suffix}/seed{seed}"
@@ -421,17 +437,12 @@ class Bench:
                "no_aux": (homo, "--mode dmthd"),
                "per_batch": (homo, "--mode dmthd --per_batch --aux --delta 0.3"),
                "from_scratch": (homo, "--mode dmthd --aux --delta 0.3 --from_scratch")}
-        # The two ablations the implicit claim lives or dies on. Without them a reviewer asks, quite
-        # reasonably, whether the committee is doing anything that the specialist alone would not.
-        #   spec_only  distil from the implicit specialist and nobody else
-        #   no_spec    the committee with the specialist removed
-        # If spec_only matches full D-MTHD, the contribution is a teacher choice, not a committee; if
-        # no_spec matches it, the specialist adds nothing. Either answer belongs in the paper.
-        if self.use_specialist and SPECIALIST_TAG in homo:
-            rest = [t for t in homo if t != SPECIALIST_TAG]
+        # Distil from the implicit specialist and nobody else. If this matches the `spec` committee,
+        # the contribution is a teacher choice and not a committee, and the paper must say so. The
+        # other half of the question, the committee without the specialist, is the `homo` committee
+        # itself, measured over all three seeds rather than as a one-seed ablation.
+        if self.use_specialist and SPECIALIST_TAG not in self.dropped and done(SPECIALIST_SRC):
             abl["spec_only"] = ([SPECIALIST_TAG], "--mode skd --aux --delta 0.3")
-            if rest:
-                abl["no_spec"] = (rest, "--mode dmthd --aux --delta 0.3")
         for tag, (tags, flags) in abl.items():
             if tag == "from_scratch" and name == "bilstm":
                 continue
@@ -553,7 +564,7 @@ class Bench:
     def aggregate(self):
         sh(f"python -m dmthd.aggregate --runs {self.runs} --out {self.runs}/summary.csv", check=False)
         _, stag = self.student_list[0]
-        for cand in ("dmthd", "uniform", "skd", "dmthd_hetero", "dmthd_dis"):
+        for cand in ("dmthd", "uniform", "skd", "dmthd_spec", "uniform_spec", "dmthd_hetero", "dmthd_dis"):
             if os.path.isdir(f"{self.runs}/{stag}/{cand}") and os.path.isdir(f"{self.runs}/{stag}/ft"):
                 sh(f"python -m dmthd.aggregate --compare {self.runs}/{stag}/ft {self.runs}/{stag}/{cand}", check=False)
         if self.dropped:

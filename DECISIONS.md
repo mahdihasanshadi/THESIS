@@ -165,7 +165,20 @@ labelled as abuse-by-implication. Two changes:
 **What it buys:** the paper's stated goal becomes something the method is trained for and measured
 on, rather than something it is only tested against. **Cost:** six to ten GPU-hours.
 
-### D15. The probes are held out of the new benchmark, not merely split away
+### D15. The implicit specialist forms its own committee rather than joining the homogeneous one
+*Taken 2026-09-12.* The specialist could have been added as a fourth member of `homo`. Instead
+`spec` = `homo` + specialist is a separate committee.
+**Why:** adding a teacher to `homo` would change what `homo` means, so every finished run that used
+the three-teacher committee would have to be re-run to stay comparable, which is about ten GPU-hours.
+More importantly it turns "does the specialist help?" into a controlled comparison of two full
+committees over three seeds, which is stronger evidence than a single-seed ablation.
+**Cost:** one extra committee in the grid, restricted by default to the headline student, because the
+question is about the committee and not about the student.
+**Rejected:** adding it to `homo` (invalidates finished work, weaker evidence); leaving it out of the
+tweet corpus entirely (then the paper's mechanism is never tested where the corpus lacks implicit
+labels, which is the interesting case).
+
+### D16. The probes are held out of the new benchmark, not merely split away
 The probes were drawn from these corpora. Three options existed: route probe texts into the test
 split, re-derive the probes from the test split, or delete them from the benchmark entirely. The
 first two make every probe number in the paper conditional on a split, and one of them invalidates
@@ -373,6 +386,7 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | What happens to each Phase-2 citation | `paper/phase2_citation_map.md` |
 | Tables generated from results | `python -m dmthd.tables` |
 | Human annotation kit | `annotation/` |
+| Decisions that belong to the team, with options and logic | `paper/OPEN_DECISIONS.md` |
 | Implicit benchmark construction and its counts | `src/dmthd/prepare_implicit.py`, `data/implicit/report.json` |
 | Sarcasm and implicit-abuse measurements | `src/dmthd/implicit_analysis.py` |
 | Weighting temperature diagnostic | `src/dmthd/tune_tau.py` |

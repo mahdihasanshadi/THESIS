@@ -28,7 +28,9 @@ import pandas as pd
 MODE_LABEL = {"ft": "Fine-tune only", "skd": "Single-teacher KD", "uniform": "Uniform multi-teacher",
               "dmthd": "D-MTHD", "dmthd_dis": "D-MTHD + disagreement", "ft_hetero": "Fine-tune only",
               "skd_hetero": "Single-teacher KD (het.)", "uniform_hetero": "Uniform multi-teacher (het.)",
-              "dmthd_hetero": "D-MTHD (heterogeneous committee)"}
+              "dmthd_hetero": "D-MTHD (heterogeneous committee)",
+              "uniform_spec": "Uniform multi-teacher + implicit specialist",
+              "dmthd_spec": "D-MTHD + implicit specialist"}
 STUDENT_LABEL = {"bert-mini": "BERT-mini", "bert-small": "BERT-small", "distilbert": "DistilBERT",
                  "deberta-xsmall": "DeBERTa-v3-xsmall", "bilstm": "BiLSTM", "tiny": "BERT-tiny"}
 ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instance",
@@ -203,7 +205,7 @@ def main():
     s["is_sweep"] = s["mode"].str.startswith("sweep_")
 
     # ---- main table ----
-    main_modes = ["ft", "skd", "uniform", "dmthd", "dmthd_dis"]
+    main_modes = ["ft", "skd", "uniform", "dmthd", "uniform_spec", "dmthd_spec", "dmthd_dis"]
     m = agg(s[s["mode"].isin(main_modes)])
     if not m.empty:
         m["order"] = m["mode"].map({k: i for i, k in enumerate(main_modes)})
