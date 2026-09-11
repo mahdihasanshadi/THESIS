@@ -299,12 +299,15 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   occurring in any probe file is removed from this benchmark in all three splits: 1,581 rows
   (1,572 implicit_hate, 9 explicit_hate). The probes stay genuinely unseen, which is worth more than
   the rows.
-  **Result.** 50,243 combined -> 47,181 after cleaning; train 37,744 / val 4,718 / test 4,719.
+  **Result** (SUPERSEDED the same day by the correction entry below, which rebuilds this from one
+  corpus after finding the pooled version separable by source):
+  50,243 combined -> 47,181 after cleaning; train 37,744 / val 4,718 / test 4,719.
   Train classes: not_hate 24,586, explicit_hate 8,385, implicit_hate 4,773. Corpus mix in train:
   ISHate 21,767, Implicit Hate 15,977. De-duplication removed 420 duplicates and, notably,
   **346 texts that the two corpora label differently** (710 rows) - a cross-corpus annotation
   disagreement worth reporting in its own right.
-- **Classical floor on the implicit benchmark, and the reason this benchmark is the right one.**
+- **Classical floor on the implicit benchmark** (SUPERSEDED: these are the pooled-corpus numbers;
+  the corrected floor is in the entry below)**, and the reason this benchmark is the right one.**
   TF-IDF + logistic regression: test macro-F1 **0.6809**, accuracy 0.7663, ECE 0.0449. Per class:
   not_hate 0.8421, explicit_hate 0.7474, **implicit_hate 0.4530**.
   A bag of n-grams is already decent at explicit abuse and collapses on implication - a 29-point F1
@@ -365,7 +368,7 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   writes one row per example - split, label, source corpus, SHA-1 of the normalised text - plus the
   split fingerprints, and `--verify` compares a rebuild row by row and names the rows that differ.
   No text, so nothing is redistributed. 2.7 MB compressed for all three corpora; round-trip verified
-  (MATCH, 47,181 rows) on the implicit corpus. Data and reproducibility statements updated.
+  (MATCH, 47,181 rows at the time) on the implicit corpus. Data and reproducibility statements updated.
 - **ISHate's subtlety layer is not usable.** It looked like a free second axis (Subtle vs
   Non-Subtle), but in our test split only 10 of 4,719 rows carry it and all 10 are `explicit_hate`,
   while the implicit rows are almost entirely Non-Subtle. Whatever it annotates is not the

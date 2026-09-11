@@ -13,7 +13,11 @@ rows differ when it is not.
 |---|---|---|
 | `tweets` | 43,259 | `python -m dmthd.prepare_tweets` |
 | `wikipedia` | 114,253 | `python -m dmthd.prepare_wikipedia --download` |
-| `implicit` | 47,181 | `python -m dmthd.prepare_implicit --probes probes --download` |
+| `implicit` | 20,637 | `python -m dmthd.prepare_implicit --probes probes --download` |
+
+The implicit manifest covers the train, validation and test splits, which come from the Implicit Hate
+Corpus alone. The 27,110-row ISHate out-of-domain set is written by the same command and is not in
+the manifest, because nothing is trained on it and its provenance is a single unmodified source.
 
 To check a rebuild:
 

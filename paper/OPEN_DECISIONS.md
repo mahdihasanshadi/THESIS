@@ -26,10 +26,12 @@ abuse is one section among several.
 **Option B — reframe around implication.** Something like *Teaching a small model to read
 implication: cross-task specialist distillation for implicit abuse detection*. The implicit
 benchmark becomes the primary one; the tweet and Wikipedia corpora become generalisation evidence;
-sarcasm-discrimination AUC is the headline metric.
-- For: there is a real, measured gap to close. A bag of n-grams scores 0.747 F1 on explicit hate and
-  0.453 on implicit hate in the same corpus. The failure has a diagnosis, not just a number: the
-  model sees implication but cannot separate it from harmless sarcasm (Finding 10). There is a
+the discrimination AUCs are the headline metrics.
+- For: there is a real, measured gap to close, and the same gap shows up twice on different data. On
+  the corpus that labels implication, a bag of n-grams ranks implied hate above ordinary text at an
+  AUC of 0.761; on the tweet corpus, our student separates ironic abuse from benign sarcasm at 0.776.
+  Well above chance, a long way from solved. The failure has a diagnosis rather than just a number:
+  the model sees implication but cannot separate it from harmless sarcasm (Finding 10). There is a
   mechanism aimed at exactly that (the specialist teacher, the irony head), a way to show the
   mechanism works (weight routing), and controls that could falsify it.
 - Against: it depends on results we do not have yet. If the specialist does not help, this framing
@@ -43,8 +45,9 @@ evidence first, framing second. Note that Option A's weakness is not fixed by ch
 results will be in the paper either way, and a reviewer will find them.
 
 **What settles it:** four numbers from the implicit benchmark and the `spec` committee run.
-1. implicit_hate F1 against the 0.453 classical floor.
-2. Sarcasm-discrimination AUC against the 0.776 fine-tune-only baseline.
+1. Implicit-discrimination AUC on the implicit benchmark against the classical floor's 0.761, and
+   implicit-hate F1 against its 0.556.
+2. Sarcasm-discrimination AUC on the tweet corpus against the 0.776 fine-tune-only baseline.
 3. `spec` committee against `homo` committee, three seeds, on the tweet corpus.
 4. Whether `spec` beats the two controls: the specialist alone, and the same student pre-trained on
    the implicit corpus without any distillation.
