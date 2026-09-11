@@ -208,3 +208,11 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   wrong or an extra previous notebook is harmless. The notebooks build the list automatically from
   `/kaggle/input/**/runs/<dataset>`. Verified: two fake sources merge to the richer count, and a
   single bad path in the list still exits with the list of what is missing.
+- **Resume made disk-safe.** Two problems seen in the version-3 log: the same `runs/tweets` tree was
+  copied twice (glob's `**` can yield a directory more than once; now de-duplicated), and copying a
+  finished grid of checkpoints back in costs about 14 GB of Kaggle's 20 GB working space. Resume now
+  leaves model weights behind unless a run still needs them, i.e. it has `results.json` but no
+  `eval_test.json`, so its probe evaluation is still pending (`RESUME_WEIGHTS=auto`, overridable with
+  `all` or `none`). Caches are always copied in full, since student training reads them. Free disk is
+  printed after the copy. Verified on a fixture: the probed run arrives without its checkpoint, the
+  unprobed one keeps it.

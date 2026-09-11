@@ -55,6 +55,9 @@ DISAGREEMENT = os.environ.get("DISAGREEMENT", "1") == "1"
 KAPPA = os.environ.get("KAPPA", "1.0")
 MIN_TEACHER_F1 = float(os.environ.get("MIN_TEACHER_F1", "0.5"))
 LIMIT = os.environ.get("LIMIT", "")
+# "auto" copies model weights back only for runs whose probe evaluation is still pending;
+# "all" copies every checkpoint (needs ~15 GB of the 20 GB Kaggle gives); "none" copies none.
+RESUME_WEIGHTS = os.environ.get("RESUME_WEIGHTS", "auto")
 STUDENT_EPOCHS = os.environ.get("STUDENT_EPOCHS", "6")
 ABLATION_SEEDS = [int(x) for x in os.environ.get("ABLATION_SEEDS", ",".join(str(s) for s in SEEDS)).split(",")]
 # Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
@@ -147,6 +150,29 @@ class Bench:
         json.dump({"dropped": self.dropped, "min_teacher_f1": MIN_TEACHER_F1}, open(os.path.join(self.runs, "dropped_teachers.json"), "w"))
 
     # ---- stages ----
+    WEIGHT_SUFFIXES = (".safetensors", ".bin", ".pt", ".h5", ".msgpack", ".ckpt")
+
+    def _copy_run_tree(self, src, dst):
+        """Copy a previous session's runs/ tree without the model weights, except where a run still
+        needs them (no eval_test.json yet, so its probe evaluation has not been done). Kaggle gives
+        20 GB of working space and a finished grid of weights is most of that, so copying them all
+        back in every session is both slow and a real risk of running out of disk."""
+        kept = skipped = 0
+        for root, _, files in os.walk(src):
+            rel = os.path.relpath(root, src)
+            out = os.path.join(dst, rel) if rel != "." else dst
+            needs_weights = RESUME_WEIGHTS == "all" or (
+                RESUME_WEIGHTS == "auto" and os.path.exists(os.path.join(root, "results.json"))
+                and not os.path.exists(os.path.join(root, "eval_test.json")))
+            os.makedirs(out, exist_ok=True)
+            for f in files:
+                if f.endswith(self.WEIGHT_SUFFIXES) and not needs_weights:
+                    skipped += 1
+                    continue
+                shutil.copy2(os.path.join(root, f), os.path.join(out, f))
+                kept += 1
+        return kept, skipped
+
     def resume(self):
         """Copy previous sessions' runs/ and cache/ in. RESUME_FROM may name several sources,
         comma-separated; they are merged richest-last so the most complete session wins. Fails fast
@@ -160,24 +186,34 @@ class Bench:
                      f"input and use its path (right panel, Input), or clear RESUME_FROM to start fresh. "
                      f"Available inputs: {glob.glob('/kaggle/input/*')}")
 
+        def found(src_root, sub):
+            # sorted+unique: `**` can yield the same directory twice, which would copy gigabytes twice
+            return sorted(set(glob.glob(os.path.join(src_root, "**", sub, self.name), recursive=True)))
+
         def richness(src):
             return len(glob.glob(os.path.join(src, "**", "runs", self.name, "*", "*", "seed*", "results.json"), recursive=True))
 
         copied = []
         for src_root in sorted(sources, key=richness):
-            for sub in ("runs", "cache"):
-                for src in glob.glob(os.path.join(src_root, "**", sub, self.name), recursive=True):
-                    dst = f"{ROOT}/{sub}/{self.name}"
-                    print(f"resuming: copying {src} -> {dst}", flush=True)
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
-                    copied.append(src)
+            for src in found(src_root, "runs"):
+                kept, skipped = self._copy_run_tree(src, f"{ROOT}/runs/{self.name}")
+                print(f"resuming: {src} -> {ROOT}/runs/{self.name} ({kept} files, {skipped} weight files left behind)", flush=True)
+                copied.append(src)
+            for src in found(src_root, "cache"):          # the caches are what student training needs
+                print(f"resuming: {src} -> {ROOT}/cache/{self.name}", flush=True)
+                shutil.copytree(src, f"{ROOT}/cache/{self.name}", dirs_exist_ok=True)
+                copied.append(src)
         if not copied:
             sys.exit(f"RESUME_FROM={RESUME_FROM} contains no runs/{self.name} or cache/{self.name} to resume from. "
                      f"Top level of the first source: {sorted(os.listdir(sources[0]))[:20]}. Point it at the right "
                      f"input, or clear RESUME_FROM to start fresh.")
         n_teachers = len(glob.glob(f"{self.runs}/teachers/*/results.json"))
         n_runs = len(glob.glob(f"{self.runs}/*/*/seed*/results.json"))
-        print(f"resumed: {n_teachers} finished teachers, {n_runs} finished student runs", flush=True)
+        try:
+            free = shutil.disk_usage(ROOT).free / 2**30
+            print(f"resumed: {n_teachers} finished teachers, {n_runs} finished student runs; {free:.1f} GB free", flush=True)
+        except Exception:
+            print(f"resumed: {n_teachers} finished teachers, {n_runs} finished student runs", flush=True)
         self._load_dropped()
 
     def prepare(self):
