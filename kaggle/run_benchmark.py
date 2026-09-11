@@ -547,6 +547,15 @@ class Bench:
                 if not os.path.exists(out):
                     sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test_obf_{variant}.csv --scheme {self.cfg['scheme']} "
                        f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --out {out}", check=False)
+            # out-of-domain sets written by the data preparation: the same task and the same label
+            # space, annotated by other people from another platform. Same scheme, so this is a
+            # straight evaluation rather than a transfer with a label mapping.
+            for ood in sorted(glob.glob(f"{self.data}/test_ood_*.csv")):
+                tag = os.path.basename(ood)[:-4]
+                out = os.path.join(d, f"eval_{tag}.json")
+                if not os.path.exists(out):
+                    sh(f"python -m dmthd.evaluate --model_dir {d} --csv {ood} --scheme {self.cfg['scheme']} "
+                       f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --out {out}", check=False)
             # transfer to every other benchmark that has been prepared, not just one. The pair that
             # matters most is tweets -> implicit: it asks whether a model trained on a corpus that
             # never labels implication detects it at all.

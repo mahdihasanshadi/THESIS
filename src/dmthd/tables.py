@@ -65,7 +65,8 @@ def collect(runs):
                "mode": rel[1] if is_teacher else (rel[1] if len(rel) > 2 else ""),
                "seed": r.get("seed"), "params": r.get("params"), "macro_f1": t.get("macro_f1"),
                "accuracy": t.get("accuracy"), "ece": t.get("ece"), "roc_auc": t.get("roc_auc"),
-               "pr_auc": t.get("pr_auc"), "train_time_s": r.get("train_time_s"), "tag": r.get("tag", "")}
+               "pr_auc": t.get("pr_auc"), "train_time_s": r.get("train_time_s"), "tag": r.get("tag", ""),
+               "implicit_discrimination_auc": t.get("implicit_discrimination_auc")}
         if is_teacher:
             row["mode"], row["student"] = "teacher", rel[1]
         ev = _load(os.path.join(d, "eval_test.json")) or {}
@@ -87,6 +88,12 @@ def collect(runs):
             o = _load(os.path.join(d, f"eval_test_obf_{v}.json"))
             if o:
                 row[f"obf_{v}"] = o.get("macro_f1")
+        # a corpus annotated for the same task by other people, never seen in training
+        for o_path in sorted(glob.glob(os.path.join(d, "eval_test_ood_*.json"))):
+            o = _load(o_path) or {}
+            name = os.path.basename(o_path)[len("eval_test_ood_"):-len(".json")]
+            row[f"ood_{name}"] = o.get("macro_f1")
+            row[f"ood_{name}_implicit_auc"] = o.get("implicit_discrimination_auc")
         for other in ("wikipedia", "tweets", "implicit"):
             tr = _load(os.path.join(d, f"transfer_{other}.json"))
             if tr:
@@ -112,7 +119,9 @@ def agg(df, keys=("student", "mode")):
     metrics = [c for c in ("macro_f1", "accuracy", "ece", "roc_auc", "pr_auc", "benign_fpr", "ironic_recall",
                            "obf_mixed", "transfer_wikipedia", "transfer_tweets", "transfer_implicit",
                            "hard_class_f1", "sarcasm_auc", "ironic_recall_at_half", "benign_fpr_at_half",
-                           "ironic_recall_at_fpr10", "transfer_implicit_focus_recall") if c in df.columns]
+                           "ironic_recall_at_fpr10", "transfer_implicit_focus_recall",
+                           "implicit_discrimination_auc")
+               if c in df.columns] + [c for c in df.columns if c.startswith("ood_")]
     g = df.groupby(list(keys), dropna=False)
     out = g.agg(n=("seed", "count"), params=("params", "first"), **{f"{m}_mean": (m, "mean") for m in metrics},
                 **{f"{m}_std": (m, "std") for m in metrics}).reset_index()
@@ -225,7 +234,9 @@ def main():
     # nowhere else in the paper.
     imp_modes = main_modes + ["ablation_spec_only", "ablation_no_spec", "ablation_implicit_pretrain"]
     im = agg(s[s["mode"].isin(imp_modes) & (s["student"] == args.headline)])
-    if not im.empty and "sarcasm_auc_mean" in im.columns and im["sarcasm_auc_mean"].notna().any():
+    has_any = any(c in im.columns and im[c].notna().any()
+                  for c in ("sarcasm_auc_mean", "implicit_discrimination_auc_mean"))
+    if not im.empty and has_any:
         im["order"] = im["mode"].map({k: i for i, k in enumerate(imp_modes)})
         im = im.sort_values("order")
         hard = next(iter(df.get("hard_class", pd.Series(dtype=object)).dropna().unique()), "hard class")
@@ -233,6 +244,8 @@ def main():
                  "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
                  f"F1 on {hard.replace('_', ' ')}": fmt(getattr(r, "hard_class_f1_mean", None),
                                                         getattr(r, "hard_class_f1_std", None), 3),
+                 "Implicit-discrimination AUC": fmt(getattr(r, "implicit_discrimination_auc_mean", None),
+                                                    getattr(r, "implicit_discrimination_auc_std", None), 3),
                  "Sarcasm-discrimination AUC": fmt(getattr(r, "sarcasm_auc_mean", None),
                                                    getattr(r, "sarcasm_auc_std", None), 3),
                  "Ironic recall at 0.5": fmt(getattr(r, "ironic_recall_at_half_mean", None), None, 3),
