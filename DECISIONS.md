@@ -278,6 +278,14 @@ Corpus construction, from `report.json`: ISHate 63,758 raw, 29,116 after droppin
 28,763 after dropping ToxiGen provenance; Implicit Hate Corpus stage 1 contributes 21,480; 1,581 rows
 removed as probe holdout; 48,662 combined, 47,181 after cleaning, split 37,744 / 4,718 / 4,719.
 
+### F14b. ISHate's subtlety layer is not usable, and the paper should not pretend otherwise
+ISHate ships a `subtlety_layer` (Subtle / Non-Subtle) that looks like a natural second axis for this
+paper. It is not: in our test split only 10 of 4,719 rows carry it, and all 10 are `explicit_hate`,
+while the implicit rows are almost entirely Non-Subtle. Whatever that column annotates, it is not the
+implicit/explicit distinction and there is nowhere near enough of it to measure anything. The column
+is carried through `prepare_implicit.py` for provenance and is used by nothing. Recorded so that a
+later reader does not rediscover it and assume it works.
+
 ### F14. The two implicit corpora disagree with each other on 346 texts
 De-duplicating the combined corpus found 346 texts present in both sources with different labels,
 710 rows in total, all removed. That disagreement rate is a measurement of how hard the implicit
@@ -387,6 +395,7 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | Tables generated from results | `python -m dmthd.tables` |
 | Human annotation kit | `annotation/` |
 | Decisions that belong to the team, with options and logic | `paper/OPEN_DECISIONS.md` |
+| Corpus manifests, so a rebuild can be verified without redistributing text | `paper/manifests/` |
 | Implicit benchmark construction and its counts | `src/dmthd/prepare_implicit.py`, `data/implicit/report.json` |
 | Sarcasm and implicit-abuse measurements | `src/dmthd/implicit_analysis.py` |
 | Weighting temperature diagnostic | `src/dmthd/tune_tau.py` |

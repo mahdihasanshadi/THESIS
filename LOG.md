@@ -360,3 +360,15 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   spent (the only one needed now); whether "Homogeneous" and "Robust" stay in the title; what the
   paper says if the dynamic weighting turns out to do nothing; whether and how to release the
   implicit benchmark; and the target venue.
+- **Corpus manifests published (`paper/manifests/`).** None of the three corpora may be re-hosted, so
+  "reproducible" would otherwise rest on a build script nobody can check. `src/dmthd/manifest.py`
+  writes one row per example - split, label, source corpus, SHA-1 of the normalised text - plus the
+  split fingerprints, and `--verify` compares a rebuild row by row and names the rows that differ.
+  No text, so nothing is redistributed. 2.7 MB compressed for all three corpora; round-trip verified
+  (MATCH, 47,181 rows) on the implicit corpus. Data and reproducibility statements updated.
+- **ISHate's subtlety layer is not usable.** It looked like a free second axis (Subtle vs
+  Non-Subtle), but in our test split only 10 of 4,719 rows carry it and all 10 are `explicit_hate`,
+  while the implicit rows are almost entirely Non-Subtle. Whatever it annotates is not the
+  implicit/explicit distinction, and there is not enough of it to measure anything. The column is
+  carried for provenance and used by nothing; recorded as F14b so nobody rediscovers it and assumes
+  it works.

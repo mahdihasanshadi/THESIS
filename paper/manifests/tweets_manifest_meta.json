@@ -1,0 +1,12 @@
+{
+  "corpus": "tweets",
+  "rows": 43259,
+  "split_fingerprints": {
+    "train": "16d57d89d71e651cc3c16591f3c0c531",
+    "val": "b8779e3b2c96e9c9c59172f94ec9670c",
+    "test": "ccb71ad1fd36f5ca59dfb07ede8e9fa0"
+  },
+  "hash": "sha1 of the normalised text, first 16 hex characters",
+  "normalisation": "lower-case, URLs and @mentions stripped, punctuation to spaces, whitespace collapsed (dmthd.utils.normalize_for_matching)",
+  "note": "no text is included; this file exists so a reader who holds the source corpora can verify their rebuild matches ours row for row"
+}

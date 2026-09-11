@@ -1,0 +1,12 @@
+{
+  "corpus": "wikipedia",
+  "rows": 114253,
+  "split_fingerprints": {
+    "train": "732e4fffe17bb913816cf01511d0f09c",
+    "val": "90451deda5ae3300a06285de70759ecf",
+    "test": "0b6ff1896a8fd3ff235394725c3d6fe6"
+  },
+  "hash": "sha1 of the normalised text, first 16 hex characters",
+  "normalisation": "lower-case, URLs and @mentions stripped, punctuation to spaces, whitespace collapsed (dmthd.utils.normalize_for_matching)",
+  "note": "no text is included; this file exists so a reader who holds the source corpora can verify their rebuild matches ours row for row"
+}

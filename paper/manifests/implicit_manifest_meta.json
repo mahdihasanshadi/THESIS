@@ -1,0 +1,12 @@
+{
+  "corpus": "implicit",
+  "rows": 47181,
+  "split_fingerprints": {
+    "train": "deb6da22d8751d3f391832df695e0f20",
+    "val": "5311a08fa43af4f285cf2b5e942c722e",
+    "test": "3db494131161517febd3b01322844abb"
+  },
+  "hash": "sha1 of the normalised text, first 16 hex characters",
+  "normalisation": "lower-case, URLs and @mentions stripped, punctuation to spaces, whitespace collapsed (dmthd.utils.normalize_for_matching)",
+  "note": "no text is included; this file exists so a reader who holds the source corpora can verify their rebuild matches ours row for row"
+}
