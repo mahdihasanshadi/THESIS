@@ -148,25 +148,33 @@ class Bench:
 
     # ---- stages ----
     def resume(self):
-        """Copy a previous session's runs/ and cache/ in. Fails fast on a bad RESUME_FROM: silently
-        ignoring it would retrain every teacher, wasting hours of GPU time."""
+        """Copy previous sessions' runs/ and cache/ in. RESUME_FROM may name several sources,
+        comma-separated; they are merged richest-last so the most complete session wins. Fails fast
+        on a bad path: silently ignoring it would retrain every teacher, wasting hours of GPU time."""
         if not RESUME_FROM:
             return
-        if not os.path.isdir(RESUME_FROM):
-            sys.exit(f"RESUME_FROM={RESUME_FROM} does not exist. Attach the previous notebook's output as an "
+        sources = [x.strip() for x in RESUME_FROM.split(",") if x.strip()]
+        missing = [x for x in sources if not os.path.isdir(x)]
+        if missing:
+            sys.exit(f"RESUME_FROM path(s) do not exist: {missing}. Attach the previous notebook's output as an "
                      f"input and use its path (right panel, Input), or clear RESUME_FROM to start fresh. "
                      f"Available inputs: {glob.glob('/kaggle/input/*')}")
+
+        def richness(src):
+            return len(glob.glob(os.path.join(src, "**", "runs", self.name, "*", "*", "seed*", "results.json"), recursive=True))
+
         copied = []
-        for sub in ("runs", "cache"):
-            for src in glob.glob(os.path.join(RESUME_FROM, "**", sub, self.name), recursive=True):
-                dst = f"{ROOT}/{sub}/{self.name}"
-                print(f"resuming: copying {src} -> {dst}", flush=True)
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-                copied.append(src)
+        for src_root in sorted(sources, key=richness):
+            for sub in ("runs", "cache"):
+                for src in glob.glob(os.path.join(src_root, "**", sub, self.name), recursive=True):
+                    dst = f"{ROOT}/{sub}/{self.name}"
+                    print(f"resuming: copying {src} -> {dst}", flush=True)
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                    copied.append(src)
         if not copied:
             sys.exit(f"RESUME_FROM={RESUME_FROM} contains no runs/{self.name} or cache/{self.name} to resume from. "
-                     f"Its top level holds: {sorted(os.listdir(RESUME_FROM))[:20]}. Point it at the right input, "
-                     f"or clear RESUME_FROM to start fresh.")
+                     f"Top level of the first source: {sorted(os.listdir(sources[0]))[:20]}. Point it at the right "
+                     f"input, or clear RESUME_FROM to start fresh.")
         n_teachers = len(glob.glob(f"{self.runs}/teachers/*/results.json"))
         n_runs = len(glob.glob(f"{self.runs}/*/*/seed*/results.json"))
         print(f"resumed: {n_teachers} finished teachers, {n_runs} finished student runs", flush=True)

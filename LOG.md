@@ -203,3 +203,8 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   3. The packaging cell now writes `dmthd_<dataset>_results.tgz` containing only metrics, histories,
      predictions and the generated tables (tens of MB) instead of tarring the whole 14 GB tree;
      model weights stay in the Kaggle output for the next version to resume from.
+- **Resume now merges every attached output.** RESUME_FROM accepts a comma-separated list and copies
+  the sources richest-last (ordered by how many finished student runs each holds), so attaching the
+  wrong or an extra previous notebook is harmless. The notebooks build the list automatically from
+  `/kaggle/input/**/runs/<dataset>`. Verified: two fake sources merge to the richer count, and a
+  single bad path in the list still exits with the list of what is missing.
