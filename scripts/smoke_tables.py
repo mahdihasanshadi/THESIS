@@ -30,7 +30,8 @@ def w(path, obj):
 def result(macro, params=11_300_000, seed=1, **extra):
     return {"seed": seed, "params": params, "train_time_s": 100.0,
             "test": {"macro_f1": macro, "accuracy": macro + 0.01, "ece": 0.03,
-                     "per_class_f1": {c: macro for c in CLASSES}}, **extra}
+                     "per_class_f1": {c: macro for c in CLASSES},
+                     "implicit_discrimination_auc": round(macro - 0.1, 4)}, **extra}
 
 
 def build(root):
@@ -44,7 +45,7 @@ def build(root):
 
     students = {"bert-mini": 11_300_000, "bert-small": 29_100_000, "distilbert": 66_000_000,
                 "deberta-xsmall": 70_000_000, "bilstm": 10_400_000}
-    modes = ["ft", "skd", "uniform", "dmthd", "dmthd_hetero"]
+    modes = ["ft", "skd", "uniform", "dmthd", "dmthd_spec", "uniform_spec", "dmthd_hetero"]
     for st, params in students.items():
         for mi, mode in enumerate(modes):
             for seed in (1, 2, 3):
@@ -57,12 +58,26 @@ def build(root):
                     for v, drop in (("leet", 0.10), ("swap", 0.12), ("space", 0.14), ("mixed", 0.15)):
                         w(os.path.join(d, f"eval_test_obf_{v}.json"), {"macro_f1": round(base - drop, 4)})
                     w(os.path.join(d, "transfer_wikipedia.json"), {"binary_macro_f1": 0.31, "roc_auc": 0.55})
+                if st == "bert-mini" and seed == 1:
+                    # what dmthd.implicit_analysis writes: the threshold-free metric, the operating
+                    # point it implies, and the curve behind both
+                    auc = 0.776 + 0.01 * mi
+                    curve = [{"threshold": round(0.1 + 0.05 * k, 2),
+                              "ironic_recall": round(0.96 - 0.04 * k, 4),
+                              "benign_fpr": round(0.79 - 0.05 * k, 4)} for k in range(17)]
+                    w(os.path.join(d, "implicit_analysis", "implicit_analysis.json"),
+                      {"sarcasm_discrimination_auc": round(auc, 4), "sarcasm_discrimination_ap": round(auc - 0.05, 4),
+                       "operating_point_at_0.5": curve[8], "threshold_for_fpr_10pct": curve[-1]})
+                    pd.DataFrame(curve).to_csv(os.path.join(d, "implicit_analysis", "operating_point.csv"), index=False)
+                    w(os.path.join(d, "eval_test_ood_ishate.json"),
+                      {"macro_f1": round(base - 0.12, 4), "implicit_discrimination_auc": round(auc - 0.03, 4)})
                 if mode == "dmthd" and seed == 1:
                     w(os.path.join(d, "quantize_eval.json"),
                       {"fp32": {"macro_f1": base, "size_MB": params / 2.5e5, "latency_ms_per_sample_b1": 4.0},
                        "int8": {"macro_f1": base - 0.002, "size_MB": params / 9e5, "latency_ms_per_sample_b1": 2.2},
                        "macro_f1_drop_int8": 0.002, "speedup_b1": 1.8})
-    for tag in ("no_dynamic", "no_hidden", "no_aux", "per_batch", "from_scratch"):
+    for tag in ("no_dynamic", "no_hidden", "no_aux", "per_batch", "from_scratch",
+                "spec_only", "implicit_pretrain"):
         for seed in (1, 2, 3):
             w(os.path.join(runs, "bert-mini", f"ablation_{tag}", f"seed{seed}", "results.json"),
               result(round(0.889 - rng.uniform(0.002, 0.01), 4), seed=seed))
@@ -74,6 +89,18 @@ def build(root):
         for v in values:
             w(os.path.join(runs, "bert-mini", f"sweep_{param}_{v}", "seed1", "results.json"),
               result(round(0.885 + rng.uniform(-0.004, 0.004), 4), tag=f"sweep_{param}_{v}"))
+    w(os.path.join(runs, "weight_routing", "weight_routing.json"),
+      {"cache": "fixture", "teachers": ["bert-large", "hatebert", "irony"], "split": "train",
+       "reliability": "hard",
+       "contrast_groups": {"implicit_like": "other_cyberbullying", "explicit_like": "targeted"},
+       "group_sizes": {"other_cyberbullying": 4664, "targeted": 25002, "not_cyberbullying": 4941},
+       "by_tau": {"0.1": {"mean_weight": {t: {"other_cyberbullying": 0.34, "targeted": 0.31,
+                                              "not_cyberbullying": 0.35}
+                                          for t in ("bert-large", "hatebert", "irony")},
+                          "routing_contrast": {t: {"delta": 0.03, "ci95": [0.01, 0.05], "n_a": 4664,
+                                                   "n_b": 25002, "excludes_zero": True}
+                                               for t in ("bert-large", "hatebert", "irony")},
+                          "lexical_contrast": {}}}})
     rows = []
     for st, params in students.items():
         rows.append({"model": f"{runs}/{st}/dmthd/seed1", "params_M": params / 1e6, "flops_G_per_seq": params / 1e9 * 2,
@@ -95,7 +122,8 @@ if __name__ == "__main__":
                        env={**os.environ, "PYTHONPATH": SRC})
     if r.returncode != 0:
         sys.exit("tables failed on the fixture")
-    expected = ["teachers", "main", "ablations", "homogeneity", "committee", "efficiency", "robustness", "sweeps", "dataset"]
+    expected = ["teachers", "main", "implicit", "routing", "ablations", "homogeneity", "committee",
+                "efficiency", "robustness", "sweeps", "dataset"]
     missing = [n for n in expected if not os.path.exists(os.path.join(out, f"{n}.tex"))]
     if missing:
         sys.exit(f"TABLES SMOKE FAILED: missing {missing}")
