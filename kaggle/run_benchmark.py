@@ -345,8 +345,15 @@ class Bench:
         homo = self.committee("homo")
         if not homo:
             return
+        # cheap diagnostic first: how far from uniform are the per-instance weights at each tau?
+        if not os.path.exists(f"{self.cache}/tau_diagnostic.csv"):
+            sh(f"python -m dmthd.tune_tau --cache {self.cache} --data_dir {self.data} --scheme {self.cfg['scheme']} "
+               f"--label_col {self.cfg['label_col']}", check=False)
         name, stag = self.student_list[0]
-        grid = [("tau", v, f"--tau {v}") for v in (0.5, 2.0, 5.0)] + [("T", v, f"--T {v}") for v in (1.0, 2.0, 8.0)] + \
+        # tau: with frozen teachers the weights are a fixed function of the data, and at tau = 1 the
+        # observed means sit within 0.03 of uniform, so the sweep must reach much sharper values or
+        # the dynamic weighting cannot be told apart from uniform averaging
+        grid = [("tau", v, f"--tau {v}") for v in (0.05, 0.1, 0.2, 0.5)] + [("T", v, f"--T {v}") for v in (1.0, 2.0, 8.0)] + \
                [("alpha", v, f"--alpha {v} --beta {round(0.8 - v, 2)}") for v in (0.2, 0.6)] + [("delta", v, f"--delta {v}") for v in (0.1, 0.5)]
         for param, value, flags in grid:
             out = f"{self.runs}/{stag}/sweep_{param}_{value}/seed{SEEDS[0]}"

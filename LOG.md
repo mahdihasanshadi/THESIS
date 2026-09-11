@@ -237,3 +237,25 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   (mean 0.8963, spread 0.0004), against BERT-large's 0.8973. A 66M student is within 0.001 of its
   335M teacher. Per-class, the two hard classes remain the bottleneck: not_cyberbullying 0.75 and
   other_cyberbullying 0.78 against 0.91-0.99 elsewhere.
+
+## 2026-09-12
+
+- **The dynamic weighting is currently indistinguishable from uniform averaging.** In every
+  heterogeneous-committee D-MTHD run the epoch-mean weights are 0.254 / 0.259 / 0.254 / 0.233 against
+  a uniform 0.25, and they are *identical across epochs and across seeds*. That is not a bug: the
+  teachers are frozen and cached, so w_k(i) = softmax(-CE(p_k(i), y_i)/tau) is a fixed function of
+  the data. The weighting is per-instance, never per-epoch, and the paper must say so plainly.
+  The problem is tau: at tau = 1 the weights sit within 0.03 of uniform, so D-MTHD and the uniform
+  baseline optimise almost the same objective, which is exactly what the results show
+  (DistilBERT: uniform 0.8976 vs D-MTHD 0.8966 on the heterogeneous committee).
+  Added `src/dmthd/tune_tau.py`: it reads a cache and reports, per tau, the mean top weight, the
+  entropy ratio, the share of decisive instances and which teacher wins. On a synthetic three-teacher
+  cache with clearly different teacher quality it gives entropy ratio 0.94 at tau = 1 (nearly
+  uniform) against 0.50 at tau = 0.1, confirming the diagnosis. The sweep grid now runs
+  tau in {0.05, 0.1, 0.2, 0.5} and the driver runs the diagnostic before sweeping.
+- **Heterogeneous-committee results, tweets** (three seeds each, test macro-F1):
+  DistilBERT skd 0.8963 / uniform+DeBERTa 0.8976 / D-MTHD+DeBERTa 0.8966;
+  DeBERTa-v3-xsmall skd 0.8865 / uniform 0.8847 / D-MTHD 0.8835 (two seeds so far).
+  The heterogeneous *student* is both weaker and far slower to train (about 1,500 s per run against
+  650 s for DistilBERT), which is the first evidence for the homogeneity claim, though confounded by
+  DeBERTa-v3-xsmall simply being a weaker model on this task.
