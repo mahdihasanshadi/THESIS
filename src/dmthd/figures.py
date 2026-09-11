@@ -5,6 +5,7 @@
     python -m dmthd.figures bands         --csv runs/wikipedia/agreement_bands.csv --out paper/figures/bands_wikipedia
     python -m dmthd.figures complementarity --json runs/tweets/complementarity.json --out paper/figures/complementarity_tweets
     python -m dmthd.figures robustness    --runs runs/tweets --out paper/figures/robustness_tweets
+    python -m dmthd.figures operating     --runs runs/tweets --out paper/figures/operating_tweets
 
 Style: one column wide (3.4 in), serif fonts, colour-blind-safe palette, no chart junk.
 """
@@ -137,6 +138,52 @@ def robustness(runs, out):
     df.to_csv(out + ".csv", index=False)
 
 
+
+MODE_LABEL = {"ft": "fine-tune only", "skd": "single-teacher KD", "uniform": "uniform multi-teacher",
+              "dmthd": "D-MTHD", "dmthd_spec": "D-MTHD + implicit specialist",
+              "uniform_spec": "uniform + implicit specialist",
+              "ablation_spec_only": "specialist alone",
+              "ablation_implicit_pretrain": "implicit pre-training, no KD"}
+
+
+def operating(runs, out, seed=1):
+    """Recall on ironic abuse against the false-positive rate on benign sarcasm, one curve per
+    method. This is the sarcasm claim as a picture: a method that only shifts its threshold moves
+    along a curve, and a method that actually discriminates better moves to a different one. A
+    single recall number at a fixed threshold cannot tell those two apart, which is why the paper
+    reports the curve and a threshold-free area rather than a point."""
+    curves = []
+    for c in sorted(glob.glob(os.path.join(runs, "*", "*", f"seed{seed}", "implicit_analysis", "operating_point.csv"))):
+        parts = c.replace("\\", "/").split("/")
+        student, mode = parts[-5], parts[-4]
+        d = pd.read_csv(c).sort_values("benign_fpr")
+        auc = None
+        js = os.path.join(os.path.dirname(c), "implicit_analysis.json")
+        if os.path.exists(js):
+            auc = json.load(open(js, encoding="utf-8")).get("sarcasm_discrimination_auc")
+        curves.append((student, mode, d, auc))
+    if not curves:
+        print("no operating-point curves found; run dmthd.implicit_analysis first")
+        return
+    fig, ax = plt.subplots(figsize=(3.4, 2.7))
+    for i, (student, mode, d, auc) in enumerate(curves):
+        lab = MODE_LABEL.get(mode, mode.replace("_", " "))
+        if len(set(c[0] for c in curves)) > 1:
+            lab = f"{student} {lab}"
+        if auc is not None:
+            lab += f" ({auc:.3f})"
+        ax.plot(d["benign_fpr"], d["ironic_recall"], marker="o", ms=2.5, lw=1.1,
+                color=PALETTE[i % len(PALETTE)], label=lab)
+    ax.plot([0, 1], [0, 1], lw=0.6, ls=":", color="0.5", zorder=0)
+    ax.set_xlabel("false positives on benign sarcasm")
+    ax.set_ylabel("recall on ironic abuse")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.legend(fontsize=5.5, loc="lower right", title="area under the curve", title_fontsize=5.5)
+    _save(fig, out)
+    pd.concat([d.assign(student=s, mode=m) for s, m, d, _ in curves]).to_csv(out + ".csv", index=False)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -144,9 +191,11 @@ def main():
         s = sub.add_parser(name); s.add_argument("--csv", required=True); s.add_argument("--out", required=True)
     c = sub.add_parser("complementarity"); c.add_argument("--json", required=True); c.add_argument("--out", required=True)
     r = sub.add_parser("robustness"); r.add_argument("--runs", required=True); r.add_argument("--out", required=True)
+    o = sub.add_parser("operating"); o.add_argument("--runs", required=True); o.add_argument("--out", required=True); o.add_argument("--seed", type=int, default=1)
     a = ap.parse_args()
     {"pareto": lambda: pareto(a.csv, a.out), "weights": lambda: weights(a.csv, a.out), "bands": lambda: bands(a.csv, a.out),
-     "complementarity": lambda: complementarity(a.json, a.out), "robustness": lambda: robustness(a.runs, a.out)}[a.cmd]()
+     "complementarity": lambda: complementarity(a.json, a.out), "robustness": lambda: robustness(a.runs, a.out),
+     "operating": lambda: operating(a.runs, a.out, a.seed)}[a.cmd]()
 
 
 if __name__ == "__main__":
