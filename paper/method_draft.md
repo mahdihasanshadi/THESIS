@@ -20,6 +20,33 @@ the target training split, so every committee member shares the task's label spa
 irony teacher is *not* adapted; it keeps its irony/non-irony label space and never enters the
 committee.
 
+## 3.1a The committee, and why one of its members is trained rather than downloaded
+
+The committee is chosen for complementary expertise rather than for size: a general encoder
+(BERT-large), a specialist in abuse that says what it means (HateBERT), and a specialist in saying
+one thing and meaning another (a Twitter irony model). A committee whose members all know the same
+things has nothing to combine, and weighting it per instance cannot help.
+
+One expertise is missing from every public checkpoint and from both established corpora: abuse
+carried by implication. The fine-grained cyberbullying corpus files it under a catch-all class and
+the Wikipedia corpus records only whether a comment is an attack, so a teacher fine-tuned on either
+cannot hold that knowledge, and a weighting scheme cannot route to an expertise no member has. We
+therefore build the fourth member: HateBERT fine-tuned on a corpus in which implicit and explicit
+abuse are separate labels (Section 4.x), then task-adapted onto the target benchmark like every
+other member, its classification head re-initialised for the target label space. Call it the
+*implicit specialist*.
+
+This is the paper's central mechanical claim and it is stated as a testable one. The specialist
+forms its own committee, $\mathcal{K}_{\text{spec}} = \mathcal{K}_{\text{homo}} \cup
+\{\text{specialist}\}$, so that its effect is a controlled comparison of two full committees over
+three seeds rather than a single ablation, and so that every result obtained with the three-teacher
+committee remains valid. Two controls accompany it. The first distils from the specialist alone,
+which asks whether the committee contributes anything the specialist does not. The second takes the
+same student, fine-tunes it on the implicit corpus and then on the target task with no teachers at
+all, which asks whether the knowledge came from distillation or simply from the data. If either
+control matches the full committee, the corresponding claim is not available to us and the paper
+says so.
+
 ## 3.2 Per-instance teacher reliability
 
 For each training instance the committee is weighted by how reliable each teacher is on that
@@ -80,6 +107,17 @@ state. The head is discarded at inference; its purpose is to shape the shared re
 that sarcasm is represented separately from abuse. This is the mechanism behind the sarcasm
 claims, and it introduces no sarcasm labels into the bullying corpora.
 
+Separating sarcasm from abuse is the point, and it needs a metric that can see it. Recall on
+ironically phrased abuse at a fixed decision threshold cannot distinguish a model that misses
+implication from one that reacts to any sarcastic, negative text, and our measurements show the
+second is what happens: on the fine-tune-only baseline, mean $p(\text{abusive})$ is 0.693 on
+ironic abuse and 0.375 on benign sarcasm, so the two distributions overlap heavily while their means
+differ. We therefore report **sarcasm-discrimination AUC**: the ROC-AUC of $1 - p(\text{benign})$
+with the ironic-abuse probe as positives and the benign-sarcasm probe as negatives. It is
+threshold-free and identically defined on every corpus. The baseline scores 0.776; the
+recall-versus-false-positive curve is reported beside it, because a deployment must choose a
+threshold even though an evaluation should not.
+
 ## 3.5 Algorithm
 
 ```
@@ -105,3 +143,21 @@ transfer possible across widths and vocabularies. Whether homogeneity matters is
 assumed: the same objective is applied to a DeBERTa-v3 student (another transformer family), to a
 BiLSTM student (no transformer), and to a committee that includes a DeBERTa-v3 teacher, with and
 without the hidden term (Section 5.x).
+
+## 3.7 Does the weighting select, or does it average?
+
+A committee of specialists is only a committee if the weights go somewhere. Because the teachers are
+frozen and cached, $w_k(i)$ is a fixed function of the data: it varies across instances and never
+across epochs or seeds, so "dynamic" here means instance-adaptive and the paper uses it in no other
+sense. Whether it is adaptive in any useful way is an empirical question with a direct answer.
+
+For each teacher we report the *routing contrast*: its mean weight on instances of the implicit class
+minus its mean weight on instances of the explicit class, with a percentile bootstrap interval over
+2,000 resamples. A contrast whose interval excludes zero is evidence that the weighting selects an
+expert. A contrast that spans zero means the committee treats both kinds of abuse alike, in which
+case any benefit from the specialist comes from the knowledge it adds and not from selection, and the
+paper reports that instead of the claim it would have preferred.
+
+The contrast depends sharply on $\tau$, which is why $\tau$ is swept rather than fixed. At
+$\tau = 1$ the observed weights sit within 0.03 of uniform and D-MTHD optimises nearly the same
+objective as uniform averaging; the sweep therefore reaches $\tau = 0.05$.
