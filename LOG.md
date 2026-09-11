@@ -159,3 +159,10 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   `compute_kappa.py`: a majority is now counted over the votes cast on that item, so one person
   skipping a row no longer sends an otherwise unanimous item to adjudication; unit-checked on
   hand-made vote patterns (unanimous, 3-1, 2-2 tie, two skips, single vote, unsure-ignored).
+- **Wikipedia BERT-mini fine-tune-only, three seeds complete**: test macro-F1 0.8857 / 0.8861 / 0.8935,
+  mean 0.8884 +- 0.0044; attack-class F1 0.796 / 0.797 / 0.812; ROC-AUC 0.976; ECE 0.014-0.027.
+  The compact student clears the classical floor (0.8759) by 0.013 and sits 0.005 below the Phase-2
+  BERT-large teacher (0.8936). The contrast with tweets is now the paper's framing: on Wikipedia the
+  11M student is already near teacher level, so distillation has little room; on tweets it is 2 points
+  behind the teachers, which is where D-MTHD has to show its value. Seed 3 is 0.007 above the other
+  two, so Wikipedia seed variance is larger than the two-seed estimate suggested (0.0044, not 0.0004).
