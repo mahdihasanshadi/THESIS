@@ -61,16 +61,19 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | Work | Estimate | Status |
 |---|---|---|
 | Finish the tweet grid | 11 h, one more session | version 3 running now |
-| Implicit specialist + the implicit-pretrained control | 1.5 h, once | not started |
+| Implicit specialist + the implicit-pretrained control | 1 h, once, inside the tweet run | not started |
 | `spec` committee on the tweet corpus, headline student, three seeds | 2 h | not started |
-| Implicit benchmark, full grid | 15-20 h, two sessions | not started |
+| Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
-**Option A — everything.** Roughly 55 GPU-hours. Fits in one week across three accounts if they run
+The implicit estimate halved on 12 September because the benchmark is now built from one corpus
+rather than two (see "Decisions I have already taken" below): 20,637 rows instead of 47,181.
+
+**Option A — everything.** Roughly 45 GPU-hours. Fits in one week across three accounts if they run
 in parallel starting now.
 
 **Option B — tweets and implicit in full; Wikipedia cut to the headline student only.** Roughly
-40 hours. Wikipedia's unique contribution is the annotator-agreement data and the disagreement-aware
+30 hours. Wikipedia's unique contribution is the annotator-agreement data and the disagreement-aware
 variant, and both need only one student. The rest of the Wikipedia grid repeats what the tweet grid
 already shows.
 
@@ -162,3 +165,38 @@ Depends on Decision 1.
 **Not needed until the framing is settled.** Worth asking the supervisors now which they would prefer
 in principle, because a journal submission and a conference submission want different amounts of
 writing and the team's two weeks should be spent accordingly.
+
+---
+
+## Decisions I have already taken, which you can overrule
+
+These were technical rather than strategic, so I took them rather than waiting, and each is
+reversible by one flag or one rebuild. They are listed here because two of them change numbers you
+may already have seen.
+
+**The implicit benchmark is built from the Implicit Hate Corpus alone**, with ISHate held out as a
+27,110-row out-of-domain test set. The first version pooled both, and I checked before training
+anything on it: a TF-IDF classifier tells the two corpora apart at 0.91 macro-F1, 95 per cent of
+implicit examples come from one side and 89 per cent of explicit examples from the other, so a model
+could have scored well by recognising the source instead of reading an implication. On identical
+test rows, pooled training gives 0.473 F1 on implicit hate against 0.548 for single-corpus training.
+The pooled version scored higher in aggregate, 0.681 against 0.562, which is exactly the trap.
+*To overrule:* `python -m dmthd.prepare_implicit --corpora ImplicitHate,ISHate`. Everything else
+follows automatically. *What changes if you do:* a bigger corpus and a bigger headline number that I
+would not be willing to defend.
+
+**The headline metric on that benchmark is implicit-discrimination AUC, not macro-F1.** The explicit
+class has 108 test rows, so its F1 is noise and a three-class average is dominated by it and by the
+large benign class. The AUC asks the question directly: ranked by p(implicit hate), does implied
+abuse come above ordinary text? The classical floor scores 0.761. *To overrule:* report macro-F1
+instead; both are in every results file.
+
+**The implicit specialist is a separate committee (`spec`) rather than a fourth member of `homo`.**
+This keeps every run already finished with the three-teacher committee valid, worth about ten
+GPU-hours, and makes "does the specialist help?" a three-seed comparison of two full committees
+instead of a one-seed ablation. *To overrule:* `COMMITTEES=homo,hetero` and add the specialist to
+`TEACHERS`, at the cost of re-running the finished committee work.
+
+**The specialist is off by default on the Wikipedia benchmark.** It would cost about three GPU-hours
+there to answer a question the tweet benchmark answers more cheaply. *To overrule:* `SPECIALIST=1`
+in that notebook.
