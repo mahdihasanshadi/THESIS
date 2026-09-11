@@ -259,3 +259,22 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   The heterogeneous *student* is both weaker and far slower to train (about 1,500 s per run against
   650 s for DistilBERT), which is the first evidence for the homogeneity claim, though confounded by
   DeBERTa-v3-xsmall simply being a weaker model on this task.
+- **Why indirect abuse is missed: measured, and the usual explanation is wrong.** Ran
+  `src/dmthd/implicit_analysis.py` on BERT-mini fine-tune-only (tweets, seed 1).
+  - *Not lexical.* Recall on the ironic-abuse probe is 0.72 on the 43 items containing explicit
+    profanity and 0.67 on the 1,517 without; on the implicit-abuse probe it is 0.45 with and 0.69
+    without. The model is not a profanity detector: it sees indirect abuse about as well as explicit.
+  - *The failure is discrimination, not detection.* Mean p(bullying) is 0.69 on ironic abuse against
+    0.37 on benign sarcasm, giving a sarcasm-discrimination ROC-AUC of 0.776 (ironic abuse as
+    positives, benign sarcasm as negatives). The distributions overlap heavily: at the 0.5 cut,
+    recall 0.70 comes with a 32% false-positive rate on harmless sarcasm, and forcing false positives
+    below 10% costs more than half the recall (threshold 0.9, recall 0.43). The model reacts to
+    "this text is sarcastic and negative", not to "this text attacks someone".
+  - *On the benchmark itself*, the same story: `other_cyberbullying` recall 0.79 (0.82 with
+    profanity, 0.78 without), and its errors go mostly to `not_cyberbullying` (77), while
+    `not_cyberbullying` recall is 0.68 with 133 of its errors going to `other_cyberbullying`. The two
+    catch-all classes bleed into each other, which is a label-quality problem as much as a model one.
+  - *Consequence for the paper*: **sarcasm-discrimination AUC is the metric that matches the claim**,
+    and it is threshold-free, so it separates "cannot see it" from "cannot tell it apart". Added to
+    `implicit_analysis.py`; the fine-tune-only baseline scores 0.776 and every distilled variant will
+    be measured against it. Recall at a fixed 0.5 threshold should not be the headline number.
