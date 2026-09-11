@@ -103,3 +103,7 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   version, or a different path), and `!python` failures do not fail a Kaggle notebook, so both showed
   "Successful" after two minutes. Fix: the notebook now locates the CSV under `/kaggle/input` by name,
   downloads it from the Hugging Face mirror when absent, and raises so a failed benchmark shows as Failed.
+- **Power cut (2026-09-11, morning).** State on return: tweets seeds 1–3 finished; Wikipedia seed 1
+  finished; seed 2 had a checkpoint after epoch 2 (val macro-F1 0.8859); seed 3 not started. Local
+  jobs relaunched with the detached wrappers: finished seeds skipped, seed 2 resumed from its
+  checkpoint. The Kaggle run is unaffected by a local power cut.
