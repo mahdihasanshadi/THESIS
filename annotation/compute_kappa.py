@@ -61,9 +61,12 @@ def main():
     for _, r in df.iterrows():
         c = Counter(r[a] for a in present if r[a] in LABELS)
         counters.append(c)
-        if c:
+        # majority over the votes cast on THIS item, so a skipped row does not block a clear majority;
+        # an even split (2-2) or a single vote with no support goes to adjudication
+        n_votes = sum(c.values())
+        if n_votes >= 2:
             top, cnt = c.most_common(1)[0]
-            majority.append(top if cnt > len(present) / 2 or (cnt >= 2 and len(c) == 1) else "")
+            majority.append(top if cnt > n_votes / 2 else "")
         else:
             majority.append("")
     df["gold"] = majority

@@ -150,3 +150,12 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   booktabs plus CSV; every number read from results.json / eval_*.json / bench_*.csv. Tables whose
   data is missing are skipped, so it runs mid-experiment. Fixture test `scripts/smoke_tables.py`
   builds a synthetic 111-run tree and asserts all nine tables render.
+- **Annotation kit handed to the team** (`annotation/`): `make_sheets.py` produces one workbook per
+  annotator (`sheets/annotator_A1..A4.xlsx` plus CSV twins) with the 300 items in fixed order, a
+  drop-down restricting `label` to the four allowed values, a guideline worksheet, and no model
+  scores so the classifier cannot steer the judgements. `merge_sheets.py` merges the returned files
+  by id, reporting per-person completion and rejecting invalid labels. Round trip tested with
+  simulated returns (three workbooks, one CSV, some rows skipped). Fixed the majority rule in
+  `compute_kappa.py`: a majority is now counted over the votes cast on that item, so one person
+  skipping a row no longer sends an otherwise unanimous item to adjudication; unit-checked on
+  hand-made vote patterns (unanimous, 3-1, 2-2 tie, two skips, single vote, unsure-ignored).
