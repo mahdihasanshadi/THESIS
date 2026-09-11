@@ -43,7 +43,7 @@ def main():
     ap.add_argument("--teachers", nargs="*", default=[], help="task-adapted teacher directories")
     ap.add_argument("--aux_model", default=None, help="frozen irony model in its own label space")
     ap.add_argument("--aux_labels", type=int, default=2)
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--max_len", type=int, default=128)
     ap.add_argument("--batch", type=int, default=64)

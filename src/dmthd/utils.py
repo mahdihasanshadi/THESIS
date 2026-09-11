@@ -10,15 +10,24 @@ import numpy as np
 SIX = ["age", "ethnicity", "gender", "not_cyberbullying", "other_cyberbullying", "religion"]
 FIVE = ["age", "ethnicity", "gender", "not_cyberbullying", "religion"]
 BINARY = ["not_cyberbullying", "cyberbullying"]
+# The implicit benchmark separates abuse-by-implication from abuse that says it outright, which is
+# the distinction neither of the other two corpora labels.
+IMPLICIT3 = ["not_hate", "explicit_hate", "implicit_hate"]
+
+SCHEMES = {"six": SIX, "five": FIVE, "binary": BINARY, "implicit3": IMPLICIT3}
+SCHEME_CHOICES = list(SCHEMES)
+# The benign class of each scheme: the one the probes count as "did not fire".
+BENIGN = {"six": "not_cyberbullying", "five": "not_cyberbullying", "binary": "not_cyberbullying",
+          "implicit3": "not_hate"}
 
 
 def label_names(scheme: str):
-    return {"six": SIX, "five": FIVE, "binary": BINARY}[scheme]
+    return SCHEMES[scheme]
 
 
 def not_bullying_index(scheme: str) -> int:
     """Index of the benign class under each scheme (used by the sarcasm probes)."""
-    return label_names(scheme).index("not_cyberbullying")
+    return label_names(scheme).index(BENIGN[scheme])
 
 
 def map_labels(df, label_col: str, scheme: str):

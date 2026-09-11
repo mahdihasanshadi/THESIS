@@ -33,7 +33,7 @@ def main():
                     help="tokenizer to use when the checkpoint ships none (e.g. bert-base-uncased for prajjwal1/* models)")
     ap.add_argument("--data_dir", required=True)
     ap.add_argument("--out_dir", required=True)
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--soft_col", default="soft_label", help="optional annotator-fraction column (Wikipedia)")
     ap.add_argument("--epochs", type=int, default=5)

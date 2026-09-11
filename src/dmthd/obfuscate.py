@@ -15,7 +15,7 @@ import re
 
 import pandas as pd
 
-from .utils import label_names
+from .utils import BENIGN, label_names, not_bullying_index
 
 LEET = {"a": "4", "e": "3", "i": "1", "o": "0", "s": "$", "t": "7", "l": "1"}
 
@@ -64,12 +64,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", required=True)
     ap.add_argument("--out_dir", required=True)
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     df = pd.read_csv(args.csv)
-    benign = df[args.label_col].astype(str).isin(["not_cyberbullying", "0"]) if args.label_col != "label" else df["label"] == 0
+    # Only abusive rows are obfuscated: an evader rewrites the attack, not the ordinary comment.
+    benign_name = BENIGN[args.scheme]
+    benign = (df["label"] == not_bullying_index(args.scheme)) if args.label_col == "label" \
+        else df[args.label_col].astype(str).isin([benign_name, "0"])
     base = os.path.splitext(os.path.basename(args.csv))[0]
     for name, fn in (("leet", leet), ("swap", swap), ("space", space), ("mixed", mixed)):
         rng = random.Random(args.seed)

@@ -25,12 +25,17 @@ from .utils import get_device, label_names, map_labels, not_bullying_index, save
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_dir", required=True)
-    ap.add_argument("--model_scheme", required=True, choices=["six", "five", "binary"])
+    ap.add_argument("--model_scheme", required=True, choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--csv", required=True)
-    ap.add_argument("--csv_scheme", required=True, choices=["six", "five", "binary"])
+    ap.add_argument("--csv_scheme", required=True, choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--csv_label_col", default="label_name")
     ap.add_argument("--max_len", type=int, default=128)
     ap.add_argument("--batch", type=int, default=64)
+    ap.add_argument("--focus_class", default=None,
+                    help="a class of the target corpus to report separately, e.g. implicit_hate. "
+                         "Collapsed transfer hides exactly the case the paper is about: a model can "
+                         "score well overall by catching explicit abuse and still miss every "
+                         "implication, so that subset is scored on its own against the benign class.")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -50,6 +55,20 @@ def main():
            "bullying_f1": float(f1_score(y_bin, pred)), "roc_auc": float(roc_auc_score(y_bin, p_bully)),
            "pr_auc": float(average_precision_score(y_bin, p_bully)), "predicted_bullying_rate": float(pred.mean()),
            "true_bullying_rate": float(y_bin.mean())}
+    if args.focus_class:
+        target = label_names(args.csv_scheme)
+        if args.focus_class not in target:
+            raise SystemExit(f"--focus_class {args.focus_class} is not a class of {args.csv_scheme}: {target}")
+        fi, bi = target.index(args.focus_class), not_bullying_index(args.csv_scheme)
+        m = np.isin(df["label"].values, [fi, bi])
+        yf = (df["label"].values[m] == fi).astype(int)
+        res[args.focus_class] = {
+            "n_positive": int(yf.sum()), "n_negative": int((1 - yf).sum()),
+            "recall": float(pred[m][yf == 1].mean()),
+            "false_positive_rate": float(pred[m][yf == 0].mean()),
+            "roc_auc": float(roc_auc_score(yf, p_bully[m])),
+            "mean_p_abusive": {"positive": float(p_bully[m][yf == 1].mean()),
+                               "negative": float(p_bully[m][yf == 0].mean())}}
     save_json(res, args.out or os.path.join(args.model_dir, "transfer_" + os.path.basename(os.path.dirname(args.csv)) + ".json"))
     print(res)
 

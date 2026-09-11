@@ -100,7 +100,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_dir", required=True)
     ap.add_argument("--csv", required=True)
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--max_len", type=int, default=128)
     ap.add_argument("--batch", type=int, default=64)

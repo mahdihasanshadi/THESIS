@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", required=True)
     ap.add_argument("--out_dir", required=True)
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--C", type=float, default=4.0)
     ap.add_argument("--seed", type=int, default=1)

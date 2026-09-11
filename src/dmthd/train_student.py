@@ -58,7 +58,7 @@ def main():
     ap.add_argument("--cache", default=None)
     ap.add_argument("--teachers", nargs="*", default=[], help="cache tags, e.g. bert-large hatebert irony")
     ap.add_argument("--aux", action="store_true", help="add the auxiliary irony head (needs aux_irony.npz)")
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--soft_col", default="soft_label")
     ap.add_argument("--T", type=float, default=4.0)

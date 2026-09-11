@@ -31,7 +31,7 @@ def main():
     ap.add_argument("--cache", required=True)
     ap.add_argument("--data_dir", required=True)
     ap.add_argument("--split", default="train")
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--teachers", nargs="*", default=None, help="cache tags; default: all in meta.json")
     ap.add_argument("--taus", nargs="*", type=float, default=[0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0])

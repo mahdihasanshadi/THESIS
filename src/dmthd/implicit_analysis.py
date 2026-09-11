@@ -27,6 +27,13 @@ from .evaluate import make_loader, predict_probs
 from .models import load_classifier, load_tokenizer
 from .utils import get_device, label_names, map_labels, not_bullying_index, save_json
 
+# The classes where indirect abuse hides, per scheme: the first is the one whose lexical
+# dependence is broken out, the rest are reported for their confusion with it.
+HARD_CLASSES = {"six": ("other_cyberbullying", "not_cyberbullying"),
+                "five": ("not_cyberbullying",),
+                "binary": ("cyberbullying", "not_cyberbullying"),
+                "implicit3": ("implicit_hate", "not_hate", "explicit_hate")}
+
 PROFANITY = r"\b(f+u+c+k\w*|sh[i1]t\w*|b[i1]tch\w*|a+s+s+h+o+l+e\w*|d[i1]ck\w*|cunt\w*|wh[o0]re\w*|slut\w*|"\
             r"bastard\w*|idiot\w*|stupid\w*|moron\w*|dumb\w*|retard\w*|trash|garbage|scum|filth\w*|"\
             r"kill\s+your\w*|die|hate\s+you|loser\w*|pathetic|disgusting|ugly)\b"
@@ -41,7 +48,7 @@ def main():
     ap.add_argument("--model_dir", required=True)
     ap.add_argument("--test", required=True)
     ap.add_argument("--probes", default="probes")
-    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary"])
+    ap.add_argument("--scheme", default="six", choices=["six", "five", "binary", "implicit3"])
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--max_len", type=int, default=128)
     ap.add_argument("--batch", type=int, default=64)
@@ -118,7 +125,7 @@ def main():
                      rownames=["true"], colnames=["pred"])
     cm.to_csv(os.path.join(args.out, "confusion.csv"))
     res["confusion"] = cm.to_dict()
-    for cls in ("other_cyberbullying", "not_cyberbullying"):
+    for cls in HARD_CLASSES.get(args.scheme, ()):
         if cls in names:
             i = names.index(cls)
             sub = te[te["label"] == i]
@@ -127,11 +134,12 @@ def main():
                 worst = sub[sub["pred"] != i]["pred"].map(dict(enumerate(names))).value_counts()
                 res[f"{cls}_confused_with"] = worst.head(3).to_dict()
     # does the benchmark's own hard class depend on profanity too?
-    if "other_cyberbullying" in names:
-        i = names.index("other_cyberbullying")
+    hard = next((c for c in HARD_CLASSES.get(args.scheme, ()) if c in names), None)
+    if hard:
+        i = names.index(hard)
         sub = te[te["label"] == i].copy()
         sub["explicit"] = sub["text"].map(has_profanity)
-        res["other_cyberbullying_lexical_split"] = {
+        res[f"{hard}_lexical_split"] = {
             lab: {"n": int((sub["explicit"] == f).sum()),
                   "recall": float((sub[sub["explicit"] == f]["pred"] == i).mean()) if (sub["explicit"] == f).any() else None}
             for f, lab in ((True, "with_profanity"), (False, "without_profanity"))}

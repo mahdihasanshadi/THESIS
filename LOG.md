@@ -278,3 +278,54 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
     and it is threshold-free, so it separates "cannot see it" from "cannot tell it apart". Added to
     `implicit_analysis.py`; the fine-tune-only baseline scores 0.776 and every distilled variant will
     be measured against it. Recall at a fixed 0.5 threshold should not be the headline number.
+- **Third benchmark built: indirect abuse becomes a label, not an inference-time probe.** Agreed with
+  Mahdi that the paper's stated goal is untestable while the only two corpora bury implication inside
+  a catch-all class (tweets) or a binary attack flag (Wikipedia). Added
+  `src/dmthd/prepare_implicit.py` and the label scheme `implicit3 = not_hate | explicit_hate |
+  implicit_hate`, from ISHate (`BenjaminOcampo/ISHate`) and Implicit Hate Corpus stage 1
+  (`tasksource/implicit-hate-stg1`).
+  Two schema traps found and fixed while building it, both of which would have produced a silently
+  wrong corpus:
+  - ISHate records the benign class **only** in `hateful_layer`; its `implicit_layer` holds
+    {Explicit HS, Implicit HS} and is empty for every Non-HS row. Reading `implicit_layer` alone, as
+    the first draft did, throws away all 17,869 benign examples. The loader now reads both columns.
+  - The SALT-NLP `ImplicitHate` mirror ships **stage 2 only** (6,346 rows, no benign class). Stage 1,
+    with all three classes and 21,480 rows, is at `tasksource/implicit-hate-stg1`.
+  Exclusions, each reported in `report.json`: ISHate augmentations (`aug_method` other than `orig`,
+  and `source == augmented` for the val/test files which carry no `aug_method` column) 63,758 -> 29,116;
+  ToxiGen-sourced rows 29,116 -> 28,763 (provenance rule); then probe holdout.
+  **Probe holdout.** The sarcasm probes were built from these same corpora, so training on them would
+  contaminate every probe number in the paper, including the ones already reported. Every text
+  occurring in any probe file is removed from this benchmark in all three splits: 1,581 rows
+  (1,572 implicit_hate, 9 explicit_hate). The probes stay genuinely unseen, which is worth more than
+  the rows.
+  **Result.** 50,243 combined -> 47,181 after cleaning; train 37,744 / val 4,718 / test 4,719.
+  Train classes: not_hate 24,586, explicit_hate 8,385, implicit_hate 4,773. Corpus mix in train:
+  ISHate 21,767, Implicit Hate 15,977. De-duplication removed 420 duplicates and, notably,
+  **346 texts that the two corpora label differently** (710 rows) - a cross-corpus annotation
+  disagreement worth reporting in its own right.
+- **Classical floor on the implicit benchmark, and the reason this benchmark is the right one.**
+  TF-IDF + logistic regression: test macro-F1 **0.6809**, accuracy 0.7663, ECE 0.0449. Per class:
+  not_hate 0.8421, explicit_hate 0.7474, **implicit_hate 0.4530**.
+  A bag of n-grams is already decent at explicit abuse and collapses on implication - a 29-point F1
+  gap inside one corpus, measured, with no model of ours involved. Compare the tweet corpus, where the
+  same floor reaches 0.8798 and the fine-tune-only student cannot beat it (0.8770). This is the
+  headroom the method needs, and it is exactly where the paper claims to contribute.
+- **Implicit-abuse specialist teacher added to the committee.** New driver stage `specialist`:
+  HateBERT is trained on the implicit benchmark first, then task-adapted onto the target benchmark
+  like any other teacher (the classification head is re-initialised, `ignore_mismatched_sizes`).
+  It joins the homogeneous committee of the tweets and Wikipedia benchmarks and is the only member
+  that has ever seen abuse-by-implication labelled as such; on the implicit benchmark itself it is
+  omitted, where it would duplicate the task teacher. `SPECIALIST=0` turns it off. Failure is not
+  fatal: a missing corpus or a failed training run drops it from every committee and the grid
+  continues, recorded in `dropped_teachers.json`.
+- **Measurements wired into the driver rather than run by hand.** `implicit_analysis` now runs for
+  every mode of the headline student, so sarcasm-discrimination AUC is produced for ft / skd /
+  uniform / D-MTHD without anyone remembering to do it. Cross-corpus transfer now covers every other
+  prepared benchmark instead of one, so **tweets -> implicit** is measured: a `--focus_class`
+  option scores the implicit_hate rows on their own against the benign rows, because a collapsed
+  transfer score hides precisely the case the paper is about.
+- **Scheme plumbing.** `implicit3` added to `label_names`; `not_bullying_index` now resolves the
+  benign class per scheme (`BENIGN`) instead of assuming `not_cyberbullying`, which also fixed
+  `obfuscate.py`, where a non-tweet scheme would have obfuscated the benign rows as well.
+  `implicit_analysis.py` takes its hard classes from the scheme.

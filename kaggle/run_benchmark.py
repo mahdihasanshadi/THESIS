@@ -2,14 +2,19 @@
 
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset tweets    --raw /kaggle/working/raw/cyberbullying_tweets.csv
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset wikipedia                       (downloads from Figshare)
+    PYTHONPATH=src python kaggle/run_benchmark.py --dataset implicit                        (downloads from the Hub)
 
-Stages: prepare | teachers | cache | students | probes | sweep | robustness | quant | bench | aggregate | all.
+Stages: prepare | specialist | teachers | cache | students | probes | sweep | robustness | quant |
+bench | aggregate | all.
 Every stage skips work whose results.json already exists, so a killed session resumes where it stopped.
 
 Design (the comparison grid): two teacher committees x two student families.
   COMMITTEES=homo,hetero   homo = BERT-large + HateBERT + RoBERTa-irony; hetero = homo + DeBERTa-v3-base
   STUDENTS (homogeneous)   BERT-mini, BERT-small, DistilBERT
   HETERO_STUDENTS          DeBERTa-v3-xsmall (another transformer family), bilstm (not a transformer)
+On the tweet and Wikipedia benchmarks the homogeneous committee also holds the implicit-abuse
+specialist: HateBERT trained on the implicit benchmark, then task-adapted like any other teacher.
+It is the only committee member that has seen abuse-by-implication labelled as such.
 Run directories: runs/<dataset>/<student>/<mode>[_hetero]/seed<k>. Ablations run on the first
 student with the homogeneous committee. On binary datasets with annotator fractions the extra
 mode `dmthd_dis` (disagreement-aware, soft reliability) is added when DISAGREEMENT=1.
@@ -23,7 +28,8 @@ Resuming across Kaggle sessions: attach the previous notebook's output as an inp
 RESUME_FROM=/kaggle/input/<that-output>; its runs/ and cache/ trees are copied in first.
 
 Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HETERO_STUDENTS, SEEDS,
-MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1, LIMIT (debug).
+MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1,
+SPECIALIST, SPECIALIST_BASE, IMPLICIT_RAW, LIMIT (debug).
 """
 import argparse
 import glob
@@ -39,6 +45,10 @@ DATASETS = {
                "teacher_epochs": 5, "teacher_batch": 32, "student_batch": 32, "soft": False},
     "wikipedia": {"scheme": "binary", "label_col": "label", "max_len": 256, "num_labels": 2,
                   "teacher_epochs": 3, "teacher_batch": 16, "student_batch": 32, "soft": True},
+    # The benchmark the paper's goal needs: abuse-by-implication is a label here, not a hidden
+    # subset of a catch-all class.
+    "implicit": {"scheme": "implicit3", "label_col": "label_name", "max_len": 128, "num_labels": 3,
+                 "teacher_epochs": 4, "teacher_batch": 32, "student_batch": 32, "soft": False},
 }
 ROOT = os.environ.get("ROOT", ".")
 TEACHERS = os.environ.get("TEACHERS", "bert-large-uncased:bert-large,GroNLP/hateBERT:hatebert,cardiffnlp/twitter-roberta-base-irony:irony")
@@ -49,6 +59,17 @@ HETERO_STUDENTS = os.environ.get("HETERO_STUDENTS", "microsoft/deberta-v3-xsmall
 SEEDS = [int(s) for s in os.environ.get("SEEDS", "1,2,3").split(",")]
 MODES = [m for m in os.environ.get("MODES", "ft,skd,uniform,dmthd").split(",") if m]
 AUX_MODEL = "cardiffnlp/twitter-roberta-base-irony"
+# An implicit-abuse specialist for the other two benchmarks. Neither the tweet corpus nor the
+# Wikipedia corpus labels abuse-by-implication, so no teacher fine-tuned on them can hold that
+# knowledge, and the committee has no member able to recognise it. This teacher is HateBERT trained
+# first on the implicit benchmark; the usual task adaptation then re-heads it for the target
+# benchmark, so it enters the committee in the target label space while keeping what it learned.
+# It is the mechanism the paper's implicit claim rests on. SPECIALIST=0 turns it off.
+SPECIALIST = os.environ.get("SPECIALIST", "1") == "1"
+SPECIALIST_BASE = os.environ.get("SPECIALIST_BASE", "GroNLP/hateBERT")
+SPECIALIST_TAG = os.environ.get("SPECIALIST_TAG", "implicit-spec")
+SPECIALIST_SRC = f"{ROOT}/runs/implicit/specialist/{SPECIALIST_TAG}"
+IMPLICIT_RAW = os.environ.get("IMPLICIT_RAW", f"{ROOT}/raw")
 GPU = os.environ.get("GPU", "1") == "1"
 RESUME_FROM = os.environ.get("RESUME_FROM", "")
 DISAGREEMENT = os.environ.get("DISAGREEMENT", "1") == "1"
@@ -105,6 +126,19 @@ def test_f1(d):
         return float("nan")
 
 
+def is_local_path(name):
+    """A checkpoint directory rather than a Hugging Face id. Hub ids are `owner/model`: exactly one
+    slash, no leading dot, slash or drive letter."""
+    return (name.startswith(("./", "../", "/", "\\")) or "\\" in name
+            or name.count("/") > 1 or (len(name) > 2 and name[1] == ":"))
+
+
+def _prepare_implicit(raw, out):
+    """The implicit benchmark holds out every probe text, so probe metrics stay measured on
+    text no model has trained on. See dmthd/prepare_implicit.py."""
+    sh(f"python -m dmthd.prepare_implicit --raw {raw} --out {out} --probes {PROBES} --download", check=False)
+
+
 class Bench:
     def __init__(self, name, raw):
         self.name, self.raw, self.cfg = name, raw, DATASETS[name]
@@ -114,7 +148,11 @@ class Bench:
         self.common = f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']}"
         self.limit = f"--limit {LIMIT}" if LIMIT else ""
         self.fp = "--fp16" if GPU else ""
-        self.teacher_list = pairs(TEACHERS) + (pairs(HETERO_TEACHER) if "hetero" in COMMITTEES else [])
+        # The specialist joins the homogeneous committee of every benchmark except the one it was
+        # trained on, where it would be a second copy of the task teacher.
+        self.use_specialist = SPECIALIST and name != "implicit"
+        self.spec = [(SPECIALIST_SRC, SPECIALIST_TAG)] if self.use_specialist else []
+        self.teacher_list = pairs(TEACHERS) + self.spec + (pairs(HETERO_TEACHER) if "hetero" in COMMITTEES else [])
         self.student_list = pairs(STUDENTS) + pairs(HETERO_STUDENTS)
         self.dropped = []
         self.cache_dirty = False
@@ -122,7 +160,7 @@ class Bench:
 
     # ---- committees (recomputed so dropped teachers disappear everywhere) ----
     def committee(self, comm):
-        homo = [t for _, t in pairs(TEACHERS) if t not in self.dropped]
+        homo = [t for _, t in pairs(TEACHERS) + self.spec if t not in self.dropped]
         if comm == "homo":
             return homo
         return homo + [t for _, t in pairs(HETERO_TEACHER) if t not in self.dropped]
@@ -194,6 +232,20 @@ class Bench:
             return len(glob.glob(os.path.join(src, "**", "runs", self.name, "*", "*", "seed*", "results.json"), recursive=True))
 
         copied = []
+        # The implicit specialist is a teacher *source*, not a run of this benchmark: it lives under
+        # runs/implicit/specialist and would be missed by the loop below, so the tweet run would
+        # retrain it and spend the same GPU-hours twice. Its weights are needed, so no filtering.
+        if self.use_specialist and not done(SPECIALIST_SRC):
+            for src_root in sources:
+                hits = sorted(set(glob.glob(os.path.join(src_root, "**", "runs", "implicit", "specialist", "*"),
+                                            recursive=True)))
+                hit = next((h for h in hits if done(h)), None)
+                if hit:
+                    shutil.copytree(hit, SPECIALIST_SRC, dirs_exist_ok=True)
+                    print(f"resuming implicit specialist: {hit} -> {SPECIALIST_SRC} "
+                          f"(test macro-F1 {test_f1(SPECIALIST_SRC):.4f})", flush=True)
+                    copied.append(hit)
+                    break
         for src_root in sorted(sources, key=richness):
             for src in found(src_root, "runs"):
                 kept, skipped = self._copy_run_tree(src, f"{ROOT}/runs/{self.name}")
@@ -221,8 +273,37 @@ class Bench:
             return
         if self.name == "tweets":
             sh(f"python -m dmthd.prepare_tweets --raw {self.raw} --out {self.data}")
+        elif self.name == "implicit":
+            _prepare_implicit(self.raw, self.data)
         else:
             sh(f"python -m dmthd.prepare_wikipedia --raw {self.raw} --out {self.data} --download")
+
+    def specialist(self):
+        """Train the implicit-abuse specialist once, on the implicit benchmark, before the teachers
+        of this benchmark are task-adapted. Failure is not fatal: the specialist is dropped and the
+        run continues with the committee it can build, which is reported."""
+        if not self.use_specialist or done(SPECIALIST_SRC) or SPECIALIST_TAG in self.dropped:
+            return
+        check_budget("implicit specialist")
+        data = f"{ROOT}/data/implicit"
+        if not os.path.exists(f"{data}/test.csv"):
+            _prepare_implicit(IMPLICIT_RAW, data)
+        if not os.path.exists(f"{data}/test.csv"):
+            print("implicit corpus unavailable: specialist dropped from every committee", flush=True)
+            self.dropped.append(SPECIALIST_TAG)
+            self._save_dropped()
+            return
+        cfg = DATASETS["implicit"]
+        sh(f"python -m dmthd.train_teacher --model_name {SPECIALIST_BASE} --data_dir {data} "
+           f"--out_dir {SPECIALIST_SRC} --epochs {cfg['teacher_epochs']} --lr 2e-5 "
+           f"--batch {cfg['teacher_batch']} {self.fp} --scheme {cfg['scheme']} "
+           f"--label_col {cfg['label_col']} --max_len {cfg['max_len']} {self.limit} --no_resume", check=False)
+        if not done(SPECIALIST_SRC):
+            print("implicit specialist failed to train: dropped from every committee", flush=True)
+            self.dropped.append(SPECIALIST_TAG)
+            self._save_dropped()
+        else:
+            print(f"implicit specialist ready, test macro-F1 {test_f1(SPECIALIST_SRC):.4f}", flush=True)
 
     def _train_teacher(self, name, out, lr, fp16, epochs):
         ck = "--grad_ckpt" if "large" in name else ""
@@ -233,6 +314,13 @@ class Bench:
         ep = os.environ.get("TEACHER_EPOCHS", self.cfg["teacher_epochs"])
         for name, tag in self.teacher_list:
             if tag in self.dropped:
+                continue
+            # a locally trained source checkpoint (the implicit specialist); if its own training
+            # never finished there is nothing to adapt, so drop it rather than crash the grid
+            if is_local_path(name) and not os.path.isdir(name):
+                print(f"teacher source {name} missing: {tag} dropped from every committee", flush=True)
+                self.dropped.append(tag)
+                self._save_dropped()
                 continue
             out = f"{self.runs}/teachers/{tag}"
             if done(out) and test_f1(out) >= MIN_TEACHER_F1:
@@ -309,10 +397,24 @@ class Bench:
             print("no homogeneous teachers left: ablations skipped", flush=True)
             return
         name, stag = self.student_list[0]
-        abl = {"no_dynamic": "--mode uniform --aux --delta 0.3", "no_hidden": "--mode dmthd --no_hidden --aux --delta 0.3",
-               "no_aux": "--mode dmthd", "per_batch": "--mode dmthd --per_batch --aux --delta 0.3",
-               "from_scratch": "--mode dmthd --aux --delta 0.3 --from_scratch"}
-        for tag, flags in abl.items():
+        # tag -> (committee for this ablation, flags)
+        abl = {"no_dynamic": (homo, "--mode uniform --aux --delta 0.3"),
+               "no_hidden": (homo, "--mode dmthd --no_hidden --aux --delta 0.3"),
+               "no_aux": (homo, "--mode dmthd"),
+               "per_batch": (homo, "--mode dmthd --per_batch --aux --delta 0.3"),
+               "from_scratch": (homo, "--mode dmthd --aux --delta 0.3 --from_scratch")}
+        # The two ablations the implicit claim lives or dies on. Without them a reviewer asks, quite
+        # reasonably, whether the committee is doing anything that the specialist alone would not.
+        #   spec_only  distil from the implicit specialist and nobody else
+        #   no_spec    the committee with the specialist removed
+        # If spec_only matches full D-MTHD, the contribution is a teacher choice, not a committee; if
+        # no_spec matches it, the specialist adds nothing. Either answer belongs in the paper.
+        if self.use_specialist and SPECIALIST_TAG in homo:
+            rest = [t for t in homo if t != SPECIALIST_TAG]
+            abl["spec_only"] = ([SPECIALIST_TAG], "--mode skd --aux --delta 0.3")
+            if rest:
+                abl["no_spec"] = (rest, "--mode dmthd --aux --delta 0.3")
+        for tag, (tags, flags) in abl.items():
             if tag == "from_scratch" and name == "bilstm":
                 continue
             for seed in ABLATION_SEEDS:
@@ -321,7 +423,7 @@ class Bench:
                     check_budget(f"{stag}/ablation_{tag}/seed{seed}")
                     sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {seed} "
                        f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} {self.limit} "
-                       f"--cache {self.cache} --teachers {' '.join(homo)} {flags} --tag {tag}")
+                       f"--cache {self.cache} --teachers {' '.join(tags)} {flags} --tag {tag}")
 
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]
@@ -340,6 +442,15 @@ class Bench:
             if not os.path.exists(os.path.join(d, "eval_test.json")):
                 sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test.csv --scheme {self.cfg['scheme']} "
                    f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --probe_neg {neg} --probe_pos {pos}", check=False)
+        # Sarcasm-discrimination AUC for every mode of the headline student. Recall at a fixed
+        # threshold cannot tell "misses indirect abuse" from "sees it but cannot separate it from
+        # harmless sarcasm"; this is threshold-free, so it is the number the implicit claim rests on.
+        _, stag = self.student_list[0]
+        for d in sorted(glob.glob(f"{self.runs}/{stag}/*/seed{SEEDS[0]}")):
+            if done(d) and not os.path.exists(os.path.join(d, "implicit_analysis", "implicit_analysis.json")):
+                sh(f"python -m dmthd.implicit_analysis --model_dir {d} --test {self.data}/test.csv "
+                   f"--probes {PROBES} --scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} "
+                   f"--max_len {self.cfg['max_len']} --out {d}/implicit_analysis", check=False)
 
     def sweep(self):
         homo = self.committee("homo")
@@ -349,6 +460,12 @@ class Bench:
         if not os.path.exists(f"{self.cache}/tau_diagnostic.csv"):
             sh(f"python -m dmthd.tune_tau --cache {self.cache} --data_dir {self.data} --scheme {self.cfg['scheme']} "
                f"--label_col {self.cfg['label_col']}", check=False)
+        # and the mechanism question the committee exists to answer: does the weighting send
+        # implication to the specialist, or does it average over everyone?
+        if not os.path.exists(f"{self.runs}/weight_routing/weight_routing.json"):
+            sh(f"python -m dmthd.weight_routing --cache {self.cache} --data_dir {self.data} "
+               f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} "
+               f"--out {self.runs}/weight_routing", check=False)
         name, stag = self.student_list[0]
         # tau: with frozen teachers the weights are a fixed function of the data, and at tau = 1 the
         # observed means sit within 0.03 of uniform, so the sweep must reach much sharper values or
@@ -376,11 +493,17 @@ class Bench:
                 if not os.path.exists(out):
                     sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test_obf_{variant}.csv --scheme {self.cfg['scheme']} "
                        f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --out {out}", check=False)
-            other = "wikipedia" if self.name == "tweets" else "tweets"
-            other_cfg, other_test = DATASETS[other], f"{ROOT}/data/{other}/test.csv"
-            if os.path.exists(other_test) and not os.path.exists(os.path.join(d, f"transfer_{other}.json")):
+            # transfer to every other benchmark that has been prepared, not just one. The pair that
+            # matters most is tweets -> implicit: it asks whether a model trained on a corpus that
+            # never labels implication detects it at all.
+            for other in (k for k in DATASETS if k != self.name):
+                other_cfg, other_test = DATASETS[other], f"{ROOT}/data/{other}/test.csv"
+                if not os.path.exists(other_test) or os.path.exists(os.path.join(d, f"transfer_{other}.json")):
+                    continue
+                focus = "--focus_class implicit_hate" if other_cfg["scheme"] == "implicit3" else ""
                 sh(f"python -m dmthd.transfer_eval --model_dir {d} --model_scheme {self.cfg['scheme']} --csv {other_test} "
-                   f"--csv_scheme {other_cfg['scheme']} --csv_label_col {other_cfg['label_col']} --max_len {other_cfg['max_len']}", check=False)
+                   f"--csv_scheme {other_cfg['scheme']} --csv_label_col {other_cfg['label_col']} "
+                   f"--max_len {other_cfg['max_len']} {focus}", check=False)
 
     def quant(self):
         for _, stag in self.student_list:
@@ -414,10 +537,11 @@ if __name__ == "__main__":
     ap.add_argument("--raw", default=None)
     a = ap.parse_args()
     os.environ.setdefault("PYTHONPATH", "src")
-    raw = a.raw or {"tweets": "/kaggle/working/raw/cyberbullying_tweets.csv", "wikipedia": f"{ROOT}/raw_wikipedia"}[a.dataset]
+    raw = a.raw or {"tweets": "/kaggle/working/raw/cyberbullying_tweets.csv",
+                "wikipedia": f"{ROOT}/raw_wikipedia", "implicit": IMPLICIT_RAW}[a.dataset]
     b = Bench(a.dataset, raw)
     b.resume()
-    order = ["prepare", "teachers", "cache", "students", "probes", "sweep", "robustness", "quant", "bench", "aggregate"]
+    order = ["prepare", "specialist", "teachers", "cache", "students", "probes", "sweep", "robustness", "quant", "bench", "aggregate"]
     stages = order if a.stage == "all" else [a.stage]
     ran_out = None
     for st in stages:
