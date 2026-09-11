@@ -251,8 +251,8 @@ class Bench:
         # retrain it and spend the same GPU-hours twice. Its weights are needed, so no filtering.
         # It holds the specialist teacher and the implicit-pretrained student, so the whole directory
         # is copied under its own names rather than one checkpoint.
-        if self.use_specialist and not done(SPECIALIST_SRC):
-            dst = f"{ROOT}/runs/implicit/specialist"
+        dst = f"{ROOT}/runs/implicit/specialist"
+        if self.use_specialist and not glob.glob(os.path.join(dst, "*", "results.json")):
             for src_root in sources:
                 hits = sorted(set(glob.glob(os.path.join(src_root, "**", "runs", "implicit", "specialist"),
                                             recursive=True)))
@@ -300,10 +300,17 @@ class Bench:
         """Train the implicit-abuse specialist once, on the implicit benchmark, before the teachers
         of this benchmark are task-adapted. Failure is not fatal: the specialist is dropped and the
         run continues with the committee it can build, which is reported."""
-        if not self.use_specialist or done(SPECIALIST_SRC) or SPECIALIST_TAG in self.dropped:
+        name, stag = self.student_list[0]
+        pre = self._pretrained_student(stag)
+        want_teacher = SPECIALIST_TAG not in self.dropped and not done(SPECIALIST_SRC)
+        want_control = name != "bilstm" and not done(pre)
+        # The two are independent: a session that resumes a finished specialist may still owe the
+        # control, and vice versa. Checking them separately is what stops a resume from silently
+        # skipping one of them.
+        if not self.use_specialist or not (want_teacher or want_control):
             return
         check_budget("implicit specialist")
-        data = f"{ROOT}/data/implicit"
+        cfg, data = DATASETS["implicit"], f"{ROOT}/data/implicit"
         if not os.path.exists(f"{data}/test.csv"):
             _prepare_implicit(IMPLICIT_RAW, data)
         if not os.path.exists(f"{data}/test.csv"):
@@ -311,28 +318,27 @@ class Bench:
             self.dropped.append(SPECIALIST_TAG)
             self._save_dropped()
             return
-        cfg = DATASETS["implicit"]
-        sh(f"python -m dmthd.train_teacher --model_name {SPECIALIST_BASE} --data_dir {data} "
-           f"--out_dir {SPECIALIST_SRC} --epochs {cfg['teacher_epochs']} --lr 2e-5 "
-           f"--batch {cfg['teacher_batch']} {self.fp} --scheme {cfg['scheme']} "
-           f"--label_col {cfg['label_col']} --max_len {cfg['max_len']} {self.limit} --no_resume", check=False)
-        if not done(SPECIALIST_SRC):
-            print("implicit specialist failed to train: dropped from every committee", flush=True)
-            self.dropped.append(SPECIALIST_TAG)
-            self._save_dropped()
-        else:
-            print(f"implicit specialist ready, test macro-F1 {test_f1(SPECIALIST_SRC):.4f}", flush=True)
+        common = (f"--scheme {cfg['scheme']} --label_col {cfg['label_col']} --max_len {cfg['max_len']} "
+                  f"{self.fp} {self.limit}")
+        if want_teacher:
+            sh(f"python -m dmthd.train_teacher --model_name {SPECIALIST_BASE} --data_dir {data} "
+               f"--out_dir {SPECIALIST_SRC} --epochs {cfg['teacher_epochs']} --lr 2e-5 "
+               f"--batch {cfg['teacher_batch']} {common} --no_resume", check=False)
+            if not done(SPECIALIST_SRC):
+                print("implicit specialist failed to train: dropped from every committee", flush=True)
+                self.dropped.append(SPECIALIST_TAG)
+                self._save_dropped()
+            else:
+                print(f"implicit specialist ready, test macro-F1 {test_f1(SPECIALIST_SRC):.4f}", flush=True)
         # The control the whole implicit claim has to survive: instead of distilling the specialist's
         # knowledge, simply train the student on the implicit corpus and then on the task. That is
-        # what any practitioner would try first, it costs one small run, and if it matches D-MTHD then
-        # the contribution is the data and not the distillation. Better to find that out here than
-        # from a reviewer.
-        name, stag = self.student_list[0]
-        out = self._pretrained_student(stag)
-        if name != "bilstm" and not done(out):
-            sh(f"python -m dmthd.train_student --student {name} --data_dir {data} --out_dir {out} --seed {SEEDS[0]} "
-               f"--batch {cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} --mode ft --scheme {cfg['scheme']} "
-               f"--label_col {cfg['label_col']} --max_len {cfg['max_len']} {self.limit} --tag implicit_pretrain", check=False)
+        # what any practitioner would try first, it costs one small run, and if it matches the spec
+        # committee then the contribution is the data and not the distillation. Better to find that
+        # out here than from a reviewer.
+        if want_control:
+            sh(f"python -m dmthd.train_student --student {name} --data_dir {data} --out_dir {pre} "
+               f"--seed {SEEDS[0]} --batch {cfg['student_batch']} --epochs {STUDENT_EPOCHS} {common} "
+               f"--mode ft --tag implicit_pretrain", check=False)
 
     def _pretrained_student(self, stag):
         return f"{ROOT}/runs/implicit/specialist/student-{stag}"
@@ -504,9 +510,10 @@ class Bench:
         # and the mechanism question the committee exists to answer: does the weighting send
         # implication to the specialist, or does it average over everyone?
         if not os.path.exists(f"{self.runs}/weight_routing/weight_routing.json"):
+            rel = "soft" if self.cfg["soft"] else "hard"   # must match what the students trained with
             sh(f"python -m dmthd.weight_routing --cache {self.cache} --data_dir {self.data} "
                f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} "
-               f"--out {self.runs}/weight_routing", check=False)
+               f"--reliability {rel} --out {self.runs}/weight_routing", check=False)
         name, stag = self.student_list[0]
         # tau: with frozen teachers the weights are a fixed function of the data, and at tau = 1 the
         # observed means sit within 0.03 of uniform, so the sweep must reach much sharper values or

@@ -83,6 +83,10 @@ def main():
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--teachers", nargs="*", default=None, help="cache tags; default: all in meta.json")
     ap.add_argument("--taus", nargs="*", type=float, default=[0.05, 0.1, 0.2, 0.5, 1.0])
+    ap.add_argument("--reliability", default="hard", choices=["hard", "soft"],
+                    help="must match the training run: on a corpus with annotator fractions the "
+                         "weights are measured against the fraction, not the majority label, and a "
+                         "diagnostic computed the other way would not describe the weights used")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -93,15 +97,18 @@ def main():
     y = torch.tensor(df["label"].values, dtype=torch.long)
     logits = torch.stack([torch.from_numpy(np.load(os.path.join(args.cache, f"{t}.npz"))["logits"].astype(np.float32))
                           for t in tags], 0)[:, : len(y)]
+    soft = None
+    if args.reliability == "soft" and "soft_label" in df.columns:
+        soft = torch.tensor(df[meta.get("soft_column", "soft_label")].values, dtype=torch.float32)
     grp, lex = groups_for(df, args.scheme)
     pos_name, neg_name = CONTRAST[args.scheme]
     ensure_dir(args.out)
 
-    rows, res = [], {"cache": args.cache, "teachers": tags, "split": args.split,
+    rows, res = [], {"cache": args.cache, "teachers": tags, "split": args.split, "reliability": args.reliability,
                      "contrast_groups": {"implicit_like": pos_name, "explicit_like": neg_name},
                      "group_sizes": grp.value_counts().to_dict(), "by_tau": {}}
     for tau in args.taus:
-        w = teacher_weights(logits, y, tau, per_instance=True).numpy()
+        w = teacher_weights(logits, y, tau, per_instance=True, soft_targets=soft).numpy()
         entry = {"mean_weight": {}, "routing_contrast": {}, "lexical_contrast": {}}
         for k, t in enumerate(tags):
             entry["mean_weight"][t] = {g: float(w[grp.values == g, k].mean()) for g in sorted(set(grp))}
