@@ -128,13 +128,28 @@ class Bench:
 
     # ---- stages ----
     def resume(self):
+        """Copy a previous session's runs/ and cache/ in. Fails fast on a bad RESUME_FROM: silently
+        ignoring it would retrain every teacher, wasting hours of GPU time."""
         if not RESUME_FROM:
             return
+        if not os.path.isdir(RESUME_FROM):
+            sys.exit(f"RESUME_FROM={RESUME_FROM} does not exist. Attach the previous notebook's output as an "
+                     f"input and use its path (right panel, Input), or clear RESUME_FROM to start fresh. "
+                     f"Available inputs: {glob.glob('/kaggle/input/*')}")
+        copied = []
         for sub in ("runs", "cache"):
             for src in glob.glob(os.path.join(RESUME_FROM, "**", sub, self.name), recursive=True):
                 dst = f"{ROOT}/{sub}/{self.name}"
                 print(f"resuming: copying {src} -> {dst}", flush=True)
                 shutil.copytree(src, dst, dirs_exist_ok=True)
+                copied.append(src)
+        if not copied:
+            sys.exit(f"RESUME_FROM={RESUME_FROM} contains no runs/{self.name} or cache/{self.name} to resume from. "
+                     f"Its top level holds: {sorted(os.listdir(RESUME_FROM))[:20]}. Point it at the right input, "
+                     f"or clear RESUME_FROM to start fresh.")
+        n_teachers = len(glob.glob(f"{self.runs}/teachers/*/results.json"))
+        n_runs = len(glob.glob(f"{self.runs}/*/*/seed*/results.json"))
+        print(f"resumed: {n_teachers} finished teachers, {n_runs} finished student runs", flush=True)
         self._load_dropped()
 
     def prepare(self):
