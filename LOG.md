@@ -136,3 +136,7 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   and `train_student` refuses to start when it does not match. Verified both ways: the matching split
   trains, a different split exits with the mismatch message. This matters for the Kaggle resume, where
   the cache comes from an earlier session and the split is rebuilt from scratch.
+- **Resume path**: Kaggle mounts a notebook output at `/kaggle/input/notebooks/<user>/<slug>`, not
+  `/kaggle/input/<slug>`, so the first resume attempt exited immediately on the new guard (30 s lost
+  instead of 1.5 h of retraining). Both notebooks now detect the path themselves by globbing
+  `/kaggle/input/**/runs/<dataset>`; nothing has to be typed. Verified against a mock mount.
