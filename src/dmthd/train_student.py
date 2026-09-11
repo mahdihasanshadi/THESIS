@@ -184,7 +184,7 @@ def main():
             bs = len(y)
             sums["total"] = sums.get("total", 0.0) + loss.item() * bs
             for k, v in parts.items():
-                sums[k] = sums.get(k, 0.0) + float(v) * bs
+                sums[k] = sums.get(k, 0.0) + float(v.detach() if hasattr(v, 'detach') else v) * bs
             if w is not None:
                 wsum = w.cpu() * bs if wsum is None else wsum + w.cpu() * bs
             n += bs

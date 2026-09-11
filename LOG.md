@@ -208,11 +208,19 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   wrong or an extra previous notebook is harmless. The notebooks build the list automatically from
   `/kaggle/input/**/runs/<dataset>`. Verified: two fake sources merge to the richer count, and a
   single bad path in the list still exits with the list of what is missing.
-- **Resume made disk-safe.** Two problems seen in the version-3 log: the same `runs/tweets` tree was
-  copied twice (glob's `**` can yield a directory more than once; now de-duplicated), and copying a
+- **Resume made disk-safe.** The version-3 log appeared to copy `runs/tweets` twice, but the timings
+  show a single 182 s copy: Kaggle echoes each stdout line twice in its log viewer. The de-duplicating
+  `sorted(set(...))` stays as a cheap guard. The real problem is disk: copying a
   finished grid of checkpoints back in costs about 14 GB of Kaggle's 20 GB working space. Resume now
   leaves model weights behind unless a run still needs them, i.e. it has `results.json` but no
   `eval_test.json`, so its probe evaluation is still pending (`RESUME_WEIGHTS=auto`, overridable with
   `all` or `none`). Caches are always copied in full, since student training reads them. Free disk is
   printed after the copy. Verified on a fixture: the probed run arrives without its checkpoint, the
   unprobed one keeps it.
+- **Kaggle tweets version 3 resumed cleanly**: 4 finished teachers and **78 finished student runs**
+  recovered from version 2 (which had used its whole 12-hour session). The grid is 120 runs with
+  one-seed ablations, so about 42 remain, roughly six hours at the observed pace of ~9 minutes per
+  run; the 11-hour budget should now cover the students, sweeps, robustness, quantisation, benchmark
+  and aggregation. Version 3 is training `distilbert/skd_hetero/seed1`, i.e. it is already in the
+  heterogeneous-committee block. First epoch of that run: validation macro-F1 0.8802, and the single
+  teacher correctly carries weight 1.0.
