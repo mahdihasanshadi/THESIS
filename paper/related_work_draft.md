@@ -1,6 +1,6 @@
 # Related work (draft skeleton with citation keys from `references.bib`)
 
-Target length 1,500 words. Four themes, each ending with the gap this paper fills. Every claim
+Target length 1,800 words. Five themes, each ending with the gap this paper fills. Every claim
 below is tied to a key in `paper/references.bib`; do not add a citation that is not in the
 verified list without running `verify_refs.py` on it first.
 
@@ -25,6 +25,35 @@ davidson2017automated, borkan2019nuanced}.
 **Gap.** Sarcastic and ironic abuse is named as the hard case in every survey, but compact
 detectors are evaluated on aggregate F1 only; no work reports the false-positive rate on benign
 sarcasm and the recall on ironic abuse of a deployable model. [Our contribution 3.]
+
+## 2.1a Abuse carried by implication
+
+A separate line of work argues that the hard case is not offensive vocabulary but its absence.
+ElSherief et al. \cite{elsherief2021latent} build a taxonomy of implicit hate and a corpus in which
+implication is annotated as such, and report that models competent on explicit hate lose most of
+their accuracy on it. Ocampo et al. \cite{ocampo2023indepth} take the same position from the other
+direction, separating hate speech into explicit and implicit layers and showing that the implicit
+layer is where detectors and annotators both struggle. ToxiGen \cite{hartvigsen2022toxigen}
+approaches the problem by generating implicit examples adversarially, which makes the point that
+implicit abuse is scarce in naturally collected data. HateXplain \cite{mathew2021hatexplain}
+supplies rationales, which help where the evidence is lexical and help least where it is not.
+Related evidence comes from the annotation literature: the texts annotators disagree on are
+disproportionately the ones whose hostility is implied rather than stated
+\cite{uma2021learning, davani2022dealing, plank2022problem}.
+
+Two things follow for a paper about compact models. First, a corpus that does not label implication
+cannot be used to train for it: the widely used cyberbullying and toxicity benchmarks
+\cite{wang2020sosnet, wulczyn2017exmachina, davidson2017automated, founta2018large} record topic or
+a binary attack flag, so implicit abuse is present in them but invisible to the objective. Second,
+the domain-specialised encoders a distillation committee would naturally recruit
+\cite{caselli2021hatebert, barbieri2020tweeteval, zhou2021challenges} were themselves trained on
+corpora of the first kind, so none of them holds the knowledge either.
+
+**Gap.** Implicit abuse is studied as a benchmark problem for large models and as an annotation
+problem, but not as a transfer problem: nobody asks whether the ability to read implication can be
+moved into a model small enough to deploy, or by what mechanism. That is what this paper does, and
+it is why one member of our committee has to be trained rather than downloaded. [Our contributions
+1 and 2.]
 
 ## 2.2 Knowledge distillation for pre-trained language models
 

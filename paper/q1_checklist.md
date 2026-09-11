@@ -54,6 +54,8 @@ Every `[x]` names where the evidence lives.
 - [x] Verified bibliography: 63 entries, 47 with Crossref-verified DOIs, 16 arXiv/proceedings entries without DOI by design, no anonymous, duplicate or mismatched entries — `paper/references.bib`, `paper/refs_report.csv`
 - [~] All Phase-2 citation faults mapped to keep/correct/delete with replacement keys — `paper/phase2_citation_map.md`; the writing lead applies it to the thesis text
 
+- [x] Related-work theme on abuse carried by implication, with its own gap statement (2.1a) - `paper/related_work_draft.md`
+- [x] Every cited key resolves against the verified bibliography; 63 entries, 63 cited, 0 dangling - `python paper/check_cites.py paper`
 ## G. Reproducibility and ethics
 - [x] Public code with fixed seeds and one-command drivers — github.com/mahdihasanshadi/THESIS
 - [x] Lab notebook — `LOG.md`
