@@ -52,6 +52,11 @@ results will be in the paper either way, and a reviewer will find them.
 4. Whether `spec` beats the two controls: the specialist alone, and the same student pre-trained on
    the implicit corpus without any distillation.
 
+**To make the choice concrete**, both abstracts are written out in `paper/abstract_draft.md`,
+with every unmeasured number marked as a placeholder and a note under each saying what that
+version is betting on. Read those two before deciding; the difference between them is easier to
+judge as prose than as an argument.
+
 **By when:** as soon as the implicit Kaggle run finishes. Until then the writing that is safe to do
 is the related work, the setup section and the limitations, none of which depend on the framing.
 
