@@ -372,3 +372,50 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   implicit/explicit distinction, and there is not enough of it to measure anything. The column is
   carried for provenance and used by nothing; recorded as F14b so nobody rediscovers it and assumes
   it works.
+- **CORRECTION, same day: the implicit benchmark is rebuilt from one corpus, not two.** Before
+  training anything on the pooled corpus built earlier today, I checked whether its label is
+  separable by source, because implicit and explicit examples come from opposite sides of it. It is.
+  - A TF-IDF classifier predicts which corpus a text came from at **0.91 macro-F1**, and the class
+    mix is lopsided: 95 per cent of implicit examples come from the Implicit Hate Corpus, 89 per cent
+    of explicit examples from ISHate. A model trained on the pool can score well on
+    implicit-versus-explicit by recognising the source and never read an implication.
+  - It is not hypothetical. Scored on *identical* Implicit Hate test rows, a classical model trained
+    on the pool gets implicit-hate F1 **0.473**; trained on that corpus alone it gets **0.548**
+    (macro-F1 0.521 against 0.571). The pooled corpus scores higher in aggregate, 0.681 against
+    0.562, precisely because the aggregate rewards the shortcut. Pooling bought a bigger headline
+    number and cost 0.075 F1 on the only class the paper is about.
+  - `prepare_implicit.py --corpora` now selects which corpora form the splits, default
+    `ImplicitHate`. Whatever is left over is written as an out-of-domain test set instead of being
+    discarded, with every text that also occurs in the splits removed first.
+  **The benchmark as it now stands**: 20,637 rows from the Implicit Hate Corpus, split 16,509 /
+  2,064 / 2,064; training classes not_hate 10,616, implicit_hate 5,029, explicit_hate 864. ISHate is
+  held out entirely: `test_ood_ishate.csv`, 27,110 rows (17,697 benign, 9,412 explicit, 1 implicit)
+  after dropping 613 that overlap the splits. Out-of-domain *implicit* recall is measured by the
+  implicit-abuse probe, which is those ISHate implicit rows; the out-of-domain set measures whether a
+  model trained to find implication starts firing on ordinary text when the domain changes.
+  **Classical floor, corrected**: macro-F1 **0.5620**, accuracy 0.6972, ECE 0.0707; not_hate 0.7966,
+  implicit_hate **0.5562**, explicit_hate 0.3333 (108 test rows, so that one is noise).
+  **Headline metric added**: implicit-discrimination AUC, the threshold-free ranking of implied hate
+  against ordinary text, 629 positives and 1,327 negatives. The floor scores **0.7610** (AP 0.6159).
+  It sits almost exactly where the tweet student's sarcasm-discrimination AUC sits (0.776): the same
+  difficulty, measured twice on different data. Macro-F1 is not the headline on this benchmark,
+  because a three-class average over one large easy class and one 108-row class says little about
+  implication.
+- **The two corpora agree about hate and disagree about implication** (`dmthd.corpus_agreement`).
+  They share 629 texts. On whether a text is hateful at all they agree on **99.7 per cent**. On
+  whether the hate is stated or implied they agree on **48.2 per cent**: of the 624 both call
+  hateful, the Implicit Hate Corpus labels essentially all implicit while ISHate labels 324 explicit
+  and 300 implicit. The overlap is not a random sample of either corpus, so this is a comparison of
+  two independent annotations of the same texts rather than a corpus-wide agreement estimate, and it
+  is reported that way. It is the second reason not to pool them, it belongs beside our own
+  annotation study, and it bounds how sharp any implicit-hate result on either corpus can be.
+  This replaces the "346 conflicting texts" number in the earlier entry, which was a de-duplication
+  count over the pooled corpus and not a measurement of annotator agreement.
+- **Per-source reporting is now automatic** (`evaluate.py --group_col`, `baseline_tfidf.py
+  --group_col`, on by default for the implicit benchmark). The source confound was found by looking;
+  it should not have needed looking. Any benchmark assembled from more than one source can be gamed
+  by style, and reporting the within-source numbers beside the aggregate every time is the cheapest
+  guard against it.
+- Documents corrected for the new numbers: `DECISIONS.md` (F13 and F14 rewritten with the superseded
+  figures kept, F16 and Decisions 17 and 18 added), `paper/setup_draft.md`, `paper/q1_checklist.md`,
+  `README.md`, and the implicit manifest regenerated (20,637 rows, new split fingerprints).

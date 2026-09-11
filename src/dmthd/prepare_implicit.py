@@ -151,6 +151,16 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--probes", default="probes", help="probe directory to hold out; empty disables")
     ap.add_argument("--exclude_sources", default=",".join(DEFAULT_EXCLUDED_SOURCES))
+    ap.add_argument("--corpora", default="ImplicitHate",
+                    help="which source corpora form the train/val/test splits. Default is the "
+                         "Implicit Hate Corpus alone, and the reason is measured rather than "
+                         "assumed: 95 per cent of implicit examples come from it and 89 per cent of "
+                         "explicit examples come from ISHate, while a lexical model tells the two "
+                         "corpora apart at 0.91 macro-F1. A model trained on both can therefore earn "
+                         "an implicit-versus-explicit score by recognising the source. It also does "
+                         "worse where it matters: on identical Implicit Hate test rows, training on "
+                         "both gives implicit-hate F1 0.473 against 0.548 for training on that "
+                         "corpus alone. Pass `ImplicitHate,ISHate` to rebuild the combined version.")
     ap.add_argument("--download", action="store_true")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--val_frac", type=float, default=0.10)
@@ -183,17 +193,53 @@ def main():
                                    "the probe sets share sources with this corpus; probe metrics "
                                    "from a model trained on it would be contaminated"}
 
-    train, val, test, dd = dedup_and_split(df, "text", "label_name", seed=args.seed,
+    # The splits come from the chosen corpora only. Whatever is left over becomes an out-of-domain
+    # test set instead of being thrown away: a model that reads implication should still read it in
+    # a corpus collected by other people from another platform, and that is a stronger claim than
+    # any in-domain score.
+    chosen = [c.strip() for c in args.corpora.split(",") if c.strip()]
+    unknown = set(chosen) - set(df["corpus"].unique())
+    if unknown:
+        raise SystemExit(f"--corpora names {sorted(unknown)}, but the data holds "
+                         f"{sorted(df['corpus'].unique())}")
+    primary, held = df[df["corpus"].isin(chosen)].copy(), df[~df["corpus"].isin(chosen)].copy()
+    report["corpora_in_splits"] = chosen
+    report["rows_primary"], report["rows_held_out"] = int(len(primary)), int(len(held))
+
+    train, val, test, dd = dedup_and_split(primary, "text", "label_name", seed=args.seed,
                                            val_frac=args.val_frac, test_frac=args.test_frac)
     report["dedup"] = dd
     ensure_dir(args.out)
     ids = {n: i for i, n in enumerate(IMPLICIT3)}
+    cols = ["text", "label_name", "corpus", "origin", "subtle"]
     for name, d in (("train", train), ("val", val), ("test", test)):
-        out = d[["text", "label_name", "corpus", "origin", "subtle"]].copy()
+        out = d[cols].copy()
         out["label"] = out["label_name"].map(ids).astype(int)
         out.to_csv(os.path.join(args.out, f"{name}.csv"), index=False, encoding="utf-8")
     report["corpus_mix"] = {n: d["corpus"].value_counts().to_dict()
                             for n, d in (("train", train), ("val", val), ("test", test))}
+
+    # Out-of-domain sets, one per held-out corpus, with every text that occurs anywhere in the
+    # splits removed first: the two corpora share rows, and an "out-of-domain" set containing
+    # training text would measure memorisation.
+    seen = set(pd.concat([train, val, test])["text"].map(normalize_for_matching))
+    report["out_of_domain"] = {}
+    for corpus in sorted(held["corpus"].unique()):
+        d = held[held["corpus"] == corpus].copy()
+        d["_key"] = d["text"].map(normalize_for_matching)
+        overlap = int(d["_key"].isin(seen).sum())
+        d = d[~d["_key"].isin(seen)].drop_duplicates("_key")
+        keep = d.groupby("_key")["label_name"].nunique()
+        conflicting = set(keep[keep > 1].index)
+        d = d[~d["_key"].isin(conflicting)]
+        out = d[cols].copy()
+        out["label"] = out["label_name"].map(ids).astype(int)
+        path = os.path.join(args.out, f"test_ood_{corpus.lower()}.csv")
+        out.to_csv(path, index=False, encoding="utf-8")
+        report["out_of_domain"][corpus] = {
+            "file": os.path.basename(path), "rows": int(len(out)),
+            "rows_dropped_overlapping_the_splits": overlap,
+            "by_class": out["label_name"].value_counts().to_dict()}
     save_json({"implicit3": IMPLICIT3, "text_column": "text", "label_column": "label", "max_len": 128},
               os.path.join(args.out, "label_info.json"))
     report["seed"] = args.seed

@@ -20,7 +20,7 @@ evidence does and does not yet license. Read `DECISIONS.md` first.
 |---|---|---|---|---|
 | `tweets` | six-class cyberbullying | 34,607 / 4,326 / 4,326 | 0.8798 macro-F1 | the primary benchmark; indirect abuse hides inside `other_cyberbullying` |
 | `wikipedia` | binary personal attack, with annotator fractions | 68,750 / 22,782 / 22,721 | 0.8759 | a second domain and the only one with per-annotator agreement |
-| `implicit` | not_hate / explicit_hate / implicit_hate | 37,744 / 4,718 / 4,719 | 0.6809, and only **0.4530** on implicit_hate against 0.7474 on explicit_hate | the only corpus where implication is a label, so the only one on which the paper's claim can be tested rather than asserted |
+| `implicit` | not_hate / explicit_hate / implicit_hate | 16,509 / 2,064 / 2,064 | 0.5620 macro-F1; **0.5562** on implicit_hate, and an implicit-discrimination AUC of **0.7610** | the only corpus where implication is a label, so the only one on which the paper's claim can be tested rather than asserted. Built from the Implicit Hate Corpus alone; ISHate is held out as a 27,110-row out-of-domain test set |
 
 ## Where things run (no local GPU)
 

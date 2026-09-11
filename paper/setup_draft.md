@@ -9,7 +9,7 @@ committed code; every count comes from a `report.json` written by the pipeline.
 |---|---|---|---|---|
 | Fine-grained cyberbullying tweets (Wang, Fu and Lu, 2020) | six-class | 34,607 / 4,326 / 4,326 | age, ethnicity, gender, religion, other_cyberbullying, not_cyberbullying | primary benchmark |
 | Wikipedia Talk personal attacks (Wulczyn, Thain and Dixon, 2017) | binary | 68,750 / 22,782 / 22,721 | attack / not attack, plus the annotator fraction as a soft label | official split; about ten annotators per comment |
-| Implicit abuse (ISHate, Ocampo et al. 2023 + Implicit Hate Corpus stage 1, ElSherief et al. 2021) | three-class | 37,744 / 4,718 / 4,719 | not_hate, explicit_hate, implicit_hate | built here; the only corpus of the three in which abuse-by-implication is a label rather than a hidden subset |
+| Implicit abuse (Implicit Hate Corpus stage 1, ElSherief et al. 2021) | three-class | 16,509 / 2,064 / 2,064 | not_hate, explicit_hate, implicit_hate | built here; the only corpus of the three in which abuse-by-implication is a label rather than a hidden subset. ISHate (Ocampo et al. 2023) is held out as a 27,110-row out-of-domain test set |
 
 ### Tweet corpus: de-duplication
 
@@ -49,22 +49,44 @@ inside `other_cyberbullying`, a catch-all that also holds unrelated material, an
 corpus records only whether a comment is an attack. A model trained on either therefore never sees
 an example annotated as implicit, which makes the central claim of this paper untestable on them.
 
-We build a third benchmark in which the distinction is the label. ISHate contributes its original
-rows, augmentations excluded (63,758 to 29,116) and ToxiGen-sourced rows excluded under the
-provenance rule (29,116 to 28,763); note that ISHate records its benign class only in
-`hateful_layer`, its `implicit_layer` being empty for every Non-HS row. The Implicit Hate Corpus
-contributes its stage-1 annotation, 21,480 posts across the same three classes; the widely mirrored
-stage-2 file contains no benign class and cannot be used for this purpose.
+We build a third benchmark in which the distinction is the label. Two corpora annotate it: the
+Implicit Hate Corpus stage-1 release, 21,480 posts across exactly these three classes (the widely
+mirrored stage-2 file has no benign class and cannot be used here), and ISHate, whose original rows
+number 29,116 after excluding its augmentations and 28,763 after excluding ToxiGen-sourced rows under
+the provenance rule. ISHate records its benign class only in `hateful_layer`, its `implicit_layer`
+being empty for every Non-HS row.
 
-Every text that occurs in any of the three probe sets below is then removed from all three splits,
-1,581 rows in total, so that probe metrics remain measured on text no model has trained on. The
-remaining 48,662 rows go through the same pipeline as the tweet corpus: 351 rows under two tokens;
-346 texts that the two source corpora label differently, all 710 of their rows removed; 420 exact
-duplicates. The 47,181 survivors are split 80/10/10 stratified by class with seed 42.
+**The splits come from one corpus, not both, and the reason is measured.** Ninety-five per cent of
+implicit examples in the union come from the Implicit Hate Corpus and 89 per cent of explicit
+examples come from ISHate, while a TF-IDF classifier separates the two corpora at 0.91 macro-F1. A
+model trained on the union can therefore score well on implicit-versus-explicit by recognising which
+corpus a text came from, without reading any implication at all. It also does measurably worse where
+it matters: scored on identical Implicit Hate test rows, a classical model trained on the union
+reaches 0.473 F1 on implicit hate against 0.548 for the same model trained on that corpus alone.
+We therefore build train, validation and test from the Implicit Hate Corpus and keep ISHate entirely
+out of them, as a 27,110-row out-of-domain test set.
 
-That 346-text disagreement is itself a measurement. Two corpora built by different teams to annotate
-the same phenomenon assign different labels to the same text about one time in a hundred and forty,
-which bounds how sharp any implicit-hate result on either of them can be.
+Every text occurring in any of the three probe sets below is removed first, 1,581 rows across the
+union, so that probe metrics remain measured on text no model has trained on. The Implicit Hate rows
+that remain then go through the same pipeline as the tweet corpus: 10 rows under two tokens, 12 texts
+carrying more than one label (25 rows), 12 exact duplicates. The 20,637 survivors are split 80/10/10
+stratified by class with seed 42, giving 16,509 / 2,064 / 2,064 with training classes not_hate
+10,616, implicit_hate 5,029 and explicit_hate 864. The held-out ISHate rows lose a further 613 that
+also occur in the splits, leaving 27,110.
+
+Note what the out-of-domain set can and cannot test. It holds 17,697 benign and 9,412 explicitly
+hateful texts but only one implicit one, because ISHate's implicit rows are almost all in the probe
+sets already. Out-of-domain implicit *recall* is therefore measured by the implicit-abuse probe,
+which is exactly those 763 ISHate rows; the out-of-domain set measures whether a model trained to
+find implication starts calling ordinary text hateful when the domain changes.
+
+**The two corpora disagree about implication far more than they disagree about hate.** They share
+629 texts. On whether a text is hateful at all they agree on 99.7 per cent of them. On whether the
+hate is stated or implied they agree on 48.2 per cent: of the 624 shared texts both call hateful, the
+Implicit Hate Corpus labels essentially all of them implicit while ISHate labels 324 explicit and 300
+implicit. Two expert annotation efforts placing the boundary in materially different places is a
+direct measurement of how hard this label is, it is the reason we do not pool the corpora, and it
+bounds how sharp any implicit-hate result on either of them can be.
 
 ## Targeted test sets for the sarcasm claim (inference only)
 
@@ -121,13 +143,20 @@ TF-IDF over word 1-2 grams and character 3-5 grams with class-balanced logistic 
 |---|---|---|---|
 | Tweets | 0.880 | 0.893 | per-class F1: age 0.98, ethnicity 0.98, religion 0.95, gender 0.91, other 0.75, not_cyberbullying 0.70 |
 | Wikipedia | 0.876 | 0.947 | ROC-AUC 0.968, PR-AUC 0.868, attack-class F1 0.78 |
-| Implicit | 0.681 | 0.766 | per-class F1: not_hate 0.842, explicit_hate 0.747, implicit_hate 0.453; ECE 0.045 |
+| Implicit | 0.562 | 0.697 | per-class F1: not_hate 0.797, implicit_hate 0.556, explicit_hate 0.333; implicit-discrimination AUC 0.761; ECE 0.071 |
 
 Every neural result is reported relative to this floor. The third row is the reason the third
-corpus exists: a lexical model is competent on abuse that says what it means and collapses on abuse
-that implies it, a gap of 29 F1 points inside a single corpus, measured without any model of ours.
-On the tweet corpus the same floor is high enough that our own fine-tune-only student does not beat
-it, which leaves distillation little room to demonstrate anything.
+corpus exists. On the tweet corpus the floor is high enough that our own fine-tune-only student does
+not beat it, which leaves distillation little room to demonstrate anything; on the implicit corpus a
+bag of n-grams reaches 0.56 F1 on implied hate and ranks implied hate above ordinary text at an AUC
+of 0.76, which is well above chance and a long way from solved. The explicit class is small in this
+corpus (108 test rows) and its F1 is correspondingly noisy, which is why macro-F1 is not the headline
+here: the number the claim is argued on is implicit-discrimination AUC, the threshold-free ranking of
+implied hate against ordinary text.
+
+For the record, pooling both corpora gives a higher aggregate score, 0.681 macro-F1 with 0.453 on
+implicit hate, and that is precisely the artefact described above: the extra accuracy comes from the
+model being able to tell the corpora apart.
 
 ## Protocol (fixed before any GPU run)
 

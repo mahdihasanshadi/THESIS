@@ -35,7 +35,9 @@ commonly used loosely in the literature, the narrow sense we adopt is stated.
 | **Ironic abuse** | Abuse delivered through irony or implication. 1,560 items: 797 from the Implicit Hate Corpus stage-2 irony category, 763 original ISHate rows labelled Implicit HS. |
 | **Sarcasm-discrimination AUC** | ROC-AUC with ironic abuse as positives and benign sarcasm as negatives, scored by p(bullying). Threshold-free, so it separates "cannot see indirect abuse" from "sees it but cannot tell it from harmless sarcasm". **This is the headline metric for the paper's sarcasm claim** (Decision 13). |
 | **Disagreement-aware variant** | On corpora with annotator fractions, the hard-label term is scaled by annotator agreement `a_i` and the teacher term by `1 + kappa(1 - a_i)`, so the student trusts the committee more where annotators disagreed. Applies to Wikipedia only. |
-| **Implicit benchmark** | The third corpus, built here: `not_hate`, `explicit_hate`, `implicit_hate`, from ISHate original rows and Implicit Hate Corpus stage 1. The only one of our three where abuse-by-implication is a label rather than a hidden subset. |
+| **Implicit benchmark** | The third corpus, built here: `not_hate`, `explicit_hate`, `implicit_hate`, from the Implicit Hate Corpus stage-1 release. The only one of our three where abuse-by-implication is a label rather than a hidden subset. ISHate is held out of it as an out-of-domain test set (Decision 17). |
+| **Implicit-discrimination AUC** | ROC-AUC with implicit-hate rows as positives and benign rows as negatives, scored by p(implicit hate). The headline metric of the implicit benchmark, for the same reason sarcasm-discrimination AUC is the headline of the sarcasm claim: it is threshold-free and it is not diluted by classes the paper is not about. |
+| **Out-of-domain test set** | A corpus annotated for the same task by other people, kept entirely out of training. Here: 27,110 ISHate rows. It answers whether a model trained to find implication still behaves when the domain changes. |
 | **Explicit hate** | Abuse that states its target and its hostility outright, typically with slurs or direct insult. |
 | **Implicit hate** | Abuse carried by implication, stereotype, irony or coded reference, with no lexical marker of hostility. This is what the paper is about. |
 | **Implicit specialist** | HateBERT trained on the implicit benchmark, then task-adapted onto the target benchmark like any other teacher. The only committee member that has seen implication labelled as such. |
@@ -184,6 +186,27 @@ split, re-derive the probes from the test split, or delete them from the benchma
 first two make every probe number in the paper conditional on a split, and one of them invalidates
 results already reported. The third costs 1,581 rows out of 48,662 and keeps every probe number
 comparable across all three benchmarks and across everything already run. Taken: delete them.
+### D17. The implicit benchmark is built from one corpus, and the other is held out
+*Taken 2026-09-12, on the evidence of F16, replacing the pooled corpus built earlier the same day.*
+Train, validation and test come from the Implicit Hate Corpus alone. ISHate is kept entirely out of
+them and becomes a 27,110-row out-of-domain test set.
+**Why:** pooling makes the label partly predictable from the source (F16), and costs 0.075 F1 on
+implied hate measured on identical test rows. A benchmark whose headline number can be earned by
+recognising which corpus a text came from cannot support this paper's claim.
+**Rejected:** pooling and reporting per-source metrics as a correction. Per-source reporting is kept
+anyway, because it costs nothing and catches this class of problem, but it does not fix a *training*
+signal that rewards the shortcut.
+**Cost:** a smaller corpus (20,637 rows against 47,181) and a thin explicit class (864 training
+rows), which is why macro-F1 is not the headline. The implicit-discrimination AUC is.
+**Reversible in one flag:** `prepare_implicit.py --corpora ImplicitHate,ISHate` rebuilds the pooled
+version, and the rebuild is deterministic, so the comparison can be redone at any time.
+
+### D18. Every score on a multi-source benchmark is also reported within each source
+*Taken 2026-09-12.* `evaluate.py --group_col` and `baseline_tfidf.py --group_col`.
+**Why:** F16 was found by looking; it should not have needed looking. Any benchmark assembled from
+more than one source can be gamed by style, and the cheapest guard is to report the within-source
+numbers alongside the aggregate, every time, automatically.
+
 
 ---
 
@@ -266,17 +289,37 @@ Wikipedia-trained models score a 3.6% false-positive rate on benign sarcasm and 
 ironic abuse: they almost never fire on tweet-style text. Those numbers measure domain shift, not
 sarcasm awareness. **Probe metrics are therefore reported for tweet-trained models only.**
 
-### F13. On a corpus that labels implication, the classical floor splits in two
-The implicit benchmark, TF-IDF plus logistic regression, test macro-F1 0.6809 and accuracy 0.7663.
-Per class: not_hate 0.8421, explicit_hate 0.7474, **implicit_hate 0.4530**. A bag of n-grams handles
-explicit abuse and collapses on implication, a 29-point F1 gap inside a single corpus with no model
-of ours involved. On the tweet corpus the same floor reaches 0.8798 and our fine-tune-only student
-cannot beat it (F3); here there is room for a method to earn its place, and the room is exactly where
-the paper says it contributes.
+### F13. On a corpus that labels implication, there is room for a method to earn its place
+*Revised 2026-09-12 after F16; the superseded numbers are kept at the end of this entry because the
+difference between them is itself the evidence for Decision 17.*
 
-Corpus construction, from `report.json`: ISHate 63,758 raw, 29,116 after dropping augmentations,
-28,763 after dropping ToxiGen provenance; Implicit Hate Corpus stage 1 contributes 21,480; 1,581 rows
-removed as probe holdout; 48,662 combined, 47,181 after cleaning, split 37,744 / 4,718 / 4,719.
+The implicit benchmark, TF-IDF plus logistic regression, test macro-F1 **0.5620**, accuracy 0.6972,
+ECE 0.0707. Per class: not_hate 0.7966, **implicit_hate 0.5562**, explicit_hate 0.3333. The headline
+number is **implicit-discrimination AUC 0.7610** (average precision 0.6159) over 629 implicit and
+1,327 benign test rows: ranked by p(implicit hate), does implied abuse come above ordinary text?
+Well above chance, a long way from solved, and strikingly close to the 0.776 sarcasm-discrimination
+AUC of the tweet student (F10), which is the same difficulty measured on a different corpus.
+
+Macro-F1 is not the headline here. The explicit class has 108 test rows, so its F1 is noise, and a
+three-class macro average over one large easy class and one tiny one says little about implication.
+
+Corpus construction, from `report.json`: the splits come from the Implicit Hate Corpus alone,
+20,684 rows after probe holdout, 20,637 after cleaning, split 16,509 / 2,064 / 2,064. Training
+classes: not_hate 10,616, implicit_hate 5,029, explicit_hate 864. ISHate is held out entirely as a
+27,110-row out-of-domain test set (17,697 benign, 9,412 explicit, 1 implicit).
+
+*Superseded:* pooling both corpora gave 47,181 rows and a higher aggregate score, macro-F1 0.6809
+with implicit_hate 0.4530. The higher aggregate is an artefact and the lower implicit F1 is the real
+cost; see F16.
+
+### F14. The two corpora agree about hate and disagree about implication
+They share 629 texts. On whether a text is hateful at all they agree on **99.7 per cent** of them. On
+whether the hate is stated or implied they agree on **48.2 per cent**: of the 624 both call hateful,
+the Implicit Hate Corpus labels essentially all implicit, while ISHate labels 324 explicit and 300
+implicit. Two expert annotation efforts placing the boundary in materially different places is a
+direct measurement of how hard this label is. It bounds how sharp any implicit-hate result on either
+corpus can be, it belongs in the paper beside our own annotation study, and it is one of the two
+reasons the corpora are not pooled (`python -m dmthd.corpus_agreement`).
 
 ### F14b. ISHate's subtlety layer is not usable, and the paper should not pretend otherwise
 ISHate ships a `subtlety_layer` (Subtle / Non-Subtle) that looks like a natural second axis for this
@@ -286,11 +329,6 @@ implicit/explicit distinction and there is nowhere near enough of it to measure 
 is carried through `prepare_implicit.py` for provenance and is used by nothing. Recorded so that a
 later reader does not rediscover it and assume it works.
 
-### F14. The two implicit corpora disagree with each other on 346 texts
-De-duplicating the combined corpus found 346 texts present in both sources with different labels,
-710 rows in total, all removed. That disagreement rate is a measurement of how hard the implicit
-label is for humans, obtained for free, and it belongs in the paper next to the annotation study.
-
 ### F15. Two schema traps in the source corpora, either of which yields a silently wrong benchmark
 Recorded because anyone reproducing this will hit them.
 - ISHate records the benign class **only** in `hateful_layer`. Its `implicit_layer` holds
@@ -298,6 +336,19 @@ Recorded because anyone reproducing this will hit them.
   all 17,869 benign examples and leaves a corpus with no negative class.
 - The SALT-NLP `ImplicitHate` mirror ships **stage 2 only**: 6,346 rows, no benign class. Stage 1,
   the three-class set with 21,480 rows, is at `tasksource/implicit-hate-stg1`.
+
+### F16. Pooling the two corpora buys an aggregate score and costs the thing we care about
+The union is separable: a TF-IDF classifier predicts which corpus a text came from at **0.91
+macro-F1**. The classes are drawn very unevenly from the two sides: 95 per cent of implicit examples
+come from the Implicit Hate Corpus and 89 per cent of explicit examples from ISHate. A model trained
+on the union can therefore score well on implicit-versus-explicit by recognising the source, and the
+evidence says it does. Scored on *identical* Implicit Hate test rows, a classical model trained on
+the union reaches 0.473 F1 on implicit hate; the same model trained on that corpus alone reaches
+0.548, and macro-F1 goes from 0.521 to 0.571. The pooled corpus scores higher in aggregate (0.681
+against 0.562) precisely because the aggregate rewards the shortcut.
+
+This is the failure mode that would have sunk the paper quietly: a strong headline number, a
+plausible story, and a reviewer asking why implicit and explicit examples come from different places.
 
 ---
 
@@ -312,10 +363,13 @@ Recorded because anyone reproducing this will hit them.
   is threshold-free (F10).
 - Two widely used corpora do not transfer to each other, and one of them is materially dirty (F1, F9).
 - A deployment profile that a practitioner can act on (F11).
-- On a corpus that labels implication, a lexical model reaches 0.747 F1 on explicit abuse and 0.453 on
-  implicit abuse, so the difficulty is in the implication and not in the topic (F13).
-- Two public implicit-hate corpora disagree on 346 shared texts (F14), and both carry schema traps
-  that silently produce a wrong benchmark (F15).
+- On a corpus that labels implication, a lexical model ranks implied hate above ordinary text at an
+  AUC of 0.761, close to the 0.776 the tweet student reaches on ironic abuse against benign sarcasm:
+  the same difficulty, measured twice on different data (F10, F13).
+- Two expert corpora agree on 99.7 per cent of shared texts about whether they are hateful and on
+  48.2 per cent about whether the hate is implied (F14), both carry schema traps that silently
+  produce a wrong benchmark (F15), and pooling them creates a source shortcut that inflates the
+  aggregate score while costing 0.075 F1 on implied hate (F16).
 
 **May not claim yet:**
 - That dynamic weighting beats uniform averaging. Blocked by F6 until the tau sweep resolves it.

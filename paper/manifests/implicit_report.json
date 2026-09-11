@@ -1,0 +1,112 @@
+{
+  "excluded_sources": [
+    "augmented",
+    "toxigen"
+  ],
+  "ishate": {
+    "rows_raw": 63758,
+    "rows_after_orig_only": 29116,
+    "by_source_before_exclusion": {
+      "hateval": 10638,
+      "wsf": 10502,
+      "mconan": 3639,
+      "youtube": 2962,
+      "ihc": 617,
+      "conan": 405,
+      "toxigen": 353
+    },
+    "rows_after_source_exclusion": 28763,
+    "rows_without_a_usable_label": 0,
+    "rows_kept": 28763,
+    "by_class": {
+      "not_hate": 17869,
+      "explicit_hate": 9826,
+      "implicit_hate": 1068
+    }
+  },
+  "implicit_hate": {
+    "rows_raw": 21480,
+    "rows_kept": 21480,
+    "by_class": {
+      "not_hate": 13291,
+      "implicit_hate": 7100,
+      "explicit_hate": 1089
+    }
+  },
+  "rows_combined": 50243,
+  "probe_holdout": {
+    "probe_files": {
+      "benign_sarcasm.csv": 1064,
+      "benign_sarcasm_review.csv": 181,
+      "benign_sarcasm_screened.csv": 883,
+      "implicit_abuse.csv": 763,
+      "ironic_abuse.csv": 1560
+    },
+    "probe_texts": 2624,
+    "rows_removed": 1581,
+    "removed_by_class": {
+      "implicit_hate": 1572,
+      "explicit_hate": 9
+    },
+    "policy": "probe texts are removed from all splits so every probe number in the paper stays measured on unseen text"
+  },
+  "corpora_in_splits": [
+    "ImplicitHate"
+  ],
+  "rows_primary": 20684,
+  "rows_held_out": 27978,
+  "dedup": {
+    "rows_in": 20684,
+    "rows_after_min_len": 20674,
+    "texts_with_conflicting_labels": 12,
+    "rows_dropped_conflicting": 25,
+    "rows_dropped_duplicates": 12,
+    "rows_out": 20637,
+    "split": {
+      "train": 16509,
+      "val": 2064,
+      "test": 2064
+    },
+    "class_counts": {
+      "train": {
+        "not_hate": 10616,
+        "implicit_hate": 5029,
+        "explicit_hate": 864
+      },
+      "val": {
+        "not_hate": 1327,
+        "implicit_hate": 629,
+        "explicit_hate": 108
+      },
+      "test": {
+        "not_hate": 1327,
+        "implicit_hate": 629,
+        "explicit_hate": 108
+      }
+    }
+  },
+  "corpus_mix": {
+    "train": {
+      "ImplicitHate": 16509
+    },
+    "val": {
+      "ImplicitHate": 2064
+    },
+    "test": {
+      "ImplicitHate": 2064
+    }
+  },
+  "out_of_domain": {
+    "ISHate": {
+      "file": "test_ood_ishate.csv",
+      "rows": 27110,
+      "rows_dropped_overlapping_the_splits": 613,
+      "by_class": {
+        "not_hate": 17697,
+        "explicit_hate": 9412,
+        "implicit_hate": 1
+      }
+    }
+  },
+  "seed": 42
+}

@@ -87,6 +87,19 @@ def compute_metrics(y, probs, names) -> dict:
     if len(names) == 2:
         res["roc_auc"] = float(roc_auc_score(y, probs[:, 1]))
         res["pr_auc"] = float(average_precision_score(y, probs[:, 1]))
+    if "implicit_hate" in names and "not_hate" in names:
+        # The question this benchmark exists to answer, asked directly and without a threshold:
+        # ranked by p(implicit hate), do implied attacks come above ordinary posts? Macro-F1 over
+        # three classes is dominated by the two easy ones and by whichever class happens to be
+        # smallest, so it is the wrong headline for a claim about implication.
+        pi, ni = names.index("implicit_hate"), names.index("not_hate")
+        m = np.isin(y, [pi, ni])
+        if m.sum() > 1 and 0 < (y[m] == pi).sum() < m.sum():
+            yb = (y[m] == pi).astype(int)
+            score = probs[m][:, pi]
+            res["implicit_discrimination_auc"] = float(roc_auc_score(yb, score))
+            res["implicit_discrimination_ap"] = float(average_precision_score(yb, score))
+            res["implicit_discrimination_n"] = {"implicit_hate": int(yb.sum()), "not_hate": int((1 - yb).sum())}
     return res
 
 
@@ -106,6 +119,13 @@ def main():
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--probe_neg", default=None, help="CSV with a text column of benign sarcasm")
     ap.add_argument("--probe_pos", default=None, help="CSV with a text column of ironic/implicit abuse")
+    ap.add_argument("--group_col", default=None,
+                    help="a column of the test CSV to also report metrics within, e.g. `corpus`. "
+                         "The implicit benchmark draws its classes unevenly from two sources that a "
+                         "lexical model separates at 0.91 macro-F1, so an aggregate score there can "
+                         "be earned by recognising the source instead of the implication. Within a "
+                         "single source that shortcut is gone, which is why these are the numbers "
+                         "the implicit claim is argued on.")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -118,6 +138,15 @@ def main():
     df = map_labels(pd.read_csv(args.csv), args.label_col, args.scheme)
     probs = predict_probs(fn, make_loader(df, tok, args.max_len, args.batch, False), device)
     res = compute_metrics(df["label"].values, probs, names)
+    if args.group_col and args.group_col in df.columns:
+        res["by_" + args.group_col] = {}
+        for g, idx in df.groupby(args.group_col).groups.items():
+            pos = df.index.get_indexer(idx)
+            if len(pos) < 50:          # below this a per-class F1 is noise, not a measurement
+                continue
+            m = compute_metrics(df["label"].values[pos], probs[pos], names)
+            m["n"] = int(len(pos))
+            res["by_" + args.group_col][str(g)] = m
     nb = not_bullying_index(args.scheme)
     for key, path in [("benign_sarcasm_fpr", args.probe_neg), ("ironic_abuse_recall", args.probe_pos)]:
         if path:

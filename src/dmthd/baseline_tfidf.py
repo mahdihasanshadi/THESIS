@@ -25,6 +25,8 @@ def main():
     ap.add_argument("--label_col", default="label_name")
     ap.add_argument("--C", type=float, default=4.0)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--group_col", default=None,
+                    help="also report test metrics within each value of this column, e.g. `corpus`")
     args = ap.parse_args()
 
     names = label_names(args.scheme)
@@ -47,6 +49,17 @@ def main():
            "seed": args.seed, "C": args.C, "features": int(Xtr.shape[1]), "params": int(Xtr.shape[1] * len(names)),
            "best_val_macro_f1": val_metrics["macro_f1"], "train_time_s": timer.elapsed(),
            "test": compute_metrics(te["label"].values, probs, names)}
+    if args.group_col and args.group_col in te.columns:
+        # On a benchmark assembled from more than one source, an aggregate score can be earned by
+        # recognising the source rather than the label. Within a single source that shortcut is gone.
+        res["test_by_" + args.group_col] = {}
+        for g, idx in te.groupby(args.group_col).groups.items():
+            pos = te.index.get_indexer(idx)
+            if len(pos) < 50:
+                continue
+            m = compute_metrics(te["label"].values[pos], probs[pos], names)
+            m["n"] = int(len(pos))
+            res["test_by_" + args.group_col][str(g)] = m
     ensure_dir(args.out_dir)
     np.save(os.path.join(args.out_dir, "test_probs.npy"), probs)
     np.save(os.path.join(args.out_dir, "test_labels.npy"), te["label"].values)

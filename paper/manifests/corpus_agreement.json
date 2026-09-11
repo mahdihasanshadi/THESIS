@@ -1,0 +1,26 @@
+{
+  "unique_texts": {
+    "ISHate": 28500,
+    "ImplicitHate": 21455
+  },
+  "shared_texts": 629,
+  "exact_agreement": 0.48171701112877585,
+  "disagreements": 326,
+  "agreement_on_hate_vs_not": 0.9968203497615262,
+  "hate_rate": {
+    "ISHate": 0.9920508744038156,
+    "ImplicitHate": 0.9952305246422893
+  },
+  "confusion_ishate_rows_ihc_columns": {
+    "implicit_hate": {
+      "explicit_hate": 324,
+      "implicit_hate": 300,
+      "not_hate": 2
+    },
+    "not_hate": {
+      "explicit_hate": 0,
+      "implicit_hate": 0,
+      "not_hate": 3
+    }
+  }
+}

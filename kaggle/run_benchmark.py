@@ -52,7 +52,11 @@ DATASETS = {
     # The benchmark the paper's goal needs: abuse-by-implication is a label here, not a hidden
     # subset of a catch-all class.
     "implicit": {"scheme": "implicit3", "label_col": "label_name", "max_len": 128, "num_labels": 3,
-                 "teacher_epochs": 4, "teacher_batch": 32, "student_batch": 32, "soft": False},
+                 "teacher_epochs": 4, "teacher_batch": 32, "student_batch": 32, "soft": False,
+                 # Its classes come unevenly from two sources that a lexical model separates at
+                 # 0.91 macro-F1, so every score is also reported within each source, where
+                 # recognising the source cannot help.
+                 "group_col": "corpus"},
 }
 ROOT = os.environ.get("ROOT", ".")
 TEACHERS = os.environ.get("TEACHERS", "bert-large-uncased:bert-large,GroNLP/hateBERT:hatebert,cardiffnlp/twitter-roberta-base-irony:irony")
@@ -160,6 +164,7 @@ class Bench:
         self.common = f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']}"
         self.limit = f"--limit {LIMIT}" if LIMIT else ""
         self.fp = "--fp16" if GPU else ""
+        self.group = f"--group_col {self.cfg['group_col']}" if self.cfg.get("group_col") else ""
         # The specialist joins the homogeneous committee of every benchmark except the one it was
         # trained on, where it would be a second copy of the task teacher.
         self.use_specialist = SPECIALIST and name != "implicit"
@@ -488,7 +493,8 @@ class Bench:
         for d in self._run_dirs():
             if not os.path.exists(os.path.join(d, "eval_test.json")):
                 sh(f"python -m dmthd.evaluate --model_dir {d} --csv {self.data}/test.csv --scheme {self.cfg['scheme']} "
-                   f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --probe_neg {neg} --probe_pos {pos}", check=False)
+                   f"--label_col {self.cfg['label_col']} --max_len {self.cfg['max_len']} --probe_neg {neg} "
+                   f"--probe_pos {pos} {self.group}", check=False)
         # Sarcasm-discrimination AUC for every mode of the headline student. Recall at a fixed
         # threshold cannot tell "misses indirect abuse" from "sees it but cannot separate it from
         # harmless sarcasm"; this is threshold-free, so it is the number the implicit claim rests on.
