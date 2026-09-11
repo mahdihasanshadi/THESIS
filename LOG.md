@@ -191,3 +191,15 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
     model on tweets gives 0.425 (ROC-AUC 0.718) and calls 33.7% bullying against a true rate of
     85.7%. Neither direction transfers: one over-fires, the other under-fires. This is a finding
     about the two task definitions, not a defect of the students.
+- **Kaggle tweets version 2 hit the 12-hour ceiling** (43,200 s, exit 137) with a 14.13 GB output.
+  Work was saved, but the notebook's packaging cell never ran, so no small archive was produced.
+  Three changes follow:
+  1. `TIME_BUDGET_S` (default 39,600 s = 11 h): the driver refuses to *start* new work once the
+     budget is spent, raises OutOfTime, then still runs the cheap reporting stages and exits 0, so
+     the packaging cell always runs. Tested at zero budget (stops before the first teacher) and at
+     a normal budget (trains, then finishes).
+  2. `ABLATION_SEEDS` (set to 1 in the notebook): the five ablations run on one seed instead of
+     three, saving about four GPU-hours. To be stated in Limitations.
+  3. The packaging cell now writes `dmthd_<dataset>_results.tgz` containing only metrics, histories,
+     predictions and the generated tables (tens of MB) instead of tarring the whole 14 GB tree;
+     model weights stay in the Kaggle output for the next version to resume from.

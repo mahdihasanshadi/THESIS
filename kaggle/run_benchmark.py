@@ -32,6 +32,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 DATASETS = {
     "tweets": {"scheme": "six", "label_col": "label_name", "max_len": 128, "num_labels": 6,
@@ -55,8 +56,27 @@ KAPPA = os.environ.get("KAPPA", "1.0")
 MIN_TEACHER_F1 = float(os.environ.get("MIN_TEACHER_F1", "0.5"))
 LIMIT = os.environ.get("LIMIT", "")
 STUDENT_EPOCHS = os.environ.get("STUDENT_EPOCHS", "6")
+ABLATION_SEEDS = [int(x) for x in os.environ.get("ABLATION_SEEDS", ",".join(str(s) for s in SEEDS)).split(",")]
+# Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
+# before that so the notebook finishes cleanly with a downloadable output.
+TIME_BUDGET_S = float(os.environ.get("TIME_BUDGET_S", "39600"))
+START_T = time.time()
 PROBES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "probes")
 QUIET = {"HF_HUB_DISABLE_PROGRESS_BARS": "1", "TRANSFORMERS_VERBOSITY": "error", "TOKENIZERS_PARALLELISM": "false"}
+
+
+class OutOfTime(Exception):
+    """Raised when the session's time budget is spent, so the driver stops launching new work and
+    the notebook still reaches its packaging cell."""
+
+
+def budget_left():
+    return TIME_BUDGET_S - (time.time() - START_T)
+
+
+def check_budget(what):
+    if budget_left() <= 0:
+        raise OutOfTime(what)
 
 
 def sh(cmd, check=True):
@@ -173,6 +193,7 @@ class Bench:
             out = f"{self.runs}/teachers/{tag}"
             if done(out) and test_f1(out) >= MIN_TEACHER_F1:
                 continue
+            check_budget(f"teacher {tag}")
             if done(out):
                 print(f"teacher {tag} collapsed (test macro-F1 {test_f1(out):.3f} < {MIN_TEACHER_F1}); retraining with lr 1e-5 in fp32", flush=True)
                 shutil.rmtree(out, ignore_errors=True)
@@ -226,6 +247,7 @@ class Bench:
                 for seed in SEEDS:
                     out = f"{self.runs}/{stag}/ft/seed{seed}"
                     if not done(out):
+                        check_budget(f"{stag}/ft/seed{seed}")
                         sh(self._student_cmd(name, out, seed, "ft", []))
         for comm, tags in committees:
             suffix = "" if comm == "homo" else "_hetero"
@@ -234,6 +256,7 @@ class Bench:
                     for seed in SEEDS:
                         out = f"{self.runs}/{stag}/{mode}{suffix}/seed{seed}"
                         if not done(out):
+                            check_budget(f"{stag}/{mode}{suffix}/seed{seed}")
                             sh(self._student_cmd(name, out, seed, mode, tags))
         homo = self.committee("homo")
         if not homo:
@@ -246,9 +269,10 @@ class Bench:
         for tag, flags in abl.items():
             if tag == "from_scratch" and name == "bilstm":
                 continue
-            for seed in SEEDS:
+            for seed in ABLATION_SEEDS:
                 out = f"{self.runs}/{stag}/ablation_{tag}/seed{seed}"
                 if not done(out):
+                    check_budget(f"{stag}/ablation_{tag}/seed{seed}")
                     sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {seed} "
                        f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} {self.limit} "
                        f"--cache {self.cache} --teachers {' '.join(homo)} {flags} --tag {tag}")
@@ -281,6 +305,7 @@ class Bench:
         for param, value, flags in grid:
             out = f"{self.runs}/{stag}/sweep_{param}_{value}/seed{SEEDS[0]}"
             if not done(out):
+                check_budget(f"sweep {param}={value}")
                 sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {SEEDS[0]} "
                    f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} {self.limit} --mode dmthd "
                    f"--cache {self.cache} --teachers {' '.join(homo)} --aux --delta 0.3 {flags} --tag sweep_{param}_{value}")
@@ -340,5 +365,21 @@ if __name__ == "__main__":
     b = Bench(a.dataset, raw)
     b.resume()
     order = ["prepare", "teachers", "cache", "students", "probes", "sweep", "robustness", "quant", "bench", "aggregate"]
-    for st in (order if a.stage == "all" else [a.stage]):
-        getattr(b, "cache_teachers" if st == "cache" else st)()
+    stages = order if a.stage == "all" else [a.stage]
+    ran_out = None
+    for st in stages:
+        try:
+            getattr(b, "cache_teachers" if st == "cache" else st)()
+        except OutOfTime as e:
+            ran_out = f"{st}: {e}"
+            print(f"\nTIME BUDGET SPENT ({TIME_BUDGET_S / 3600:.1f} h) while starting {ran_out}", flush=True)
+            break
+    if ran_out:
+        print("finishing the cheap reporting stages so this session leaves a usable output", flush=True)
+        for st in ("probes", "aggregate"):
+            try:
+                getattr(b, st)()
+            except OutOfTime:
+                pass
+        print("\nPARTIAL RUN: attach this version's output to the next one and run again; finished work is skipped.", flush=True)
+    print(f"elapsed {(time.time() - START_T) / 3600:.2f} h", flush=True)
