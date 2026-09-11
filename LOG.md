@@ -140,3 +140,6 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   `/kaggle/input/<slug>`, so the first resume attempt exited immediately on the new guard (30 s lost
   instead of 1.5 h of retraining). Both notebooks now detect the path themselves by globbing
   `/kaggle/input/**/runs/<dataset>`; nothing has to be typed. Verified against a mock mount.
+- **Wikipedia BERT-mini fine-tune-only, seed 2** (resumed after the power cut, early stop at epoch 5):
+  test macro-F1 0.8861, acc 0.9558, attack-class F1 0.797. Seed 1 was 0.8857; the two agree to
+  0.0004. Seed 3 running.
