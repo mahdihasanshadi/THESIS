@@ -93,7 +93,7 @@ def main():
     logits_fn = lambda ii, am: model(input_ids=ii, attention_mask=am).logits
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
-        run_loss, n = 0.0, 0
+        run_loss, n, nan_batches = 0.0, 0, 0
         for batch in train_loader:
             ii, am, y = batch["input_ids"].to(device), batch["attention_mask"].to(device), batch["labels"].to(device)
             with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=use_amp):
@@ -102,6 +102,10 @@ def main():
                 if "soft" in batch and C == 2:
                     p = torch.softmax(logits.float(), -1)[:, 1].clamp(1e-6, 1 - 1e-6)
                     loss = loss + F.binary_cross_entropy(p, batch["soft"].to(device))
+            if not torch.isfinite(loss):
+                nan_batches += 1
+                opt.zero_grad(set_to_none=True)
+                continue
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
@@ -115,7 +119,7 @@ def main():
         val_metrics = compute_metrics(va["label"].values, predict_probs(logits_fn, val_loader, device), names)
         history.append({"epoch": epoch, "train_loss": run_loss / max(n, 1), "val_macro_f1": val_metrics["macro_f1"],
                         "val_acc": val_metrics["accuracy"], "elapsed_s": elapsed_before + timer.elapsed()})
-        print(f"epoch {epoch}: loss {run_loss / max(n, 1):.4f}  val macro-F1 {val_metrics['macro_f1']:.4f}", flush=True)
+        print(f"epoch {epoch}: loss {run_loss / max(n, 1):.4f}  val macro-F1 {val_metrics['macro_f1']:.4f}" + (f"  (skipped {nan_batches} non-finite batches)" if nan_batches else ""), flush=True)
         if val_metrics["macro_f1"] > best_f1:
             best_f1 = val_metrics["macro_f1"]
             model.save_pretrained(args.out_dir)

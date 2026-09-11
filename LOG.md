@@ -107,3 +107,26 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   finished; seed 2 had a checkpoint after epoch 2 (val macro-F1 0.8859); seed 3 not started. Local
   jobs relaunched with the detached wrappers: finished seeds skipped, seed 2 resumed from its
   checkpoint. The Kaggle run is unaffected by a local power cut.
+- **Kaggle version #3 (tweets, new notebook): teachers trained on the T4.** Test macro-F1: BERT-large
+  0.8973 (acc 0.9075; best val 0.9054 at epoch 3), HateBERT 0.8887 (val 0.8973), irony-RoBERTa adapted
+  0.8926 (val 0.9065). All three beat the classical floor (0.8798) and the BERT-mini control
+  (0.8770): **the Day-3 stop rule passes**, distillation has headroom. Per-class pattern identical
+  across teachers: not_cyberbullying 0.73–0.76, other_cyberbullying 0.77–0.78, the rest 0.91–0.98.
+- **DeBERTa-v3-base teacher collapsed** (loss NaN from epoch 1, test macro-F1 0.052, train-acc 0.18 in
+  the cache). Autocast was already off for DeBERTa; most likely cause is the checkpoint being loaded
+  in half precision by the newer transformers default. Fix: `load_classifier` now forces fp32
+  weights; both training loops skip non-finite batches and report the count; the driver treats a
+  teacher below MIN_TEACHER_F1 = 0.5 as collapsed, retrains it once (lr 1e-5, fp32) and drops it from
+  every committee if still collapsed, rebuilding the cache.
+- **Driver bug**: the run crashed entering the students stage (`'list' object is not callable`):
+  the instance attribute `self.students` shadowed the `students()` method. Renamed to
+  `student_list`. Root cause of it reaching Kaggle: the smoke test never exercised the driver.
+  Added `scripts/smoke_driver.py` (full tiny grid + collapse-handling pass); it runs before push.
+  The version's output still holds the three good teachers and their cache, reusable via RESUME_FROM.
+- **Driver smoke test passed** (`scripts/smoke_driver.py`, CPU, 200 rows): ten stages of the full
+  grid (two homogeneous tiny teachers + DeBERTa-v3-xsmall heterogeneous teacher, BERT-tiny and
+  BiLSTM students, homo and hetero committees, five ablations, probes, ten sweeps, robustness,
+  INT8, bench, aggregate), then a collapse-handling pass with MIN_TEACHER_F1=0.99 in which all
+  three teachers were retrained once, dropped, recorded in `dropped_teachers.json`, and the
+  students stage still ran the fine-tune-only control without error. DeBERTa-v3-xsmall trained
+  with a finite loss (1.79) under the fp32 fix, confirming the NaN cause.

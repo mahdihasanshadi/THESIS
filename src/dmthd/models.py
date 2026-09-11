@@ -78,7 +78,11 @@ def load_classifier(name_or_dir: str, num_labels: int):
     lets a checkpoint with another head (e.g. the 2-way irony model) be adapted to this task."""
     if is_bilstm(name_or_dir):
         return BiLSTMClassifier.from_pretrained(name_or_dir) if os.path.isdir(name_or_dir) else BiLSTMClassifier(num_labels=num_labels)
-    return AutoModelForSequenceClassification.from_pretrained(name_or_dir, num_labels=num_labels, ignore_mismatched_sizes=True)
+    kw = dict(num_labels=num_labels, ignore_mismatched_sizes=True)
+    try:   # transformers >= 5 names the argument `dtype`; older versions `torch_dtype`. Always train in fp32 weights.
+        return AutoModelForSequenceClassification.from_pretrained(name_or_dir, dtype=torch.float32, **kw)
+    except TypeError:
+        return AutoModelForSequenceClassification.from_pretrained(name_or_dir, torch_dtype=torch.float32, **kw)
 
 
 def encode_batch(model, input_ids, attention_mask):

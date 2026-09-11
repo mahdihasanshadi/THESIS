@@ -136,7 +136,7 @@ def main():
         print(f"resumed from checkpoint after epoch {ck['epoch']} (best val macro-F1 so far {best_f1:.4f})", flush=True)
     for epoch in range(start_epoch, args.epochs + 1):
         student.train()
-        sums, n, wsum = {}, 0, None
+        sums, n, wsum, nan_batches = {}, 0, None, 0
         for batch in train_loader:
             ii, am = batch["input_ids"].to(device), batch["attention_mask"].to(device)
             y, idx = batch["labels"].to(device), batch["idx"]
@@ -161,6 +161,10 @@ def main():
                     student_pooled=pooled.float(), use_hidden=use_hidden,
                     aux_logits=None if aux is None else aux.float(), delta=args.delta,
                     kappa=args.kappa, reliability=args.reliability, **kw)
+            if not torch.isfinite(loss):
+                nan_batches += 1
+                opt.zero_grad(set_to_none=True)
+                continue
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
@@ -177,7 +181,7 @@ def main():
             n += bs
         student.eval()
         vm = compute_metrics(va["label"].values, predict_probs(logits_fn, val_loader, device), names)
-        row = {"epoch": epoch, "val_macro_f1": vm["macro_f1"], "val_acc": vm["accuracy"], "elapsed_s": elapsed_before + timer.elapsed()}
+        row = {"epoch": epoch, "val_macro_f1": vm["macro_f1"], "val_acc": vm["accuracy"], "elapsed_s": elapsed_before + timer.elapsed(), "nan_batches": nan_batches}
         row.update({f"loss_{k}": v / max(n, 1) for k, v in sums.items()})
         if wsum is not None:
             for k, tag in enumerate(args.teachers):
