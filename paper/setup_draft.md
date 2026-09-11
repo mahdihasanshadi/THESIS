@@ -9,7 +9,7 @@ committed code; every count comes from a `report.json` written by the pipeline.
 |---|---|---|---|---|
 | Fine-grained cyberbullying tweets (Wang, Fu and Lu, 2020) | six-class | 34,607 / 4,326 / 4,326 | age, ethnicity, gender, religion, other_cyberbullying, not_cyberbullying | primary benchmark |
 | Wikipedia Talk personal attacks (Wulczyn, Thain and Dixon, 2017) | binary | 68,750 / 22,782 / 22,721 | attack / not attack, plus the annotator fraction as a soft label | official split; about ten annotators per comment |
-| Implicit abuse (Implicit Hate Corpus stage 1, ElSherief et al. 2021) | three-class | 16,509 / 2,064 / 2,064 | not_hate, explicit_hate, implicit_hate | built here; the only corpus of the three in which abuse-by-implication is a label rather than a hidden subset. ISHate (Ocampo et al. 2023) is held out as a 27,110-row out-of-domain test set |
+| Implicit abuse (Implicit Hate Corpus stage 1, ElSherief et al. 2021) | three-class | 16,509 / 2,064 / 2,064 | not_hate, explicit_hate, implicit_hate | built here; the only corpus of the three in which abuse-by-implication is a label rather than a hidden subset. ISHate (Ocampo et al. 2023) is held out as a 27,096-row out-of-domain test set |
 
 ### Tweet corpus: de-duplication
 
@@ -64,7 +64,7 @@ corpus a text came from, without reading any implication at all. It also does me
 it matters: scored on identical Implicit Hate test rows, a classical model trained on the union
 reaches 0.473 F1 on implicit hate against 0.548 for the same model trained on that corpus alone.
 We therefore build train, validation and test from the Implicit Hate Corpus and keep ISHate entirely
-out of them, as a 27,110-row out-of-domain test set.
+out of them, as a 27,096-row out-of-domain test set.
 
 Every text occurring in any of the three probe sets below is removed first, 1,581 rows across the
 union, so that probe metrics remain measured on text no model has trained on. The Implicit Hate rows
@@ -72,9 +72,9 @@ that remain then go through the same pipeline as the tweet corpus: 10 rows under
 carrying more than one label (25 rows), 12 exact duplicates. The 20,637 survivors are split 80/10/10
 stratified by class with seed 42, giving 16,509 / 2,064 / 2,064 with training classes not_hate
 10,616, implicit_hate 5,029 and explicit_hate 864. The held-out ISHate rows lose a further 613 that
-also occur in the splits, leaving 27,110.
+also occur in the splits, leaving 27,096.
 
-Note what the out-of-domain set can and cannot test. It holds 17,697 benign and 9,412 explicitly
+Note what the out-of-domain set can and cannot test. It holds 17,691 benign and 9,404 explicitly
 hateful texts but only one implicit one, because ISHate's implicit rows are almost all in the probe
 sets already. Out-of-domain implicit *recall* is therefore measured by the implicit-abuse probe,
 which is exactly those 763 ISHate rows; the out-of-domain set measures whether a model trained to

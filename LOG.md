@@ -392,7 +392,7 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
     discarded, with every text that also occurs in the splits removed first.
   **The benchmark as it now stands**: 20,637 rows from the Implicit Hate Corpus, split 16,509 /
   2,064 / 2,064; training classes not_hate 10,616, implicit_hate 5,029, explicit_hate 864. ISHate is
-  held out entirely: `test_ood_ishate.csv`, 27,110 rows (17,697 benign, 9,412 explicit, 1 implicit)
+  held out entirely: `test_ood_ishate.csv`, 27,096 rows (17,691 benign, 9,404 explicit, 1 implicit)
   after dropping 613 that overlap the splits. Out-of-domain *implicit* recall is measured by the
   implicit-abuse probe, which is those ISHate implicit rows; the out-of-domain set measures whether a
   model trained to find implication starts firing on ordinary text when the domain changes.
@@ -422,3 +422,10 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
 - Documents corrected for the new numbers: `DECISIONS.md` (F13 and F14 rewritten with the superseded
   figures kept, F16 and Decisions 17 and 18 added), `paper/setup_draft.md`, `paper/q1_checklist.md`,
   `README.md`, and the implicit manifest regenerated (20,637 rows, new split fingerprints).
+- **Bug found by re-reading `prepare_implicit.py`: the out-of-domain set's conflicting-label filter
+  never fired.** Duplicates were dropped before conflicts were counted, so every key was unique by
+  construction and `nunique()` was always 1. Fixed to count conflicts first. It was catching nothing
+  and should have been catching 14 texts that ISHate labels two ways; those rows would have entered
+  the out-of-domain test set with whichever label happened to come first. The set is 27,096 rows, not
+  27,110. The train, validation and test splits are unaffected and their manifest still verifies
+  (MATCH, 20,637 rows).

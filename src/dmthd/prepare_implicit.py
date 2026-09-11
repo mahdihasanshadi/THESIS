@@ -228,10 +228,12 @@ def main():
         d = held[held["corpus"] == corpus].copy()
         d["_key"] = d["text"].map(normalize_for_matching)
         overlap = int(d["_key"].isin(seen).sum())
-        d = d[~d["_key"].isin(seen)].drop_duplicates("_key")
-        keep = d.groupby("_key")["label_name"].nunique()
-        conflicting = set(keep[keep > 1].index)
-        d = d[~d["_key"].isin(conflicting)]
+        d = d[~d["_key"].isin(seen)]
+        # conflicts must be found before duplicates are dropped, or every key is unique by
+        # construction and the check silently passes
+        n_labels = d.groupby("_key")["label_name"].nunique()
+        conflicting = set(n_labels[n_labels > 1].index)
+        d = d[~d["_key"].isin(conflicting)].drop_duplicates("_key")
         out = d[cols].copy()
         out["label"] = out["label_name"].map(ids).astype(int)
         path = os.path.join(args.out, f"test_ood_{corpus.lower()}.csv")
@@ -239,6 +241,7 @@ def main():
         report["out_of_domain"][corpus] = {
             "file": os.path.basename(path), "rows": int(len(out)),
             "rows_dropped_overlapping_the_splits": overlap,
+            "texts_dropped_with_conflicting_labels": int(len(conflicting)),
             "by_class": out["label_name"].value_counts().to_dict()}
     save_json({"implicit3": IMPLICIT3, "text_column": "text", "label_column": "label", "max_len": 128},
               os.path.join(args.out, "label_info.json"))

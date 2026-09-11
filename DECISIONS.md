@@ -37,7 +37,7 @@ commonly used loosely in the literature, the narrow sense we adopt is stated.
 | **Disagreement-aware variant** | On corpora with annotator fractions, the hard-label term is scaled by annotator agreement `a_i` and the teacher term by `1 + kappa(1 - a_i)`, so the student trusts the committee more where annotators disagreed. Applies to Wikipedia only. |
 | **Implicit benchmark** | The third corpus, built here: `not_hate`, `explicit_hate`, `implicit_hate`, from the Implicit Hate Corpus stage-1 release. The only one of our three where abuse-by-implication is a label rather than a hidden subset. ISHate is held out of it as an out-of-domain test set (Decision 17). |
 | **Implicit-discrimination AUC** | ROC-AUC with implicit-hate rows as positives and benign rows as negatives, scored by p(implicit hate). The headline metric of the implicit benchmark, for the same reason sarcasm-discrimination AUC is the headline of the sarcasm claim: it is threshold-free and it is not diluted by classes the paper is not about. |
-| **Out-of-domain test set** | A corpus annotated for the same task by other people, kept entirely out of training. Here: 27,110 ISHate rows. It answers whether a model trained to find implication still behaves when the domain changes. |
+| **Out-of-domain test set** | A corpus annotated for the same task by other people, kept entirely out of training. Here: 27,096 ISHate rows. It answers whether a model trained to find implication still behaves when the domain changes. |
 | **Explicit hate** | Abuse that states its target and its hostility outright, typically with slurs or direct insult. |
 | **Implicit hate** | Abuse carried by implication, stereotype, irony or coded reference, with no lexical marker of hostility. This is what the paper is about. |
 | **Implicit specialist** | HateBERT trained on the implicit benchmark, then task-adapted onto the target benchmark like any other teacher. The only committee member that has seen implication labelled as such. |
@@ -189,7 +189,7 @@ comparable across all three benchmarks and across everything already run. Taken:
 ### D17. The implicit benchmark is built from one corpus, and the other is held out
 *Taken 2026-09-12, on the evidence of F16, replacing the pooled corpus built earlier the same day.*
 Train, validation and test come from the Implicit Hate Corpus alone. ISHate is kept entirely out of
-them and becomes a 27,110-row out-of-domain test set.
+them and becomes a 27,096-row out-of-domain test set.
 **Why:** pooling makes the label partly predictable from the source (F16), and costs 0.075 F1 on
 implied hate measured on identical test rows. A benchmark whose headline number can be earned by
 recognising which corpus a text came from cannot support this paper's claim.
@@ -306,7 +306,7 @@ three-class macro average over one large easy class and one tiny one says little
 Corpus construction, from `report.json`: the splits come from the Implicit Hate Corpus alone,
 20,684 rows after probe holdout, 20,637 after cleaning, split 16,509 / 2,064 / 2,064. Training
 classes: not_hate 10,616, implicit_hate 5,029, explicit_hate 864. ISHate is held out entirely as a
-27,110-row out-of-domain test set (17,697 benign, 9,412 explicit, 1 implicit).
+27,096-row out-of-domain test set (17,691 benign, 9,404 explicit, 1 implicit).
 
 *Superseded:* pooling both corpora gave 47,181 rows and a higher aggregate score, macro-F1 0.6809
 with implicit_hate 0.4530. The higher aggregate is an artefact and the lower implicit F1 is the real

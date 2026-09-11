@@ -10,7 +10,7 @@ Every `[x]` names where the evidence lives.
 - [x] Probe texts held out of the implicit benchmark so probe metrics stay uncontaminated (1,581 rows removed, reported) — `data/implicit/report.json`
 - [x] Cross-corpus annotation disagreement measured: of 629 texts the two implicit corpora share, they agree on 99.7% about hate and 48.2% about whether it is implied — `python -m dmthd.corpus_agreement`
 - [x] Source confound ruled out by construction: the splits come from one corpus, because the union is separable at 0.91 macro-F1 and 95% of implicit examples come from one side — `prepare_implicit.py --corpora`, LOG 2026-09-12
-- [x] Out-of-domain test set (27,110 ISHate rows) held fully out of training — `data/implicit/test_ood_ishate.csv`
+- [x] Out-of-domain test set (27,096 ISHate rows) held fully out of training — `data/implicit/test_ood_ishate.csv`
 - [x] Every score on a multi-source benchmark also reported within each source — `evaluate.py --group_col`
 - [x] Teacher provenance rule written and enforced (no test set overlaps any teacher's training data) — `paper/setup_draft.md`, `build_probes.py`
 - [x] Classical floor on every benchmark — tweets 0.8798, Wikipedia 0.8759, implicit 0.5620 (implicit_hate F1 0.5562, implicit-discrimination AUC 0.7610)

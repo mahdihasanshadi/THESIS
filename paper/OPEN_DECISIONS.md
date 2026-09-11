@@ -178,7 +178,7 @@ reversible by one flag or one rebuild. They are listed here because two of them 
 may already have seen.
 
 **The implicit benchmark is built from the Implicit Hate Corpus alone**, with ISHate held out as a
-27,110-row out-of-domain test set. The first version pooled both, and I checked before training
+27,096-row out-of-domain test set. The first version pooled both, and I checked before training
 anything on it: a TF-IDF classifier tells the two corpora apart at 0.91 macro-F1, 95 per cent of
 implicit examples come from one side and 89 per cent of explicit examples from the other, so a model
 could have scored well by recognising the source instead of reading an implication. On identical
