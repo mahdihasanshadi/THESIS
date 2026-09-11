@@ -92,6 +92,20 @@ if a.implicit_raw:
     meta = json.load(open(os.path.join(a.root, "cache", "tweets", "meta.json")))
     tags = [t["tag"] for t in meta["teachers"]]
     assert "implicit-spec" in tags, f"specialist missing from the cache: {tags}"
+    pre = os.path.join(a.root, "runs", "implicit", "specialist", "student-tiny", "results.json")
+    assert os.path.exists(pre), "the implicit-pretrained student control was never trained"
+    assert len(json.load(open(pre))["test"]["per_class_f1"]) == 3, "control trained on the wrong scheme"
     print(f"\nspecialist in committee, cache tags {tags}")
+
+    # 5. the three ablations that decide the implicit claim: the specialist alone, the committee
+    #    without it, and the same student pre-trained on the implicit corpus instead of distilled
+    run({"MIN_TEACHER_F1": "0", "IMPLICIT_RAW": a.implicit_raw, "SPECIALIST": "1",
+         "SPECIALIST_BASE": TINY, "COMMITTEES": "homo", "MODES": "ft", "ABLATION_SEEDS": "1"},
+        "students", a.root, raw=a.raw)
+    for tag in ("spec_only", "no_spec", "implicit_pretrain"):
+        d = os.path.join(a.root, "runs", "tweets", "tiny", f"ablation_{tag}", "seed1", "results.json")
+        assert os.path.exists(d), f"ablation {tag} did not run"
+        assert len(json.load(open(d))["test"]["per_class_f1"]) == 6, f"ablation {tag} used the wrong scheme"
+    print("\nimplicit ablations ran: spec_only, no_spec, implicit_pretrain")
 
 print("\nDRIVER SMOKE PASSED:", open(dropped).read())

@@ -1,4 +1,4 @@
-# Experimental setup (draft for the paper, 10 Sep 2026)
+# Experimental setup (draft for the paper, updated 12 Sep 2026)
 
 Numbers below are produced by the scripts in `src/dmthd/` and are reproducible from the
 committed code; every count comes from a `report.json` written by the pipeline.
@@ -9,6 +9,7 @@ committed code; every count comes from a `report.json` written by the pipeline.
 |---|---|---|---|---|
 | Fine-grained cyberbullying tweets (Wang, Fu and Lu, 2020) | six-class | 34,607 / 4,326 / 4,326 | age, ethnicity, gender, religion, other_cyberbullying, not_cyberbullying | primary benchmark |
 | Wikipedia Talk personal attacks (Wulczyn, Thain and Dixon, 2017) | binary | 68,750 / 22,782 / 22,721 | attack / not attack, plus the annotator fraction as a soft label | official split; about ten annotators per comment |
+| Implicit abuse (ISHate, Ocampo et al. 2023 + Implicit Hate Corpus stage 1, ElSherief et al. 2021) | three-class | 37,744 / 4,718 / 4,719 | not_hate, explicit_hate, implicit_hate | built here; the only corpus of the three in which abuse-by-implication is a label rather than a hidden subset |
 
 ### Tweet corpus: de-duplication
 
@@ -41,6 +42,30 @@ text also occurs in train removed (199 and 202), and test comments also in dev r
 The splits are asserted disjoint on text and on revision id. Attack share is 11.7% / 11.9% /
 11.8%; 24.6% of comments have an annotator fraction between 0.2 and 0.8.
 
+### Implicit corpus
+
+Neither of the two corpora above labels indirectness. The tweet corpus places abuse-by-implication
+inside `other_cyberbullying`, a catch-all that also holds unrelated material, and the Wikipedia
+corpus records only whether a comment is an attack. A model trained on either therefore never sees
+an example annotated as implicit, which makes the central claim of this paper untestable on them.
+
+We build a third benchmark in which the distinction is the label. ISHate contributes its original
+rows, augmentations excluded (63,758 to 29,116) and ToxiGen-sourced rows excluded under the
+provenance rule (29,116 to 28,763); note that ISHate records its benign class only in
+`hateful_layer`, its `implicit_layer` being empty for every Non-HS row. The Implicit Hate Corpus
+contributes its stage-1 annotation, 21,480 posts across the same three classes; the widely mirrored
+stage-2 file contains no benign class and cannot be used for this purpose.
+
+Every text that occurs in any of the three probe sets below is then removed from all three splits,
+1,581 rows in total, so that probe metrics remain measured on text no model has trained on. The
+remaining 48,662 rows go through the same pipeline as the tweet corpus: 351 rows under two tokens;
+346 texts that the two source corpora label differently, all 710 of their rows removed; 420 exact
+duplicates. The 47,181 survivors are split 80/10/10 stratified by class with seed 42.
+
+That 346-text disagreement is itself a measurement. Two corpora built by different teams to annotate
+the same phenomenon assign different labels to the same text about one time in a hundred and forty,
+which bounds how sharp any implicit-hate result on either of them can be.
+
 ## Targeted test sets for the sarcasm claim (inference only)
 
 | Set | Size | Source | Metric |
@@ -49,16 +74,44 @@ The splits are asserted disjoint on text and on revision id. Attack share is 11.
 | Ironic abuse | 1,560 | 797 posts labelled `irony` in the Implicit Hate Corpus stage-2 data (ElSherief et al., 2021) plus 763 original ISHate rows labelled Implicit HS (Ocampo et al., 2023) | recall: share predicted as a bullying class |
 | Implicit abuse | 763 | the ISHate subset alone | recall |
 
-ISHate rows whose source is ToxiGen or the Implicit Hate Corpus are excluded so that no
-teacher's pre-training data reaches a test set; augmented ISHate rows are never used. The benign
-set receives one manual screening pass restricted to rows a classical classifier flags as
-abusive with probability at least 0.8 (see `screen_probes.py`).
+Augmented ISHate rows are never used anywhere. For the probe sets specifically, ISHate rows whose
+source is ToxiGen or the Implicit Hate Corpus are also excluded, so that the probes stay independent
+of the corpus they are used to test transfer into. This is not in tension with the implicit
+benchmark's use of the Implicit Hate Corpus as training data: the provenance rule concerns what a
+*teacher* was trained on before we touched it, and no teacher of ours was pre-trained on either
+corpus. The direction of the rule is one-way, and it is enforced in both places by the same source
+filter. The benign set receives one manual screening pass restricted to rows a classical classifier
+flags as abusive with probability at least 0.8 (see `screen_probes.py`).
+
+Because the probes are drawn from the same corpora as the implicit benchmark, every probe text is
+deleted from that benchmark, in all three splits. The probes are therefore unseen by every model in
+the paper, on every corpus, and probe numbers are comparable across all three benchmarks and across
+runs made before the third benchmark existed.
+
+### The metric that matches the claim
+
+Recall on ironic abuse at a fixed decision threshold cannot distinguish a model that fails to see
+indirect abuse from one that sees it but cannot separate it from harmless sarcasm, and the
+measurement in Section [findings] says it is the second. We therefore report
+**sarcasm-discrimination AUC**: the ROC-AUC of p(abusive) with the ironic-abuse probe as positives
+and the benign-sarcasm probe as negatives. It is threshold-free, it is defined identically on all
+three corpora, and it is the number against which the auxiliary irony head and the implicit
+specialist are judged. The recall-versus-false-positive curve is reported alongside it, because a
+deployment has to pick a threshold even though an evaluation should not.
 
 ## Teacher provenance rule
 
 No test set may overlap the training data of any teacher, including the data a specialist
 checkpoint was trained on before task adaptation: ToxiGen and Founta et al. (2018) for the
 ToxiGen RoBERTa, SemEval-2018 Task 3 for the Cardiff irony model, RAL-E Reddit posts for HateBERT.
+
+The implicit specialist is the one teacher we train ourselves from scratch in this sense: HateBERT
+fine-tuned on the implicit benchmark, then task-adapted onto the target benchmark like every other
+committee member, its classification head re-initialised for the target label space. It is the only
+member of the committee that has seen abuse-by-implication annotated as such, and it is the
+mechanism behind the implicit claim rather than an incidental extra teacher. The rule it must obey
+is the same one: it is never used on the corpus it was trained on, and the implicit benchmark's test
+split never reaches the tweet or Wikipedia evaluations.
 
 ## Classical floor
 
@@ -68,8 +121,13 @@ TF-IDF over word 1-2 grams and character 3-5 grams with class-balanced logistic 
 |---|---|---|---|
 | Tweets | 0.880 | 0.893 | per-class F1: age 0.98, ethnicity 0.98, religion 0.95, gender 0.91, other 0.75, not_cyberbullying 0.70 |
 | Wikipedia | 0.876 | 0.947 | ROC-AUC 0.968, PR-AUC 0.868, attack-class F1 0.78 |
+| Implicit | 0.681 | 0.766 | per-class F1: not_hate 0.842, explicit_hate 0.747, implicit_hate 0.453; ECE 0.045 |
 
-Every neural result is reported relative to this floor.
+Every neural result is reported relative to this floor. The third row is the reason the third
+corpus exists: a lexical model is competent on abuse that says what it means and collapses on abuse
+that implies it, a gap of 29 F1 points inside a single corpus, measured without any model of ours.
+On the tweet corpus the same floor is high enough that our own fine-tune-only student does not beat
+it, which leaves distillation little room to demonstrate anything.
 
 ## Protocol (fixed before any GPU run)
 
@@ -80,3 +138,13 @@ linear decay, best validation macro-F1 epoch kept; students 6 epochs, learning r
 early stopping with patience 2 on validation macro-F1. Maximum length 128 tokens for tweets,
 256 for Wikipedia. Latency is the median of five timed passes after twenty warm-up batches, at
 batch sizes 1 and 32, on GPU and CPU.
+
+Two measurements are specific to the implicit claim and are fixed here so that they cannot be chosen
+after seeing results. First, cross-corpus transfer is scored not only on the collapsed
+abusive-versus-benign task but on the implicit rows alone against the benign rows, because a
+collapsed score rewards a model that catches explicit abuse and misses every implication. Second,
+the per-instance teacher weights are examined for routing: the mean weight each teacher receives on
+implicit rows minus the mean weight it receives on explicit rows, with a percentile bootstrap
+interval over 2,000 resamples. A contrast whose interval excludes zero is evidence that the
+weighting selects an expert; one that spans zero means the committee treats both kinds of abuse
+alike, and we report that instead.

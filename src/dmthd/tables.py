@@ -11,6 +11,8 @@ Produces, when the data exists:
   committee   homogeneous vs heterogeneous teacher committee, same students
   efficiency  parameters, FLOPs, latency, INT8 deployment
   robustness  clean vs obfuscated, and cross-dataset transfer
+  implicit    the table the paper's claim is argued on: F1 on the hard class, sarcasm-discrimination
+              AUC, and the false-positive rate on benign sarcasm that buys it
   sweeps      validation macro-F1 per hyper-parameter value
 Numbers come only from results.json / eval_*.json / bench_*.csv; nothing is typed by hand.
 """
@@ -32,7 +34,12 @@ STUDENT_LABEL = {"bert-mini": "BERT-mini", "bert-small": "BERT-small", "distilbe
 ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instance",
                   "ablation_no_hidden": "no hidden-state term", "ablation_no_aux": "no auxiliary irony head",
                   "ablation_per_batch": "per-batch instead of per-instance weights",
-                  "ablation_from_scratch": "randomly initialised student"}
+                  "ablation_from_scratch": "randomly initialised student",
+                  "ablation_spec_only": "implicit specialist alone, no committee",
+                  "ablation_no_spec": "committee without the implicit specialist",
+                  "ablation_implicit_pretrain": "student pre-trained on the implicit corpus, no distillation"}
+# The class whose F1 the implicit claim is argued on, per label scheme seen in a results.json.
+HARD_CLASS = ("implicit_hate", "other_cyberbullying")
 
 
 def _load(path):
@@ -62,15 +69,31 @@ def collect(runs):
         ev = _load(os.path.join(d, "eval_test.json")) or {}
         row["benign_fpr"] = ev.get("benign_sarcasm_fpr")
         row["ironic_recall"] = ev.get("ironic_abuse_recall")
+        # F1 on whichever class actually holds abuse-by-implication in this corpus
+        for cls in HARD_CLASS:
+            if cls in (t.get("per_class_f1") or {}):
+                row["hard_class"], row["hard_class_f1"] = cls, t["per_class_f1"][cls]
+                break
+        # the threshold-free sarcasm metric, and the operating point it implies
+        ia = _load(os.path.join(d, "implicit_analysis", "implicit_analysis.json")) or {}
+        row["sarcasm_auc"] = ia.get("sarcasm_discrimination_auc")
+        op = ia.get("operating_point_at_0.5") or {}
+        row["ironic_recall_at_half"], row["benign_fpr_at_half"] = op.get("ironic_recall"), op.get("benign_fpr")
+        safe = ia.get("threshold_for_fpr_10pct") or {}
+        row["ironic_recall_at_fpr10"] = safe.get("ironic_recall")
         for v in ("leet", "swap", "space", "mixed"):
             o = _load(os.path.join(d, f"eval_test_obf_{v}.json"))
             if o:
                 row[f"obf_{v}"] = o.get("macro_f1")
-        for other in ("wikipedia", "tweets"):
+        for other in ("wikipedia", "tweets", "implicit"):
             tr = _load(os.path.join(d, f"transfer_{other}.json"))
             if tr:
                 row[f"transfer_{other}"] = tr.get("binary_macro_f1")
                 row[f"transfer_{other}_auc"] = tr.get("roc_auc")
+                # the collapsed score hides the case the paper is about, so keep the focused one too
+                foc = tr.get("implicit_hate") or {}
+                row["transfer_implicit_focus_recall"] = foc.get("recall")
+                row["transfer_implicit_focus_auc"] = foc.get("roc_auc")
         q = _load(os.path.join(d, "quantize_eval.json"))
         if q:
             row["int8_macro_f1"] = q["int8"]["macro_f1"]
@@ -85,7 +108,9 @@ def collect(runs):
 def agg(df, keys=("student", "mode")):
     """Mean and standard deviation over seeds, keeping the metrics the paper reports."""
     metrics = [c for c in ("macro_f1", "accuracy", "ece", "roc_auc", "pr_auc", "benign_fpr", "ironic_recall",
-                           "obf_mixed", "transfer_wikipedia", "transfer_tweets") if c in df.columns]
+                           "obf_mixed", "transfer_wikipedia", "transfer_tweets", "transfer_implicit",
+                           "hard_class_f1", "sarcasm_auc", "ironic_recall_at_half", "benign_fpr_at_half",
+                           "ironic_recall_at_fpr10", "transfer_implicit_focus_recall") if c in df.columns]
     g = df.groupby(list(keys), dropna=False)
     out = g.agg(n=("seed", "count"), params=("params", "first"), **{f"{m}_mean": (m, "mean") for m in metrics},
                 **{f"{m}_std": (m, "std") for m in metrics}).reset_index()
@@ -191,6 +216,53 @@ def main():
                 for r in m.itertuples()]
         write(pd.DataFrame(rows), args.out, "main",
               "Main results. Mean $\\pm$ standard deviation over seeds; probe metrics are inference-only.", "main")
+
+    # ---- the implicit table: the one the paper's claim is argued on ----
+    # Macro-F1 can improve while the hard class gets worse, and recall at a fixed threshold can
+    # improve while the model simply fires more often. Both failure modes are visible here and
+    # nowhere else in the paper.
+    imp_modes = main_modes + ["ablation_spec_only", "ablation_no_spec", "ablation_implicit_pretrain"]
+    im = agg(s[s["mode"].isin(imp_modes) & (s["student"] == args.headline)])
+    if not im.empty and "sarcasm_auc_mean" in im.columns and im["sarcasm_auc_mean"].notna().any():
+        im["order"] = im["mode"].map({k: i for i, k in enumerate(imp_modes)})
+        im = im.sort_values("order")
+        hard = next(iter(df.get("hard_class", pd.Series(dtype=object)).dropna().unique()), "hard class")
+        rows = [{"Method": MODE_LABEL.get(r.mode, ABLATION_LABEL.get(r.mode, r.mode)), "Seeds": int(r.n),
+                 "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
+                 f"F1 on {hard.replace('_', ' ')}": fmt(getattr(r, "hard_class_f1_mean", None),
+                                                        getattr(r, "hard_class_f1_std", None), 3),
+                 "Sarcasm-discrimination AUC": fmt(getattr(r, "sarcasm_auc_mean", None),
+                                                   getattr(r, "sarcasm_auc_std", None), 3),
+                 "Ironic recall at 0.5": fmt(getattr(r, "ironic_recall_at_half_mean", None), None, 3),
+                 "Benign FPR at 0.5": fmt(getattr(r, "benign_fpr_at_half_mean", None), None, 3),
+                 "Ironic recall at FPR 0.10": fmt(getattr(r, "ironic_recall_at_fpr10_mean", None), None, 3)}
+                for r in im.itertuples()]
+        write(pd.DataFrame(rows), args.out, "implicit",
+              "Detection of abuse by implication. Sarcasm-discrimination AUC ranks the ironic-abuse "
+              "probe against the benign-sarcasm probe and is threshold-free, so it separates a model "
+              "that cannot see implication from one that sees it but cannot tell it from harmless "
+              "sarcasm. The last three rows are the controls: the specialist without a committee, the "
+              "committee without the specialist, and the same student pre-trained on the implicit "
+              "corpus instead of distilled from it.", "implicit")
+
+    # ---- routing: does the weighting select an expert, or average over the committee? ----
+    rt = _load(os.path.join(args.runs, "weight_routing", "weight_routing.json"))
+    if rt:
+        pos, neg = rt["contrast_groups"]["implicit_like"], rt["contrast_groups"]["explicit_like"]
+        rows = []
+        for tau, entry in rt["by_tau"].items():
+            for teacher, c in entry["routing_contrast"].items():
+                if c:
+                    rows.append({"tau": tau, "Teacher": teacher,
+                                 f"weight on {pos.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(pos), None, 3),
+                                 f"weight on {neg.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(neg), None, 3),
+                                 "difference": f"{c['delta']:+.4f}",
+                                 "95 per cent interval": f"[{c['ci95'][0]:+.4f}, {c['ci95'][1]:+.4f}]"})
+        if rows:
+            write(pd.DataFrame(rows), args.out, "routing",
+                  "Where the per-instance weights go. A difference whose interval excludes zero means "
+                  "the weighting selects a teacher for abuse by implication rather than averaging over "
+                  "the committee.", "routing")
 
     # ---- ablations ----
     a = agg(s[s["is_ablation"]])

@@ -6,18 +6,25 @@ Every `[x]` names where the evidence lives.
 ## A. Data and evaluation integrity
 - [x] Primary corpus de-duplicated, conflicting labels removed, counts reported — `data/tweets/report.json`, LOG 2026-09-10
 - [x] Second benchmark with an official split and leakage assertions — `data/wikipedia/report.json`
+- [x] Third benchmark in which abuse-by-implication is a label, not a hidden subset of a catch-all class — `data/implicit/report.json`, `prepare_implicit.py`, LOG 2026-09-12
+- [x] Probe texts held out of the implicit benchmark so probe metrics stay uncontaminated (1,581 rows removed, reported) — `data/implicit/report.json`
+- [x] Cross-corpus annotation disagreement measured: 346 texts labelled differently by the two implicit corpora — `data/implicit/report.json`
 - [x] Teacher provenance rule written and enforced (no test set overlaps any teacher's training data) — `paper/setup_draft.md`, `build_probes.py`
-- [x] Classical floor on every benchmark — TF-IDF+LR results.json under `runs/*/tfidf_lr`
+- [x] Classical floor on every benchmark — tweets 0.8798, Wikipedia 0.8759, implicit 0.6809 (implicit_hate F1 0.4530 against explicit_hate 0.7474)
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
 - [x] Obfuscation test variants (leet, swap, space, mixed) on both corpora, fine-tune-only baseline measured — tweets drops 10-15 points, Wikipedia 2 points (space variant rises); D-MTHD comparison pending Kaggle
 - [x] Cross-dataset transfer, both directions, full test sets — tweets->Wikipedia 0.273 (over-fires), Wikipedia->tweets 0.425 (under-fires); reported as a finding about the task definitions
 - [~] Hyper-parameter sweeps (tau, T, alpha/beta, delta) on validation — driver stage `sweep`, pending Kaggle
+- [x] Threshold-free sarcasm metric defined and implemented, replacing recall at an arbitrary cut — sarcasm-discrimination AUC, `implicit_analysis.py`; fine-tune-only baseline 0.776
 
 ## B. Baselines, controls, ablations
 - [~] Fine-tune-only control for every student, three seeds — BERT-mini done on both corpora (tweets 0.8770 ± 0.0010, Wikipedia 0.8884 ± 0.0044); BERT-small, DistilBERT, DeBERTa-xsmall, BiLSTM on Kaggle
 - [~] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, three students — teachers done on Kaggle (BERT-large 0.897, irony 0.893, HateBERT 0.889; stop rule passed); students pending the next Kaggle version
 - [!] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — Kaggle run 1/2
+- [!] Implicit-specialist ablations: `spec_only` (the specialist alone) and `no_spec` (the committee without it). Without both, the claim that the *committee* helps is unfalsifiable — driver ready, pending Kaggle
+- [!] Routing evidence: mean teacher weight on implicit rows minus explicit rows, bootstrap interval — `weight_routing.py` ready and tested, pending a real committee cache
+- [!] Focus-class transfer: tweets model scored on implicit rows alone — `transfer_eval.py --focus_class`, pending Kaggle
 - [!] Homogeneity 2x2: BERT-mini vs DeBERTa-v3-xsmall student x hidden term; heterogeneous committee with DeBERTa-v3-base; BiLSTM student — Kaggle run 2 (driver ready)
 - [!] Disagreement-aware variant on Wikipedia (`dmthd_dis`) — Kaggle Wikipedia run
 - [ ] Optional: zero-shot LLM baseline on a 2,000-item test sample
@@ -28,7 +35,7 @@ Every `[x]` names where the evidence lives.
 - [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
 - [~] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest) — `analysis.py agreement_bands` ready and tested; needs Wikipedia runs
 - [~] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound — `analysis.py complementarity` ready; needs Kaggle teachers
-- [~] Weight trajectories per teacher per epoch — `analysis.py weights` ready; needs D-MTHD runs
+- [~] Weight trajectories per teacher per epoch — `analysis.py weights` ready; needs D-MTHD runs. NOTE: with frozen teachers the weights do not move across epochs by construction; the trajectory plot exists to show that, not to suggest otherwise
 - [~] Macro-F1 vs latency vs parameters table for the Pareto figure — `analysis.py pareto` ready; needs bench output
 
 ## D. Efficiency

@@ -7,6 +7,21 @@ efficiency benchmark reviewers can trust, and result aggregation with bootstrap 
 Every entry point is `python -m dmthd.<name> --help`. Every run writes a `results.json`,
 so the Kaggle driver can be killed and restarted and it resumes where it stopped.
 
+**What the project is about.** Detecting abuse that is carried by implication rather than stated
+outright, with a model small enough to deploy. Two documents carry the reasoning: `LOG.md` is the
+chronological lab notebook, one entry per step with the numbers copied from the result files;
+`DECISIONS.md` is the reasoning record, with every keyword defined, every decision paired with what
+it rejected and why, findings numbered so the paper can cite them, and an explicit list of what the
+evidence does and does not yet license. Read `DECISIONS.md` first.
+
+## Three benchmarks
+
+| Name | Task | Rows (train/val/test) | Classical floor | Why it is here |
+|---|---|---|---|---|
+| `tweets` | six-class cyberbullying | 34,607 / 4,326 / 4,326 | 0.8798 macro-F1 | the primary benchmark; indirect abuse hides inside `other_cyberbullying` |
+| `wikipedia` | binary personal attack, with annotator fractions | 68,750 / 22,782 / 22,721 | 0.8759 | a second domain and the only one with per-annotator agreement |
+| `implicit` | not_hate / explicit_hate / implicit_hate | 37,744 / 4,718 / 4,719 | 0.6809, and only **0.4530** on implicit_hate against 0.7474 on explicit_hate | the only corpus where implication is a label, so the only one on which the paper's claim can be tested rather than asserted |
+
 ## Where things run (no local GPU)
 
 | Work | Where | Why |
@@ -74,13 +89,44 @@ python -m dmthd.aggregate --compare runs/tweets/bert-mini/ft runs/tweets/bert-mi
 For Wikipedia, export the Phase-2 splits as `text,label_name,label,soft_label` CSVs and add
 `--scheme binary --label_col label`; the soft-label BCE term switches on automatically.
 
-## Smoke test (CPU, a few minutes)
+## Smoke tests (CPU, before every Kaggle run)
 
-Runs every stage on tiny models and 400 rows. Do this after any code change, before Kaggle.
+Two of them, and both matter. The first covers the library, the second covers the driver, which is
+where the expensive bugs have actually been: a stage-wiring mistake costs a whole GPU session.
 
 ```powershell
 python scripts\smoke_cpu.py --raw E:\dmthd-work\data\raw\cyberbullying_tweets.csv --root E:\dmthd-work\smoke
+python scripts\smoke_driver.py --raw E:\dmthd-work\data\raw\cyberbullying_tweets.csv --implicit_raw E:\dmthd-work\data\raw --root E:\dmthd-work\smoke_driver
 ```
+
+The driver test makes four passes: the full grid, every teacher collapsing, the implicit benchmark
+end to end, and the implicit specialist being re-headed from three classes to six.
+
+## The implicit benchmark and its specialist teacher
+
+```powershell
+# build the corpus (downloads ISHate and Implicit Hate Corpus stage 1 from the Hub)
+python -m dmthd.prepare_implicit --raw E:\dmthd-work\data\raw --out E:\dmthd-work\data\implicit --probes probes --download
+
+# run the whole benchmark; the specialist is off here, where it would duplicate the task teacher
+SPECIALIST=0 python kaggle/run_benchmark.py --dataset implicit --stage all
+
+# on the tweet benchmark the specialist joins the committee automatically
+python kaggle/run_benchmark.py --dataset tweets --stage all --raw ...\cyberbullying_tweets.csv
+```
+
+Two measurements specific to the implicit claim:
+
+```powershell
+# does the model miss implication, or see it and fail to tell it from harmless sarcasm?
+python -m dmthd.implicit_analysis --model_dir runs/tweets/bert-mini/ft/seed1 --test data/tweets/test.csv --probes probes --out runs/tweets/implicit_analysis
+
+# does the per-instance weighting route implication to the specialist, or average over everyone?
+python -m dmthd.weight_routing --cache cache/tweets --data_dir data/tweets --scheme six --out runs/tweets/weight_routing
+```
+
+Notebooks: `kaggle/dmthd_implicit.ipynb` first if you want the specialist trained once and reused,
+then `kaggle/dmthd_tweets.ipynb` with the implicit output attached.
 
 ## Kaggle in three steps
 

@@ -235,15 +235,19 @@ class Bench:
         # The implicit specialist is a teacher *source*, not a run of this benchmark: it lives under
         # runs/implicit/specialist and would be missed by the loop below, so the tweet run would
         # retrain it and spend the same GPU-hours twice. Its weights are needed, so no filtering.
+        # It holds the specialist teacher and the implicit-pretrained student, so the whole directory
+        # is copied under its own names rather than one checkpoint.
         if self.use_specialist and not done(SPECIALIST_SRC):
+            dst = f"{ROOT}/runs/implicit/specialist"
             for src_root in sources:
-                hits = sorted(set(glob.glob(os.path.join(src_root, "**", "runs", "implicit", "specialist", "*"),
+                hits = sorted(set(glob.glob(os.path.join(src_root, "**", "runs", "implicit", "specialist"),
                                             recursive=True)))
-                hit = next((h for h in hits if done(h)), None)
+                hit = next((h for h in hits if glob.glob(os.path.join(h, "*", "results.json"))), None)
                 if hit:
-                    shutil.copytree(hit, SPECIALIST_SRC, dirs_exist_ok=True)
-                    print(f"resuming implicit specialist: {hit} -> {SPECIALIST_SRC} "
-                          f"(test macro-F1 {test_f1(SPECIALIST_SRC):.4f})", flush=True)
+                    shutil.copytree(hit, dst, dirs_exist_ok=True)
+                    have = sorted(os.path.basename(os.path.dirname(r))
+                                  for r in glob.glob(os.path.join(dst, "*", "results.json")))
+                    print(f"resuming implicit specialist: {hit} -> {dst} ({', '.join(have)})", flush=True)
                     copied.append(hit)
                     break
         for src_root in sorted(sources, key=richness):
@@ -304,6 +308,20 @@ class Bench:
             self._save_dropped()
         else:
             print(f"implicit specialist ready, test macro-F1 {test_f1(SPECIALIST_SRC):.4f}", flush=True)
+        # The control the whole implicit claim has to survive: instead of distilling the specialist's
+        # knowledge, simply train the student on the implicit corpus and then on the task. That is
+        # what any practitioner would try first, it costs one small run, and if it matches D-MTHD then
+        # the contribution is the data and not the distillation. Better to find that out here than
+        # from a reviewer.
+        name, stag = self.student_list[0]
+        out = self._pretrained_student(stag)
+        if name != "bilstm" and not done(out):
+            sh(f"python -m dmthd.train_student --student {name} --data_dir {data} --out_dir {out} --seed {SEEDS[0]} "
+               f"--batch {cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} --mode ft --scheme {cfg['scheme']} "
+               f"--label_col {cfg['label_col']} --max_len {cfg['max_len']} {self.limit} --tag implicit_pretrain", check=False)
+
+    def _pretrained_student(self, stag):
+        return f"{ROOT}/runs/implicit/specialist/student-{stag}"
 
     def _train_teacher(self, name, out, lr, fp16, epochs):
         ck = "--grad_ckpt" if "large" in name else ""
@@ -424,6 +442,18 @@ class Bench:
                     sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {seed} "
                        f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} {self.limit} "
                        f"--cache {self.cache} --teachers {' '.join(tags)} {flags} --tag {tag}")
+        # The data-versus-distillation control: same student, initialised from its own fine-tune on
+        # the implicit corpus, then fine-tuned on this task with no teachers at all. If this matches
+        # D-MTHD, the implicit knowledge came from the data and the committee is decoration.
+        src = self._pretrained_student(stag)
+        if self.use_specialist and done(src):
+            for seed in ABLATION_SEEDS:
+                out = f"{self.runs}/{stag}/ablation_implicit_pretrain/seed{seed}"
+                if not done(out):
+                    check_budget(f"{stag}/ablation_implicit_pretrain/seed{seed}")
+                    sh(f"python -m dmthd.train_student --student {src} --data_dir {self.data} --out_dir {out} --seed {seed} "
+                       f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} "
+                       f"{self.limit} --mode ft --tag implicit_pretrain")
 
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]
