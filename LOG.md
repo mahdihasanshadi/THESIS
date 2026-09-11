@@ -166,3 +166,28 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   11M student is already near teacher level, so distillation has little room; on tweets it is 2 points
   behind the teachers, which is where D-MTHD has to show its value. Seed 3 is 0.007 above the other
   two, so Wikipedia seed variance is larger than the two-seed estimate suggested (0.0044, not 0.0004).
+- **Idle-CPU measurement block** (nothing else running, 8 threads, 50 warm-up batches, median of 5):
+  - *Efficiency, BERT-mini*: 11.17M parameters, 42.6 MB on disk, 0.81 GFLOP per 128-token sequence.
+    CPU latency 3.64 ms at batch 1 and 2.76 ms per sample at batch 32 (tweets, 128 tokens);
+    6.30 and 5.82 ms on Wikipedia at 256 tokens.
+  - *INT8 dynamic quantisation*: tweets 0.8779 -> 0.8722 (-0.0057), Wikipedia 0.8857 -> 0.8826
+    (-0.0031); size 42.6 -> 33.5 MB in both cases; batch-32 latency 2.42 -> 1.39 ms (1.74x) and
+    5.82 -> 3.71 ms (1.57x), but batch-1 latency gets slightly *worse* on tweets (4.35 -> 4.67 ms).
+    The modest size drop is explained by the model shape: 7.8M of BERT-mini's 11.2M parameters are
+    the 30,522 x 256 embedding table, which dynamic quantisation does not touch. Expect a larger
+    gain on DistilBERT, where the encoder dominates; that contrast is the point of the table.
+  - *Probes on Wikipedia models* (both probe sets are tweet-domain): benign-sarcasm FPR 0.036 and
+    ironic-abuse recall 0.059. The model almost never fires on tweet-style text, so these numbers
+    measure domain shift, not sarcasm awareness. **Probe metrics are therefore reported only for
+    tweet-trained models**; the Wikipedia numbers go in the analysis as evidence of domain shift.
+  - *Obfuscation* (bullying-class items only, benign untouched): tweets 0.8779 -> leet 0.7791,
+    swap 0.7518, space 0.7488, mixed 0.7247 (a 10-15 point collapse). Wikipedia 0.8857 -> leet
+    0.8649, swap 0.8613, mixed 0.8667, but **space 0.8977, above the clean score**: splitting words
+    inside attack comments makes them easier to spot in a corpus whose benign text is tidy wiki
+    prose. Reported as it stands, with the caveat that synthetic obfuscation is not real evasion.
+    The tweets mixed figure reproduces the earlier standalone run exactly (0.7247).
+  - *Cross-dataset transfer, both directions*: tweets model on Wikipedia gives binary macro-F1 0.273
+    (ROC-AUC 0.562) and calls 80.9% of comments bullying against a true rate of 11.8%; Wikipedia
+    model on tweets gives 0.425 (ROC-AUC 0.718) and calls 33.7% bullying against a true rate of
+    85.7%. Neither direction transfers: one over-fires, the other under-fires. This is a finding
+    about the two task definitions, not a defect of the students.

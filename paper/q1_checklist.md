@@ -10,8 +10,8 @@ Every `[x]` names where the evidence lives.
 - [x] Classical floor on every benchmark — TF-IDF+LR results.json under `runs/*/tfidf_lr`
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
-- [~] Obfuscation test variants (leet, swap, space, mixed) — `obfuscate.py`; built for tweets; BERT-mini fine-tune-only drops 0.878 -> 0.725 macro-F1 on the mixed variant; D-MTHD comparison pending Kaggle
-- [~] Cross-dataset transfer evaluation — `transfer_eval.py`; driver stage `robustness`; tweets-model -> Wikipedia is near chance (ROC-AUC 0.51 on a 500-row check), to be reported as the domain-shift finding
+- [x] Obfuscation test variants (leet, swap, space, mixed) on both corpora, fine-tune-only baseline measured — tweets drops 10-15 points, Wikipedia 2 points (space variant rises); D-MTHD comparison pending Kaggle
+- [x] Cross-dataset transfer, both directions, full test sets — tweets->Wikipedia 0.273 (over-fires), Wikipedia->tweets 0.425 (under-fires); reported as a finding about the task definitions
 - [~] Hyper-parameter sweeps (tau, T, alpha/beta, delta) on validation — driver stage `sweep`, pending Kaggle
 
 ## B. Baselines, controls, ablations
@@ -33,7 +33,7 @@ Every `[x]` names where the evidence lives.
 
 ## D. Efficiency
 - [x] Benchmark with warm-up, five repeats, median, batch 1 and 32, GPU and CPU — `bench.py`
-- [x] INT8 dynamic quantisation evaluation — `quantize_eval.py` (measure on an idle CPU)
+- [x] INT8 dynamic quantisation measured on an idle CPU, both corpora — 1.74x / 1.57x at batch 32 for a 0.006 / 0.003 macro-F1 cost
 - [~] Parameter/FLOP/latency/F1 Pareto figure — `figures.py pareto` tested on smoke output; needs Kaggle bench
 
 ## E. Method presentation
