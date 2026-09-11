@@ -224,3 +224,16 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   and aggregation. Version 3 is training `distilbert/skd_hetero/seed1`, i.e. it is already in the
   heterogeneous-committee block. First epoch of that run: validation macro-F1 0.8802, and the single
   teacher correctly carries weight 1.0.
+- **Wasted work found in the version-3 log and fixed**: `skd_hetero` trains exactly the same model as
+  `skd`, because single-teacher distillation uses only the committee's first teacher (BERT-large) and
+  the heterogeneous committee differs only by appending DeBERTa. Both `ft` and `skd` are now run once,
+  outside the committee loop; on the full grid that removes 15 redundant runs (about two GPU-hours).
+  The already-finished `skd_hetero` runs stay on disk and are simply ignored by the tables.
+- **DeBERTa-v3-base recovered.** Version 3 resumed four finished teachers and did not retrain any, so
+  the collapsed DeBERTa teacher was successfully retrained in fp32 during version 2 and now scores
+  above the 0.5 floor; it is in the heterogeneous committee, and the uniform run shows the expected
+  0.25 weight on each of the four teachers.
+- **DistilBERT with single-teacher distillation, three seeds**: test macro-F1 0.8963 / 0.8961 / 0.8965
+  (mean 0.8963, spread 0.0004), against BERT-large's 0.8973. A 66M student is within 0.001 of its
+  335M teacher. Per-class, the two hard classes remain the bottleneck: not_cyberbullying 0.75 and
+  other_cyberbullying 0.78 against 0.91-0.99 elsewhere.

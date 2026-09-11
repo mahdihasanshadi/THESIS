@@ -285,18 +285,20 @@ class Bench:
     def students(self):
         modes = list(MODES) + (["dmthd_dis"] if (DISAGREEMENT and self.cfg["soft"]) else [])
         committees = self.active_committees()
-        # the fine-tune-only control does not depend on any committee
-        if "ft" in modes:
+        # `ft` uses no teacher and `skd` uses only the first one, so neither depends on the committee:
+        # running them per committee would repeat identical work (15 runs on the full grid)
+        committee_free = [m for m in modes if m in ("ft", "skd")]
+        for mode in committee_free:
             for name, stag in self.student_list:
                 for seed in SEEDS:
-                    out = f"{self.runs}/{stag}/ft/seed{seed}"
+                    out = f"{self.runs}/{stag}/{mode}/seed{seed}"
                     if not done(out):
-                        check_budget(f"{stag}/ft/seed{seed}")
-                        sh(self._student_cmd(name, out, seed, "ft", []))
+                        check_budget(f"{stag}/{mode}/seed{seed}")
+                        sh(self._student_cmd(name, out, seed, mode, self.committee("homo")))
         for comm, tags in committees:
             suffix = "" if comm == "homo" else "_hetero"
             for name, stag in self.student_list:
-                for mode in [m for m in modes if m != "ft"]:
+                for mode in [m for m in modes if m not in committee_free]:
                     for seed in SEEDS:
                         out = f"{self.runs}/{stag}/{mode}{suffix}/seed{seed}"
                         if not done(out):
