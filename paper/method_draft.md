@@ -36,7 +36,13 @@ abuse are separate labels (Section 4.x), then task-adapted onto the target bench
 other member, its classification head re-initialised for the target label space. Call it the
 *implicit specialist*.
 
-This is the paper's central mechanical claim and it is stated as a testable one. The specialist
+This is the paper's central mechanical claim and it is stated as a testable one. On the two
+benchmarks that do not label implication, the analogous claim about the *weighting* was tested first
+and failed (Section 5.3), for a reason that bears directly on this one: after task adaptation the
+committee members agree at Cohen's kappa 0.89 to 0.92, leaving a weighting almost nothing to express
+(Section 5.3a). The specialist is a response to that finding rather than an addition made before it.
+A committee can only route to expertise that some member has and the others lack, and the point of
+training this member on a corpus none of the others has seen is to create exactly that asymmetry. The specialist
 forms its own committee, $\mathcal{K}_{\text{spec}} = \mathcal{K}_{\text{homo}} \cup
 \{\text{specialist}\}$, so that its effect is a controlled comparison of two full committees over
 three seeds rather than a single ablation, and so that every result obtained with the three-teacher
@@ -145,6 +151,11 @@ BiLSTM student (no transformer), and to a committee that includes a DeBERTa-v3 t
 without the hidden term (Section 5.x).
 
 ## 3.7 Does the weighting select, or does it average?
+
+*Written before the grid ran; the answer, reported in Section 5.3, is that it averages. This section
+is kept in the method rather than moved to the results because the question it poses is the right one
+and the apparatus for asking it is part of the contribution. A reader should meet the question here
+and the answer there, not be told the conclusion twice.*
 
 A committee of specialists is only a committee if the weights go somewhere. Because the teachers are
 frozen and cached, $w_k(i)$ is a fixed function of the data: it varies across instances and never
