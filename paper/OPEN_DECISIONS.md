@@ -3,8 +3,12 @@
 Every technical choice made so far is recorded in `DECISIONS.md` with the evidence behind it. The
 ones below are different: they change what the paper *is*, where it is sent, or how the team's
 remaining GPU quota is spent. Each one states the options, the argument for and against each, the
-evidence that will settle it, and when it has to be settled by. Nothing here is urgent today except
-Decision 2.
+evidence that will settle it, and when it has to be settled by.
+
+**Updated 13 September, after the tweet grid finished.** Decision 4 has triggered: the per-instance
+dynamic weighting does not beat uniform averaging on any of five students. That removes the main
+argument for Option A in Decision 1 and makes Decision 4A the live question rather than a
+contingency. Decision 2, the quota, is still the only one needing an answer today.
 
 ---
 
@@ -18,10 +22,12 @@ weighting.
 **Option A — keep the current framing.** D-MTHD is the contribution; three benchmarks; implicit
 abuse is one section among several.
 - For: no rewriting; matches what the team has already written.
-- Against: the method is close to MT-BERT (Wu et al. 2021), and a reviewer who knows that paper will
-  ask what is new. On the tweet corpus the dynamic weighting is currently indistinguishable from
-  uniform averaging (Finding 6), and the fine-tune-only student does not beat a TF-IDF baseline
-  (Finding 3). Under this framing the paper's two headline mechanisms are the two weakest results.
+- Against, and this is now measured rather than feared: the method is close to MT-BERT (Wu et al.
+  2021), and the part that would have distinguished it does not work. The dynamic weighting loses to
+  uniform averaging on four of five students and ties on the fifth (Finding 6), and on the headline
+  student no distillation variant beats training with no teacher at all (Finding 3). Under this
+  framing the paper's two headline mechanisms are its two weakest results, and a reviewer will see
+  that immediately.
 
 **Option B — reframe around implication.** Something like *Teaching a small model to read
 implication: cross-task specialist distillation for implicit abuse detection*. The implicit
@@ -40,9 +46,11 @@ the discrimination AUCs are the headline metrics.
 **Option C — two papers.** Implication in one, efficiency and deployment in the other.
 - Against: not in two weeks, and each half is thin alone.
 
-**My recommendation: B, decided after the implicit results arrive, not before.** The honest order is
-evidence first, framing second. Note that Option A's weakness is not fixed by choosing A: those
-results will be in the paper either way, and a reviewer will find them.
+**My recommendation: B, and the grid has strengthened it considerably.** Option A's case rested on
+the method working, and on the tweet corpus it does not. Option B's case rests on the specialist
+working, which is untested, so the decision still waits on the implicit results rather than being
+made today. What has changed is that A is no longer the safe choice: those results are in the paper
+either way, and under A they sit where the contribution should be.
 
 **What settles it:** four numbers from the implicit benchmark and the `spec` committee run.
 1. Implicit-discrimination AUC on the implicit benchmark against the classical floor's 0.761, and
@@ -68,9 +76,11 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 
 | Work | Estimate | Status |
 |---|---|---|
-| Finish the tweet grid | 11 h, one more session | version 3 running now |
+| Finish the tweet grid | done, 8.24 h | complete: 120 runs, 13 September |
 | Implicit specialist + the implicit-pretrained control | 1 h, once, inside the tweet run | not started |
-| `spec` committee on the tweet corpus, headline student, three seeds | 2 h | not started |
+| `spec` committee on the tweet corpus, headline student, three seeds | 2 h | running now |
+| Sharp tau values, 0.05 / 0.1 / 0.2, one seed each | 20 min | running now |
+| fp16 control for the narrow students | 40 min | running now |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
@@ -123,20 +133,36 @@ the decision is not made under pressure.
 Today the per-instance weights sit within 0.03 of uniform, because tau is too large for the spread of
 teacher errors (Finding 6). The sweep over tau in {0.05, 0.1, 0.2, 0.5} will resolve it.
 
-**If sharper tau makes D-MTHD beat uniform averaging:** the paper keeps its current central claim and
-gains an honest negative-to-positive story about a hyper-parameter that matters more than the
-literature suggests. That is publishable in itself.
+**What happened.** The grid finished on 13 September and the answer is no, at every tau it tried.
+D-MTHD minus uniform averaging, per student: -0.0007, -0.0034, +0.0000, -0.0029, -0.0029. Four
+negative, one tie, none positive. Removing the weighting entirely scores *above* keeping it on the
+headline student. On BERT-mini nothing beats training with no teacher at all, with all four paired
+bootstrap intervals containing zero.
 
-**If it does not:** two options.
+One qualification, and it is real rather than a consolation. Every tau the finished run tried was 0.5
+or larger, where the mean weights sit at a third each; those configurations optimise nearly the same
+objective, so scoring alike is arithmetic and not evidence. The sharp values, 0.05, 0.1 and 0.2, are
+in the current grid and have not run. **The claim available today is "not shown to differ from
+uniform averaging at any tau yet tested."**
+
+**If the sharp tau values change it:** the paper keeps its central claim and gains an honest
+negative-to-positive story about a hyper-parameter that matters more than the literature suggests.
+That is publishable in itself, and the diagnostic that predicted the whole thing from the weights
+alone becomes a contribution rather than a footnote.
+
+**If they do not, which is the way to bet:** two options.
 - **4A. Report it and move the contribution.** The paper becomes about committee composition (a
   cross-task specialist committee including an implicit-abuse specialist) and the auxiliary irony
   head, with per-instance weighting reported as a component that did not pay for itself. Smaller
   claim, still a paper, and the negative result is genuinely useful to the field.
 - **4B. Drop the weighting from the title and keep it as an ablation.** Same content, less exposure.
 
-**My recommendation: 4A.** A reviewer who sees uniform and dynamic scoring within noise of each other
-and no acknowledgement of it will distrust the rest of the paper. Saying it first is worth more than
-hiding it.
+**My recommendation: 4A, and I now think this is close to forced.** A reviewer who sees uniform and
+dynamic scoring within noise of each other and no acknowledgement of it will distrust everything else
+in the paper. Saying it first is worth more than hiding it, and there is a real paper underneath: the
+committee helps, the specialist is untested but motivated, the efficiency result is intact, and a
+carefully measured negative result about a mechanism the field keeps proposing is worth publishing on
+its own. What is gone is the version of this paper whose contribution was the weighting.
 
 ---
 
