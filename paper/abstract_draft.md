@@ -2,10 +2,16 @@
 
 Decision 1 in `OPEN_DECISIONS.md` is about framing, and framing is hard to judge in the abstract, so
 here are both versions written out. Every number is a placeholder marked `[ ]` except the ones
-already measured, which are given as they stand today so the shape of each claim is visible.
+already measured, which are given as they stand.
+
+**Updated 13 September, after the tweet grid finished.** The measured numbers below are now the real
+ones. Version A has changed the most, because the result it was built on did not arrive: the dynamic
+weighting beats uniform averaging on none of five students. Version A is now an abstract about
+efficiency plus a negative result, which is honest and smaller than it was. Version B still depends on
+the implicit specialist, which is untested.
 
 Pick one after the implicit results arrive. Do not pick one before: version B promises something we
-cannot yet show.
+cannot yet show, and version A now promises less than it did.
 
 ---
 
@@ -15,28 +21,31 @@ cannot yet show.
 Detection*
 
 Cyberbullying detection is usually deployed under tight latency and memory budgets, which rules out
-the large encoders that perform best. Knowledge distillation is the standard answer, but published
-multi-teacher schemes are rarely checked against the one baseline that matters: the same compact
-student trained with no teachers at all. We build that check into every experiment and report what it
-shows.
+the large encoders that perform best. Knowledge distillation is the standard answer, and the
+multi-teacher variants of it are usually presented with a weighting scheme as their contribution. We
+built such a scheme, measured it against the one baseline these papers rarely include, the same
+compact student trained with no teachers at all, and report that it does not work.
 
 We distil a committee of task-adapted teachers with complementary expertise, a general encoder, an
-abusive-language specialist and an irony specialist, into compact BERT-lineage students, weighting the
-committee per instance by each teacher's reliability on that instance. An auxiliary head distilled
-from the un-adapted irony model shapes the student's representation without introducing sarcasm
-labels into the training corpora.
+abusive-language specialist and an irony specialist, into five students spanning 10M to 71M parameters
+and three architecture families, weighting the committee per instance by each teacher's reliability.
+Across 120 runs on a de-duplicated, leakage-checked corpus, distillation helps every student, by
+0.001 to 0.007 macro-F1. **Per-instance reliability weighting beats uniform averaging on none of
+them**, the five differences being -0.0007, -0.0034, +0.0000, -0.0029 and -0.0029, and removing the
+weighting entirely improves the headline student. Among all components of the objective, only
+pre-training matters: ablating it costs 0.047 where nothing else costs more than 0.0014.
 
-On three corpora, with de-duplicated and leakage-checked splits released as verifiable manifests, a
-66M-parameter student reaches within 0.001 macro-F1 of a 335M-parameter teacher, and INT8
-quantisation gives a 1.74x speed-up at batch 32 for 0.006 macro-F1. We also report where the method
-does not help: where a compact model already sits near teacher level, distillation adds little, and
-[the per-instance weighting either does or does not beat uniform averaging once its temperature is
-chosen properly]. Two widely used corpora do not transfer to each other in either direction, and one
-of them contains [ ] duplicate and conflicting-label rows that inflate previously published results.
+What survives is an efficiency result and a measurement problem. A 67M student reaches 0.8975 against
+a 335M teacher's 0.8973 at a fifth of the latency, and INT8 quantisation halves its size for 0.003
+macro-F1. And across all 114 evaluated models, the false-positive rate on benign sarcasm and the recall
+on ironic abuse correlate at +0.673 with their difference nearly constant: no method discriminates
+sarcastic abuse better than any other, they differ only in how readily they fire. Reporting recall at
+a fixed threshold, as this literature does, measures willingness to fire rather than understanding.
 
-**What this version is betting on:** that efficiency plus an honest negative result is enough. It is
-a safe abstract and a slightly dull one, and it invites the question of what separates the method
-from existing multi-teacher distillation.
+**What this version is betting on:** that a carefully measured negative result about a mechanism the
+field keeps proposing, plus an efficiency result and a metric correction, is enough. It is honest and
+it is smaller than the paper we set out to write. Its risk is that a reviewer reads it as a paper
+without a method.
 
 ---
 
@@ -46,12 +55,15 @@ from existing multi-teacher distillation.
 detection*
 
 Abuse that says what it means is largely solved; abuse carried by implication is not. On a corpus in
-which implication is annotated as such, a bag of n-grams reaches 0.80 F1 on explicitly hateful text
+which implication is annotated as such, a bag of n-grams reaches 0.75 F1 on explicitly hateful text
 and 0.56 on implied hate, and ranks implied hate above ordinary text at an AUC of only 0.76. We show
 that the difficulty is not lexical: a compact detector responds to ironic abuse about as often with
 profanity present as without, and fails instead at discrimination, assigning mean p(abusive) 0.69 to
 ironic abuse and 0.38 to harmless sarcasm, so that recall of 0.70 costs a 32% false-positive rate on
-sarcasm that attacks nobody.
+sarcasm that attacks nobody. Across 114 models spanning three architecture families and four
+distillation objectives, that trade-off is the same one: false-positive rate and recall correlate at
++0.673 and their difference is nearly constant, so no existing method discriminates better than any
+other.
 
 We treat this as a transfer problem. Neither established cyberbullying benchmark labels indirectness,
 so no teacher fine-tuned on them holds the knowledge and no weighting scheme has an expert to route
@@ -82,8 +94,13 @@ These sentences are measured and can be written now, whichever version wins.
 - The fine-grained cyberbullying tweet corpus contains 1,563 texts carrying more than one label and
   507 exact duplicates; removing them eliminates a validation-to-test accuracy gap of 0.94 against
   0.86 that earlier work reports on the raw corpus.
-- A 66M-parameter student distilled from a single large teacher reaches 0.8963 macro-F1 against that
-  teacher's 0.8973.
+- A 67M-parameter student distilled from a single large teacher reaches 0.8963 macro-F1 against that
+  teacher's 0.8973, and 0.8975 with a uniform committee.
+- Distillation helps all five students, from +0.0012 to +0.0071; per-instance weighting helps none of
+  them; and ablating pre-training costs 0.047 where no component of the objective costs more than
+  0.0014.
+- Across 114 evaluated models, false-positive rate on benign sarcasm and recall on ironic abuse
+  correlate at +0.673 while their difference has a standard deviation of 0.053.
 - INT8 dynamic quantisation gives 1.74x at batch 32 for 0.006 macro-F1 on tweets and 1.57x for 0.003
   on Wikipedia; the size reduction is modest because 7.8M of BERT-mini's 11.2M parameters are the
   embedding table, which dynamic quantisation does not touch.
