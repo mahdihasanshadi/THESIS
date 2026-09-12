@@ -92,6 +92,38 @@ arithmetic rather than evidence. The values that could separate them, tau in {0.
 running at the time of writing. **The claim supported today is that per-instance reliability
 weighting has not been shown to differ from uniform averaging at any temperature yet tested.**
 
+## 5.3a Why it does not work: the committee is not diverse enough
+
+The negative result in 5.3 has a mechanism, and it can be measured without training a single student.
+
+| Teacher pair | Cohen's kappa | Disagreement | Error overlap |
+|---|---|---|---|
+| BERT-large, HateBERT | 0.920 | 6.7% | 0.710 |
+| BERT-large, irony | 0.922 | 6.4% | 0.712 |
+| BERT-large, DeBERTa-v3 | 0.893 | 8.9% | 0.712 |
+| HateBERT, irony | 0.916 | 7.0% | 0.673 |
+| HateBERT, DeBERTa-v3 | 0.889 | 9.2% | 0.673 |
+| irony, DeBERTa-v3 | 0.900 | 8.3% | 0.730 |
+
+All four teachers are right on **83.2%** of the test set and wrong on the same **4.7%**. A
+per-instance weighting can only express a preference where its members disagree, which here is at
+most one instance in eleven, and on roughly two-thirds of the errors there is no correct teacher to
+prefer. The learned weights behave accordingly: averaged over the training set they are
+0.306 / 0.311 / 0.305 / 0.233 and identical at every epoch, because with frozen teachers they are a
+fixed function of the data.
+
+**The headroom is real; the signal is wrong.** An oracle that picked the best teacher for each
+instance would reach **0.9526** accuracy and a macro-F1 upper bound of **0.9469**, against the best
+single teacher's 0.9075 and 0.8973. Selection over exactly these teachers is worth five macro-F1
+points. Reliability estimated by cross-entropy against the training label recovers none of it.
+
+We think this is the more useful form of the negative result. It is not that combining specialists is
+a bad idea; it is that the quantity this literature uses to decide *whom to trust on this instance*
+carries almost no information once the teachers have been adapted to a shared label space. And that
+adaptation is not optional: it is what makes a sarcasm model's logits comparable with an abuse
+model's in the first place. **Task adaptation buys comparability and spends diversity**, and any
+cross-task committee will face the same trade.
+
 ## 5.4 Ablations: only pre-training matters
 
 BERT-mini, one seed, against full D-MTHD at 0.8378.
