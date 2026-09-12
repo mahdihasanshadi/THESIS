@@ -287,7 +287,9 @@ table, which dynamic quantisation does not touch.
 ### F12. Probe metrics only mean something within the probe's own domain
 Wikipedia-trained models score a 3.6% false-positive rate on benign sarcasm and a 5.9% recall on
 ironic abuse: they almost never fire on tweet-style text. Those numbers measure domain shift, not
-sarcasm awareness. **Probe metrics are therefore reported for tweet-trained models only.**
+sarcasm awareness. **Probe metrics are therefore reported for models trained on Twitter-domain
+corpora only**, which is the tweet corpus and the implicit benchmark (the Implicit Hate Corpus is
+also Twitter data, and every probe text is held out of it), and never for Wikipedia.
 
 ### F13. On a corpus that labels implication, there is room for a method to earn its place
 *Revised 2026-09-12 after F16; the superseded numbers are kept at the end of this entry because the

@@ -586,9 +586,18 @@ class Bench:
     def aggregate(self):
         sh(f"python -m dmthd.aggregate --runs {self.runs} --out {self.runs}/summary.csv", check=False)
         _, stag = self.student_list[0]
+        # against the no-teacher control: does distillation help at all?
         for cand in ("dmthd", "uniform", "skd", "dmthd_spec", "uniform_spec", "dmthd_hetero", "dmthd_dis"):
             if os.path.isdir(f"{self.runs}/{stag}/{cand}") and os.path.isdir(f"{self.runs}/{stag}/ft"):
                 sh(f"python -m dmthd.aggregate --compare {self.runs}/{stag}/ft {self.runs}/{stag}/{cand}", check=False)
+        # and the comparisons that isolate one component at a time. `spec` against `homo` is the
+        # specialist's contribution; `dmthd` against `uniform` is the weighting's; the two controls
+        # ask whether the committee or the distillation is doing the work.
+        for base, cand in (("uniform", "dmthd"), ("dmthd", "dmthd_spec"), ("uniform", "uniform_spec"),
+                           ("dmthd_spec", "ablation_spec_only"), ("dmthd_spec", "ablation_implicit_pretrain"),
+                           ("dmthd", "ablation_implicit_pretrain")):
+            if os.path.isdir(f"{self.runs}/{stag}/{base}") and os.path.isdir(f"{self.runs}/{stag}/{cand}"):
+                sh(f"python -m dmthd.aggregate --compare {self.runs}/{stag}/{base} {self.runs}/{stag}/{cand}", check=False)
         if self.dropped:
             print(f"NOTE: teachers dropped as collapsed: {self.dropped} (see {self.runs}/dropped_teachers.json)", flush=True)
 
