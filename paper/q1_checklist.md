@@ -16,35 +16,39 @@ Every `[x]` names where the evidence lives.
 - [x] Classical floor on every benchmark — tweets 0.8798, Wikipedia 0.8759, implicit 0.5620 (implicit_hate F1 0.5562, implicit-discrimination AUC 0.7610)
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
-- [x] Obfuscation test variants (leet, swap, space, mixed) on both corpora, fine-tune-only baseline measured — tweets drops 10-15 points, Wikipedia 2 points (space variant rises); D-MTHD comparison pending Kaggle
+- [x] Obfuscation variants on both corpora, fine-tune-only and D-MTHD — tweets 0.8394 to 0.7116 mixed, and distillation does not help (D-MTHD 0.8385 to 0.7077); Wikipedia drops 2 points with the space variant rising
 - [x] Cross-dataset transfer, both directions, full test sets — tweets->Wikipedia 0.273 (over-fires), Wikipedia->tweets 0.425 (under-fires); reported as a finding about the task definitions
-- [~] Hyper-parameter sweeps (tau, T, alpha/beta, delta) on validation — driver stage `sweep`, pending Kaggle
+- [~] Hyper-parameter sweeps — T, alpha, delta done and flat (spread 0.0016, 0.0008, 0.0010). tau done only at 0.5/2/5, where the weights are already uniform, so the sweep cannot yet answer the question it exists for; 0.05/0.1/0.2 running
 - [x] Threshold-free sarcasm metric defined and implemented, replacing recall at an arbitrary cut — sarcasm-discrimination AUC, `implicit_analysis.py`; fine-tune-only baseline 0.776
 
 ## B. Baselines, controls, ablations
-- [~] Fine-tune-only control for every student, three seeds — BERT-mini done on both corpora (tweets 0.8770 ± 0.0010, Wikipedia 0.8884 ± 0.0044); BERT-small, DistilBERT, DeBERTa-xsmall, BiLSTM on Kaggle
-- [~] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, three students — teachers done on Kaggle (BERT-large 0.897, irony 0.893, HateBERT 0.889; stop rule passed); students pending the next Kaggle version
-- [!] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — Kaggle run 1/2
+- [x] Fine-tune-only control for every student, three seeds — all five on tweets: BERT-mini 0.8393, BERT-small 0.8469, DistilBERT 0.8907, DeBERTa-v3-xsmall 0.8825, BiLSTM 0.8693. Wikipedia pending
+- [x] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, five students, three committees — 120 runs, `paper/tables/main.csv`. Distillation helps all five (+0.0012 to +0.0071); D-MTHD beats uniform on none
+- [x] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — `paper/tables/ablations.csv`. Only from-scratch moves anything (-0.0473); removing the weighting *improves* the score (+0.0008)
 - [!] Implicit-specialist ablations: `spec_only` (the specialist alone) and `no_spec` (the committee without it). Without both, the claim that the *committee* helps is unfalsifiable — driver ready, pending Kaggle
 - [!] Routing evidence: mean teacher weight on implicit rows minus explicit rows, bootstrap interval — `weight_routing.py` ready and tested, pending a real committee cache
 - [!] Focus-class transfer: tweets model scored on implicit rows alone — `transfer_eval.py --focus_class`, pending Kaggle
-- [!] Homogeneity 2x2: BERT-mini vs DeBERTa-v3-xsmall student x hidden term; heterogeneous committee with DeBERTa-v3-base; BiLSTM student — Kaggle run 2 (driver ready)
+- [~] Homogeneity 2x2 — the heterogeneous committee arm is done for all five students (effects -0.0005 to +0.0032, all inside noise) and the hidden-term arm has run only on BERT-mini (+0.0009). The DeBERTa and BiLSTM hidden-term cells are outstanding, and without them no causal claim about homogeneity is available
 - [!] Disagreement-aware variant on Wikipedia (`dmthd_dis`) — Kaggle Wikipedia run
 - [ ] Optional: zero-shot LLM baseline on a 2,000-item test sample
+
+- [x] Threshold-free sarcasm metric validated across the whole grid — 114 models, false-positive rate and recall correlate at +0.673 with their difference standard deviation 0.053; no method discriminates better than any other — `python -m dmthd.tradeoff`
+- [x] The paper's own method reported as a negative result where the evidence says so — `paper/results_draft.md` Sections 5.3 and 5.3a
+- [!] Reproducibility caveat unresolved: the same code, data and seeds give 0.8779 on a laptop CPU and 0.8393 on a Kaggle T4. Precision, data and code all eliminated. Every table is restricted to one environment; one Kaggle CPU run would isolate it
 
 ## C. Statistics and reporting
 - [x] Mean ± std over seeds and paired bootstrap 95% intervals implemented — `aggregate.py`
 - [x] Wilcoxon across seeds when five seeds exist, otherwise bootstrap only — `aggregate.py --compare`
 - [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
 - [~] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest) — `analysis.py agreement_bands` ready and tested; needs Wikipedia runs
-- [~] Teacher complementarity: pairwise error overlap, Cohen's kappa, oracle-ensemble bound — `analysis.py complementarity` ready; needs Kaggle teachers
-- [~] Weight trajectories per teacher per epoch — `analysis.py weights` ready; needs D-MTHD runs. NOTE: with frozen teachers the weights do not move across epochs by construction; the trajectory plot exists to show that, not to suggest otherwise
-- [~] Macro-F1 vs latency vs parameters table for the Pareto figure — `analysis.py pareto` ready; needs bench output
+- [x] Teacher complementarity — kappa 0.889-0.922, disagreement 6.4-9.2%, error overlap 0.673-0.730, oracle macro-F1 bound 0.9469 against best single 0.8973. This is the mechanism behind the negative result
+- [x] Weight trajectories per teacher per epoch — 0.306 / 0.311 / 0.305 / 0.233, identical at every epoch, which is correct by construction with frozen teachers and is reported as such rather than plotted as a trend
+- [x] Macro-F1 vs latency vs parameters — `paper/tables/efficiency.csv`; DistilBERT matches BERT-large at 5.1x fewer parameters and 5.8x lower batch-32 latency
 
 ## D. Efficiency
 - [x] Benchmark with warm-up, five repeats, median, batch 1 and 32, GPU and CPU — `bench.py`
 - [x] INT8 dynamic quantisation measured on an idle CPU, both corpora — 1.74x / 1.57x at batch 32 for a 0.006 / 0.003 macro-F1 cost
-- [~] Parameter/FLOP/latency/F1 Pareto figure — `figures.py pareto` tested on smoke output; needs Kaggle bench
+- [x] Parameter/FLOP/latency/F1 Pareto data — `runs/tweets/pareto.csv` from the finished grid; figure regenerates from it
 
 ## E. Method presentation
 - [x] Loss fully specified with per-instance weights, T^2 KL, projections, soft term, irony head, disagreement variant — `losses.py` docstring, `paper/setup_draft.md`
