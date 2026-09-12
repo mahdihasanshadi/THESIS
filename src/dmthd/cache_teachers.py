@@ -56,6 +56,20 @@ def main():
     if args.limit:
         df = df.head(args.limit)
     ensure_dir(args.out)
+    # A teacher directory that resumed from a previous session can arrive complete except for the
+    # weights, because the resume drops checkpoints it believes are finished with. Loading it then
+    # fails deep inside the model loader with a message about the hub, several minutes of GPU time
+    # after the run started. Say plainly what is missing instead.
+    WEIGHTS = ("model.safetensors", "pytorch_model.bin", "model.safetensors.index.json",
+               "pytorch_model.bin.index.json", "bilstm.pt")
+    bare = [t for t in args.teachers
+            if os.path.isdir(t) and not any(os.path.exists(os.path.join(t, w)) for w in WEIGHTS)]
+    if bare:
+        raise SystemExit(
+            "these teacher directories have no model weights, only metadata: " + ", ".join(bare) +
+            ". A resumed session leaves finished checkpoints behind to save disk; re-run with "
+            "RESUME_WEIGHTS=all, or resume from a session whose output still holds the teacher "
+            "weights, or retrain the teachers.")
     meta = {"split": args.split, "n": int(len(df)), "scheme": args.scheme, "teachers": [], "aux": None,
             "fingerprint": split_fingerprint(df["text"].tolist(), df["label"].tolist())}
     for tdir in args.teachers:

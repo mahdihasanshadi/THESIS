@@ -392,9 +392,21 @@ BERT-mini fine-tune-only scores **0.8779** here and **0.8393** on a Kaggle T4 un
 that is identical in every respect we can name: same six epochs, batch 32, maximum length 128,
 learning rate 3e-5, same seeds. Three candidate explanations were tested and three were eliminated.
 
-**Not mixed precision.** Trained with and without it on the same seeds and hardware: validation
-macro-F1 by epoch 0.7993 / 0.8276 / 0.8423 / 0.8499 with fp16 against 0.8008 / 0.8299 / 0.8438 /
-0.8505 without. About 0.0015 apart, which is noise.
+**Not mixed precision, and now measured to completion on two students.** Twelve runs on the same
+hardware, three seeds each:
+
+| Student | fp32 seeds | fp32 mean | fp16 seeds | fp16 mean | cost of fp16 |
+|---|---|---|---|---|---|
+| BERT-mini | 0.8385 / 0.8433 / 0.8403 | 0.8407 | 0.8394 / 0.8395 / 0.8389 | 0.8393 | 0.0014 |
+| BERT-small | 0.8516 / 0.8463 / 0.8461 | 0.8480 | 0.8511 / 0.8465 / 0.8431 | 0.8469 | 0.0011 |
+
+Two students agree on about a thousandth, which is inside seed noise. Mixed precision is exonerated,
+and every fp16 number in the grid stands as reported.
+
+**This also splits the gap cleanly.** The headline comparison was local fp32 against Kaggle fp16,
+which confounded two things. With Kaggle fp32 now measured at 0.8407, the environment alone accounts
+for **0.0372** (0.8779 against 0.8407 at matched precision) and mixed precision for the remaining
+0.0014. The environment is 27 times the size of the precision effect.
 
 **Not the data.** The gold-label sequence recorded in `test_labels.npy` matches row for row across
 the two environments, all 4,326 rows. The preparation pipeline is reproducible across machines,
@@ -412,8 +424,8 @@ What is left is the machine, and the elimination is now complete. The local runs
 laptop; the grid is a T4 on Kaggle. The gap is present from the first epoch, the Kaggle training loss
 is higher at every epoch (1.019 against 0.874, ending 0.297 against 0.208), and both sets of seeds
 are internally tight: 0.8779 / 0.8770 / 0.8760 locally against 0.8394 / 0.8395 / 0.8389 on Kaggle.
-One environment is deterministic to sixteen digits across re-runs; the other lands **0.0386** away
-from it on the same script, data and seed. That is a systematic difference, not seed variance, and
+One environment is deterministic to sixteen digits across re-runs; the other lands **0.0372** away
+from it at matched precision on the same script, data and seed. That is a systematic difference, not seed variance, and
 the higher loss at every epoch says it is slower optimisation rather than worse generalisation.
 
 Note that it does not rescue the student: at its local best, 0.8779, BERT-mini fine-tune-only is
@@ -430,6 +442,37 @@ which affects how the efficiency claim is phrased but not the ranking of the met
 of CPU. If it lands near 0.878, the difference is the accelerator; if near 0.839, it is the software
 stack. Neither answer changes the rule above, which is why this is a curiosity to resolve rather
 than a blocker.
+
+### F21. The implicit specialist exists, and the first implicit numbers say the metric was the right choice
+Three models have now been trained on the implicit benchmark (16,509 / 2,064 / 2,064, single-source
+ImplicitHate, `implicit3` labels).
+
+| Model | macro-F1 | not_hate F1 | explicit_hate F1 | implicit_hate F1 | implicit-discrimination AUC |
+|---|---|---|---|---|---|
+| Classical floor (TF-IDF, linear) | 0.5620 | - | - | 0.5562 | 0.7610 |
+| BERT-mini, fine-tune only | 0.5549 | 0.8347 | 0.2857 | 0.5443 | 0.8196 |
+| HateBERT specialist | **0.6029** | 0.8352 | 0.3662 | 0.6072 | **0.8247** |
+
+**The compact student is below a bag of n-grams on macro-F1 and far above it on ranking.** BERT-mini
+scores 0.5549 against the floor's 0.5620, and 0.5443 against 0.5562 on the implicit class itself,
+yet its implicit-discrimination AUC is 0.8196 against 0.7610. It separates implied abuse from benign
+text substantially better than the classical model and still loses on F1, because it cannot place a
+threshold. This is precisely the failure a threshold-free metric was introduced to expose (F19), and
+it is the first time the two measures have disagreed in direction rather than degree.
+
+**The explicit class is the hard one here, which is the opposite of the intuition.** Both neural
+models score in the 0.29 to 0.37 range on `explicit_hate` against 0.83 on `not_hate`. The class has
+864 training rows against 10,616, so this is mostly scarcity; it also means macro-F1 on this
+benchmark is dominated by a class the paper does not argue about, which is a further reason to lead
+with the discrimination AUC.
+
+The specialist clears the floor (0.6029 against 0.5620) and is the model the committee will route to.
+
+**Adapted to the tweet task it scores 0.8931**, against BERT-large 0.8973, irony 0.8930 and HateBERT
+0.8890. A teacher trained on a different corpus under a different label scheme lands inside a
+0.008 band with the other three. That is not yet evidence about diversity, which needs the pairwise
+kappa, but it is one more observation consistent with F20: adaptation to a shared label space pulls
+cross-task specialists towards each other.
 
 ### F18. Aggregation was silently averaging two different experiments
 `aggregate.py` grouped on the `mode` field inside `results.json`, which records the objective and not

@@ -213,12 +213,21 @@ class Bench:
         """Copy a previous session's runs/ tree without the model weights, except where a run still
         needs them (no eval_test.json yet, so its probe evaluation has not been done). Kaggle gives
         20 GB of working space and a finished grid of weights is most of that, so copying them all
-        back in every session is both slow and a real risk of running out of disk."""
+        back in every session is both slow and a real risk of running out of disk.
+
+        Teachers are the exception and always keep their weights. A student checkpoint is needed only
+        until its own probe evaluation is written, but a teacher is the *source* of the logit cache,
+        and any session that changes the committee deletes that cache and rebuilds it from these
+        directories. Dropping teacher weights therefore looks harmless for a whole session and then
+        fails the moment a new teacher is added, which is exactly what happened when the implicit
+        specialist joined: four resumed teachers came back as JSON with no weights and caching died
+        on the first one."""
         kept = skipped = 0
         for root, _, files in os.walk(src):
             rel = os.path.relpath(root, src)
             out = os.path.join(dst, rel) if rel != "." else dst
-            needs_weights = RESUME_WEIGHTS == "all" or (
+            is_teacher = rel.split(os.sep)[0] == "teachers"
+            needs_weights = RESUME_WEIGHTS == "all" or is_teacher or (
                 RESUME_WEIGHTS == "auto" and os.path.exists(os.path.join(root, "results.json"))
                 and not os.path.exists(os.path.join(root, "eval_test.json")))
             os.makedirs(out, exist_ok=True)

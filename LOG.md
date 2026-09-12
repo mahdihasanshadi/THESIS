@@ -580,3 +580,24 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   It rescues nothing: at its local best, 0.8779, BERT-mini fine-tune-only is still below the 0.8798
   classical floor, and the ranking of methods is unaffected because the whole grid was trained
   identically.
+- **Kaggle v2 failed, and the cause was my own resume optimisation.** The fp16 control, the implicit
+  benchmark, the specialist and its tweet adaptation all completed; the run then died nine seconds
+  into teacher caching. `_copy_run_tree` drops model weights for any run that already has an
+  `eval_test.json`, on the reasoning that a finished student needs its checkpoint only until its
+  probe evaluation is written. Teachers also get an `eval_test.json` from the probe stage, so all
+  four resumed teachers came back as metadata with no weights. Adding the implicit specialist made
+  the committee five, `set(tags) <= have` failed, the driver deleted the cache to rebuild it, and
+  `cache_teachers` could not load the first teacher. The failure was invisible for a whole session
+  and then certain the moment a teacher was added.
+  Fixed two ways: teacher directories now always keep their weights on resume, and `cache_teachers`
+  refuses to start with a named list of any teacher directory that holds no weights, instead of
+  failing inside the model loader minutes later.
+- **The fp16 control finished on both students and it sharpens F17 rather than just confirming it.**
+  Mixed precision costs 0.0014 on BERT-mini and 0.0011 on BERT-small over three seeds each. More
+  usefully, Kaggle fp32 is now measured at 0.8407, so the local-versus-Kaggle gap splits into
+  **0.0372 of environment and 0.0014 of precision** instead of a single confounded 0.0386.
+- **First implicit results.** HateBERT specialist 0.6029 macro-F1 and 0.8247 discrimination AUC;
+  BERT-mini fine-tune-only 0.5549 and 0.8196. The student is *below* the 0.5620 classical floor on
+  macro-F1 and well *above* the 0.7610 floor on AUC: it ranks implication correctly and thresholds
+  it badly. The specialist adapted to tweets scores 0.8931, inside a 0.008 band with the three
+  existing teachers.
