@@ -23,8 +23,15 @@ def collect(runs_dir):
     for path in glob.glob(os.path.join(runs_dir, "**", "results.json"), recursive=True):
         r = load_json(path)
         t = r.get("test", {})
-        rows.append({"run": os.path.relpath(os.path.dirname(path), runs_dir),
-                     "student": r.get("student", r.get("model_name")), "mode": r.get("mode", "teacher"),
+        run = os.path.relpath(os.path.dirname(path), runs_dir).replace("\\", "/")
+        parts = run.split("/")
+        # The `mode` field inside results.json records the objective, not the committee, so
+        # `dmthd` and `dmthd_hetero` both say "dmthd" and pooling on it silently averages two
+        # different experiments into one row. The directory name is what distinguishes them.
+        variant = parts[1] if len(parts) > 2 else r.get("mode", "teacher")
+        rows.append({"run": run,
+                     "student": r.get("student", r.get("model_name")), "mode": variant,
+                     "objective": r.get("mode", "teacher"),
                      "tag": r.get("tag", ""), "seed": r.get("seed"), "params": r.get("params"),
                      "macro_f1": t.get("macro_f1"), "accuracy": t.get("accuracy"), "ece": t.get("ece"),
                      "epochs_run": r.get("epochs_run"), "train_time_s": r.get("train_time_s")})
