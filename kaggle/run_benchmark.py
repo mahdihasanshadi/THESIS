@@ -589,8 +589,15 @@ class Bench:
         dirs += [f"{self.runs}/{stag}/dmthd/seed{SEEDS[0]}" for _, stag in self.student_list]
         dirs = [d for d in dirs if os.path.exists(d)]
         dev = "cuda" if GPU else "cpu"
+        out = f"{self.runs}/bench_{dev}.csv"
+        # A finished bench is not recomputed. The directories it measures are the ones whose weights
+        # a resume is entitled to drop, so re-running here on a resumed session would time a subset
+        # and overwrite a complete table with a shorter one. Delete the csv to force a rebuild.
+        if os.path.exists(out):
+            print(f"bench: {out} already exists, keeping it", flush=True)
+            return
         sh(f"python -m dmthd.bench --model_dirs {' '.join(dirs)} --csv {self.data}/test.csv --device {dev} "
-           f"--max_len {self.cfg['max_len']} --num_labels {self.cfg['num_labels']} --out {self.runs}/bench_{dev}.csv", check=False)
+           f"--max_len {self.cfg['max_len']} --num_labels {self.cfg['num_labels']} --out {out}", check=False)
 
     def aggregate(self):
         sh(f"python -m dmthd.aggregate --runs {self.runs} --out {self.runs}/summary.csv", check=False)
