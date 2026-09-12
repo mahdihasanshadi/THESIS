@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Does architectural homogeneity matter? Gain from the hidden-state alignment term by student family.}
+\label{tab:homogeneity}
+\begin{tabular}{llrrr}
+\toprule
+Student & Family & D-MTHD & without hidden term & gain from hidden term \\
+\midrule
+BERT-mini & BERT-lineage & 0.8378 $\pm$ 0.0011 & 0.8369 & +0.0009 \\
+BERT-small & BERT-lineage & 0.8471 $\pm$ 0.0034 & -- & -- \\
+BiLSTM & BiLSTM (not a transformer) & 0.8732 $\pm$ 0.0003 & -- & -- \\
+DeBERTa-v3-xsmall & DeBERTa-v3 & 0.8833 $\pm$ 0.0018 & -- & -- \\
+DistilBERT & BERT-lineage & 0.8960 $\pm$ 0.0024 & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

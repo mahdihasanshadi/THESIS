@@ -408,6 +408,29 @@ experiments of three seeds each, averaged. Found by noticing that a three-seed g
 seeds. `tables.py` was unaffected because it reads the run directory. Recorded because it is the
 class of bug that produces a plausible number nobody questions.
 
+### F19. No method in the grid discriminates better; they differ only in how readily they fire
+Across all **114 evaluated models** in the finished tweet grid, teachers and students, every mode and
+every seed, the false-positive rate on benign sarcasm and the recall on ironic abuse are correlated
+at **+0.673**. The quantity that would separate genuine discrimination from a shifted threshold,
+recall minus false-positive rate, has a mean of **0.352** and a standard deviation of **0.053**,
+while its two components range over 0.24 to 0.59 and 0.59 to 0.75 respectively. The parts move a
+great deal; the difference between them barely moves.
+
+By student, the mean margin is DeBERTa-v3-xsmall 0.394, teachers 0.382, DistilBERT 0.369, BERT-mini
+0.368, BERT-small 0.333, BiLSTM 0.287. Distillation mode does not appear in that ordering at all:
+what varies is the architecture, not the method. DistilBERT has both the lowest false-positive rate
+(0.238) and the lowest recall (0.607); BERT-mini has the highest of each (0.385 and 0.753). They sit
+at different points on one curve.
+
+The single worst margin in the grid is 0.082, for the randomly initialised student, which is the same
+answer F3 gives from the other direction: whatever ability these models have to tell implied abuse
+from harmless sarcasm comes from pre-training, and nothing we added to the objective changes it.
+
+**This is the strongest single piece of evidence for the reframing.** It says, across a hundred
+models rather than one, that reporting recall at a fixed threshold measures willingness to fire and
+not understanding, and that a threshold-free metric is not a stylistic preference but the only honest
+way to ask the question. `python -m dmthd.tradeoff runs/tweets`.
+
 ---
 
 ## 5. What the paper may and may not claim
@@ -421,7 +444,9 @@ class of bug that produces a plausible number nobody questions.
 - **Per-instance dynamic weighting does not beat uniform averaging on any of five students at any tau
   tested so far** (F6). This is a negative result about the paper's own method and it is reportable.
 - Indirect-abuse detection fails through discrimination, not lexical blindness, and the right metric
-  is threshold-free (F10).
+  is threshold-free (F10). Across 114 models in the finished grid, false-positive rate and recall on
+  the sarcasm probes correlate at +0.673 while their difference has a standard deviation of 0.053:
+  no method discriminates better, they differ only in how readily they fire (F19).
 - On a corpus that labels implication, a lexical model ranks implied hate above ordinary text at an
   AUC of 0.761, close to the 0.776 the tweet student reaches on ironic abuse against benign sarcasm:
   the same difficulty, measured twice on different data (F10, F13).

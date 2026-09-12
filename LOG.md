@@ -530,3 +530,13 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   teacher collapsing and being retrained once then dropped; the implicit benchmark end to end under
   the `implicit3` scheme; the specialist re-headed from three classes to six for the tweet committee;
   and the `spec` committee running while `homo` stays clean.
+- **Across the whole finished grid, no method discriminates sarcastic abuse better than any other.**
+  114 evaluated models, teachers and students, every mode and seed. The false-positive rate on benign
+  sarcasm and the recall on ironic abuse correlate at **+0.673**; recall minus false-positive rate has
+  mean 0.352 and standard deviation 0.053 while its components range over 0.24-0.59 and 0.59-0.75.
+  The parts move a lot, the difference barely moves. By student: DeBERTa-v3-xsmall 0.394, teachers
+  0.382, DistilBERT 0.369, BERT-mini 0.368, BERT-small 0.333, BiLSTM 0.287; distillation mode does not
+  appear in the ordering at all. Lowest margin in the grid is the randomly initialised student at
+  0.082. Added `src/dmthd/tradeoff.py`. This is the strongest evidence yet that recall at a fixed
+  threshold measures willingness to fire rather than understanding, and it is measured across a
+  hundred models rather than one.

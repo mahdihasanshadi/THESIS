@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{Ablations on BERT-mini; $\Delta$ is relative to full D-MTHD.}
+\label{tab:ablations}
+\begin{tabular}{lrrr}
+\toprule
+Configuration & Macro-F1 & $\Delta$ & Benign-sarcasm FPR \\
+\midrule
+D-MTHD (full) & 0.8378 $\pm$ 0.0011 & -- & 0.376 \\
+randomly initialised student & 0.7905 & -0.0473 & 0.587 \\
+no auxiliary irony head & 0.8364 & -0.0014 & 0.334 \\
+uniform weights instead of per-instance & 0.8386 & +0.0008 & 0.409 \\
+no hidden-state term & 0.8369 & -0.0009 & 0.352 \\
+per-batch instead of per-instance weights & 0.8389 & +0.0011 & 0.409 \\
+\bottomrule
+\end{tabular}
+\end{table}

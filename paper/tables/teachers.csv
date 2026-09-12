@@ -1,5 +1,5 @@
 Model,Params (M),Macro-F1,Accuracy,ECE,Benign-sarcasm FPR,Ironic-abuse recall
-deberta-base,--,0.8720,0.8867,0.053,0.409,0.773
-irony,--,0.8926,0.9050,0.067,0.294,0.718
 bert-large,--,0.8973,0.9075,0.056,0.224,0.585
+deberta-base,--,0.8720,0.8867,0.053,0.409,0.773
 hatebert,--,0.8887,0.9011,0.076,0.317,0.696
+irony,--,0.8926,0.9050,0.067,0.294,0.718
