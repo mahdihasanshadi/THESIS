@@ -453,6 +453,34 @@ models rather than one, that reporting recall at a fixed threshold measures will
 not understanding, and that a threshold-free metric is not a stylistic preference but the only honest
 way to ask the question. `python -m dmthd.tradeoff runs/tweets`.
 
+### F20. The committee is not complementary enough for per-instance weighting to have anything to do
+This is the mechanism behind F6, and it is measurable without training a single student.
+
+The four task-adapted teachers agree with each other on their *predictions* at Cohen's kappa
+**0.889 to 0.922**, pairwise. Their disagreement rate is **6.4 to 9.2 per cent**. Where they are
+wrong they are mostly wrong together: pairwise error overlap **0.673 to 0.730**, and all four are
+wrong on the same 4.7 per cent of the test set while all four are right on 83.2 per cent.
+
+A per-instance weighting scheme can only express a preference where its members disagree. On this
+committee that is at most one instance in eleven, and on two-thirds of the errors there is no correct
+teacher to prefer. There is very little for the weights to do, and the grid shows them doing it: the
+mean weights over the whole training set are 0.306 / 0.311 / 0.305 / 0.233, identical at every epoch
+because the teachers are frozen, and never far from uniform.
+
+**The headroom exists but the weights cannot reach it.** An oracle that picked the right teacher for
+every instance would reach **0.9526** accuracy and a macro-F1 upper bound of **0.9469**, against the
+best single teacher's 0.9075 and 0.8973. So a five-point gain is theoretically available from
+selection. Reliability measured by cross-entropy against the training label does not find any of it,
+which is a more interesting negative result than "the method did not help": it says the *signal* used
+to select experts is the wrong signal, not that selection is worthless.
+
+This also tells us what a committee would have to look like for the idea to work: members that
+disagree far more than these do. Ours were chosen for complementary *expertise*, a general encoder, an
+abuse specialist and an irony specialist, and after task adaptation on the same corpus they converged
+to near-identical behaviour. Task adaptation is what made their logits comparable enough to combine,
+and it is also what destroyed the diversity the combination was supposed to exploit. That tension is
+worth stating in the paper, because every cross-task committee will meet it.
+
 ---
 
 ## 5. What the paper may and may not claim
@@ -464,7 +492,10 @@ way to ask the question. `python -m dmthd.tradeoff runs/tweets`.
 - Distillation helps all five students, from +0.0012 to +0.0071, and pre-training matters forty times
   more than any component of the method (F3).
 - **Per-instance dynamic weighting does not beat uniform averaging on any of five students at any tau
-  tested so far** (F6). This is a negative result about the paper's own method and it is reportable.
+  tested so far** (F6), and we can say why: the committee members agree at kappa 0.889 to 0.922 and
+  disagree on at most one instance in eleven, so there is almost nothing for a weighting to express,
+  while an oracle over the same teachers would gain five points (F20). The signal used to select
+  experts is the wrong signal, which is a more useful negative result than "it did not help".
 - Indirect-abuse detection fails through discrimination, not lexical blindness, and the right metric
   is threshold-free (F10). Across 114 models in the finished grid, false-positive rate and recall on
   the sarcasm probes correlate at +0.673 while their difference has a standard deviation of 0.053:

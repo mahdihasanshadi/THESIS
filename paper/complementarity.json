@@ -1,0 +1,63 @@
+{
+  "teachers": [
+    "bert-large",
+    "hatebert",
+    "irony",
+    "deberta-base"
+  ],
+  "n_test": 4326,
+  "accuracy": {
+    "bert-large": 0.907535829865927,
+    "hatebert": 0.9010633379565418,
+    "irony": 0.90499306518724,
+    "deberta-base": 0.8867313915857605
+  },
+  "macro_f1": {
+    "bert-large": 0.8972892994715852,
+    "hatebert": 0.8886761313725815,
+    "irony": 0.8926276297685806,
+    "deberta-base": 0.8719818649374179
+  },
+  "pairwise": {
+    "bert-large|hatebert": {
+      "kappa_predictions": 0.9196266945417867,
+      "error_overlap": 0.7100000000000001,
+      "both_wrong_share": 0.06564956079519187,
+      "disagreement_rate": 0.06680536292186777
+    },
+    "bert-large|irony": {
+      "kappa_predictions": 0.9224020957761793,
+      "error_overlap": 0.7125,
+      "both_wrong_share": 0.06588072122052704,
+      "disagreement_rate": 0.06449375866851595
+    },
+    "bert-large|deberta-base": {
+      "kappa_predictions": 0.8928562537122946,
+      "error_overlap": 0.7125,
+      "both_wrong_share": 0.06588072122052704,
+      "disagreement_rate": 0.0889967637540453
+    },
+    "hatebert|irony": {
+      "kappa_predictions": 0.9156617715185769,
+      "error_overlap": 0.6728971962616822,
+      "both_wrong_share": 0.06657420249653259,
+      "disagreement_rate": 0.07004160887656033
+    },
+    "hatebert|deberta-base": {
+      "kappa_predictions": 0.8885897173408328,
+      "error_overlap": 0.6728971962616822,
+      "both_wrong_share": 0.06657420249653259,
+      "disagreement_rate": 0.09246417013407304
+    },
+    "irony|deberta-base": {
+      "kappa_predictions": 0.9002707878502667,
+      "error_overlap": 0.7299270072992701,
+      "both_wrong_share": 0.06934812760055478,
+      "disagreement_rate": 0.08275543226999538
+    }
+  },
+  "oracle_accuracy": 0.9526121128062875,
+  "all_wrong_share": 0.04738788719371244,
+  "all_right_share": 0.8317152103559871,
+  "oracle_macro_f1_upper_bound": 0.9469468033813597
+}

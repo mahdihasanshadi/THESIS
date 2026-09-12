@@ -553,3 +553,17 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   consistent so its comparisons stand; the local BERT-mini and BERT-small numbers are withdrawn
   unless re-run there. One Kaggle run with `GPU=0` would say whether it is the accelerator or the
   software stack, about thirty minutes, and is worth doing but blocks nothing.
+- **Why the weighting does nothing: the teachers agree too much.** Ran `analysis.py complementarity`
+  on the four task-adapted teachers. Pairwise Cohen's kappa on predictions **0.889-0.922**,
+  disagreement rate **6.4-9.2%**, pairwise error overlap **0.673-0.730**; all four wrong on 4.7% of
+  the test set and all four right on 83.2%. A per-instance weighting can only express a preference
+  where members disagree, and that is at most one instance in eleven, with no correct teacher
+  available on two-thirds of the errors. The mean weights over the training set are
+  0.306 / 0.311 / 0.305 / 0.233, identical at every epoch because the teachers are frozen.
+  **But the headroom is real**: an oracle picking the right teacher per instance reaches 0.9526
+  accuracy and a 0.9469 macro-F1 upper bound, against the best single teacher's 0.9075 and 0.8973. So
+  selection is worth five points and cross-entropy-against-the-training-label does not find any of it.
+  That is a better negative result than "the method did not help": the selection signal is wrong, not
+  the idea. It also names the tension the paper should state, that task adaptation is what makes
+  specialist logits combinable and is also what destroys the diversity the combination exists to
+  exploit.
