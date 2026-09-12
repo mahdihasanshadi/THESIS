@@ -400,16 +400,25 @@ macro-F1 by epoch 0.7993 / 0.8276 / 0.8423 / 0.8499 with fp16 against 0.8008 / 0
 the two environments, all 4,326 rows. The preparation pipeline is reproducible across machines,
 which is worth knowing on its own.
 
-**Not the code.** Re-running the current trainer on this laptop with the same seed reproduces the old
-local run to four decimal places: epoch 1 validation 0.8431 and training loss 0.8736, against 0.8431
-and 0.8736 originally. The older runs and the current code agree exactly.
+**Not the code, and the check was stronger than it needed to be.** Re-running the current trainer on
+this laptop with the same seed reproduces the original run *exactly*: test macro-F1
+0.8779444975134871 against 0.8779444975134871, and validation macro-F1 identical to sixteen
+significant figures at all six epochs (0.8431027360303543, 0.8658475690577240, 0.8750055333337056,
+0.8818449709201831, 0.8832502397917246, 0.8839131421739026). Only the training-loss accumulation
+differs, in the ninth significant figure. The pipeline is bit-reproducible on fixed hardware, and
+every change made to the trainer since those runs is behaviour-preserving.
 
-What is left is the machine. The local runs are CPU on this laptop; the grid is a T4 on Kaggle. The
-gap is present from the first epoch, the Kaggle training loss is higher at every epoch (1.019 against
-0.874, ending 0.297 against 0.208), and both sets of seeds are internally tight: 0.8779 / 0.8770 /
-0.8760 locally against 0.8394 / 0.8395 / 0.8389 on Kaggle. Two tight clusters four points apart is a
-systematic difference, not seed variance, and it is a model learning more slowly rather than one
-generalising worse.
+What is left is the machine, and the elimination is now complete. The local runs are CPU on this
+laptop; the grid is a T4 on Kaggle. The gap is present from the first epoch, the Kaggle training loss
+is higher at every epoch (1.019 against 0.874, ending 0.297 against 0.208), and both sets of seeds
+are internally tight: 0.8779 / 0.8770 / 0.8760 locally against 0.8394 / 0.8395 / 0.8389 on Kaggle.
+One environment is deterministic to sixteen digits across re-runs; the other lands **0.0386** away
+from it on the same script, data and seed. That is a systematic difference, not seed variance, and
+the higher loss at every epoch says it is slower optimisation rather than worse generalisation.
+
+Note that it does not rescue the student: at its local best, 0.8779, BERT-mini fine-tune-only is
+still below the 0.8798 classical floor. The discrepancy changes the absolute numbers and not the
+conclusion that a compact model needs help to beat a bag of n-grams on this corpus.
 
 **The rule this imposes, which matters more than the cause:** every number in a table must come from
 one environment. The Kaggle grid is internally consistent, so all of its *comparisons* stand; the

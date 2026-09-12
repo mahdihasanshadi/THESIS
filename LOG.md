@@ -567,3 +567,16 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   the idea. It also names the tension the paper should state, that task adaptation is what makes
   specialist logits combinable and is also what destroys the diversity the combination exists to
   exploit.
+- **The local re-run finished and the elimination is complete: the code is bit-reproducible.** Current
+  trainer, same seed and configuration, against the original run from three days earlier: test
+  macro-F1 **0.8779444975134871** against **0.8779444975134871**, and validation macro-F1 identical to
+  sixteen significant figures at all six epochs. Only the training-loss accumulation differs, in the
+  ninth digit. Every change made to `train_student.py` since those runs is behaviour-preserving, and
+  the pipeline is deterministic on fixed hardware.
+  So all three candidates are eliminated and the CPU-versus-T4 gap of **0.0386** is the environment.
+  One machine reproduces itself to sixteen digits; the other lands four points away on the same
+  script, data and seed. Worth stating in the paper as a reproducibility fact, in a field that
+  publishes three-decimal differences.
+  It rescues nothing: at its local best, 0.8779, BERT-mini fine-tune-only is still below the 0.8798
+  classical floor, and the ranking of methods is unaffected because the whole grid was trained
+  identically.

@@ -239,17 +239,27 @@ quantisation does not touch: the saving is structural, not proportional.
 
 ## 5.10 Threats to validity
 
-**Two machines disagree about the same configuration.** BERT-mini fine-tune-only scores 0.8779 on a
-laptop CPU and 0.8393 on a Kaggle T4 with identical code, data, seeds, epochs, batch size, maximum
-length and learning rate. Mixed precision is not the cause: fp16 and fp32 track to within 0.0015 epoch
-by epoch on the same hardware. The data is not the cause: the gold-label sequences match row for row
-across both environments. The code is not the cause: re-running the current trainer reproduces the old
-local result to four decimal places. Both seed clusters are internally tight, so a four-point gap
-between them is systematic, and the training loss is higher at every epoch on the slower machine, so
-it is slower learning rather than worse generalisation. Every number in this paper therefore comes
-from one environment, and comparisons are made only within it. We report this because a difference
-this large between two runs of the same script is a fact about reproducibility that the field should
-not leave unstated.
+**Two machines disagree about the same configuration, by 0.0386 macro-F1.** BERT-mini fine-tune-only
+scores 0.8779 on a laptop CPU and 0.8393 on a Kaggle T4 with identical code, data, seeds, epochs,
+batch size, maximum length and learning rate. We eliminated three explanations.
+
+Mixed precision is not the cause: trained with and without it on the same hardware and seeds, the two
+track to within 0.0015 epoch by epoch. The data is not the cause: the gold-label sequences recorded by
+the two runs match row for row across all 4,326 test examples, so both score the same split. The code
+is not the cause: re-running the current trainer on the original machine reproduces the original
+result exactly, test macro-F1 agreeing to sixteen significant figures and validation macro-F1 agreeing
+at every epoch, with only the loss accumulation differing in the ninth digit.
+
+So one environment is bit-reproducible across re-runs and the other lands four points away from it on
+the same script. Both seed clusters are internally tight (0.8779 / 0.8770 / 0.8760 against 0.8394 /
+0.8395 / 0.8389), and the training loss is higher at every epoch on the slower machine, which makes
+this slower optimisation rather than worse generalisation.
+
+Every number in this paper therefore comes from one environment, and comparisons are made only within
+it. The discrepancy does not change any conclusion: at its local best the student is still below the
+classical floor, and the ranking of methods is unaffected because everything in the grid was trained
+identically. We report it because a gap this large between two runs of the same script is a fact
+about reproducibility that a field publishing three-decimal differences should not leave unstated.
 
 **Seeds.** Three per configuration, one for ablations and sweeps. Differences are read from bootstrap
 intervals, not from seed variance, and single-seed ablations are treated as indicative only.
