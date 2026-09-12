@@ -67,6 +67,8 @@ run({"MIN_TEACHER_F1": "0.99"}, "teachers", a.root, raw=a.raw)
 run({"MIN_TEACHER_F1": "0.99"}, "students", a.root, raw=a.raw)
 dropped = os.path.join(a.root, "runs", "tweets", "dropped_teachers.json")
 assert os.path.exists(dropped), "dropped_teachers.json missing"
+# read it now: pass 4 clears runs/tweets, so the file is gone by the time the summary prints
+dropped_teachers = open(dropped, encoding="utf-8").read().strip()
 
 if a.implicit_raw:
     # 3. the implicit benchmark, which has its own label scheme
@@ -117,4 +119,4 @@ if a.implicit_raw:
         assert len(json.load(open(d))["test"]["per_class_f1"]) == 6, f"ablation {tag} used the wrong scheme"
     print("\nspec committee ran, homo left clean, controls present: spec_only, implicit_pretrain")
 
-print("\nDRIVER SMOKE PASSED:", open(dropped).read())
+print(f"\nDRIVER SMOKE PASSED (collapsed teachers dropped: {dropped_teachers})")

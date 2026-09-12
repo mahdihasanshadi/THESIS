@@ -429,3 +429,17 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   the out-of-domain test set with whichever label happened to come first. The set is 27,096 rows, not
   27,110. The train, validation and test splits are unaffected and their manifest still verifies
   (MATCH, 20,637 rows).
+- **Driver smoke test, five passes, run against the committed code.** Every assertion passed: the
+  full grid; every teacher collapsing, being retrained once and dropped; the implicit benchmark end
+  to end under the `implicit3` scheme; the specialist trained on the implicit corpus and re-headed
+  from three classes to six for the tweet committee; and the `spec` committee against `homo`. The
+  checks that matter: `runs/tweets/tiny/dmthd_spec/seed1` lists teachers
+  `[tiny-a, mini-b, implicit-spec]` while `runs/tweets/tiny/dmthd/seed1` lists `[tiny-a, mini-b]`,
+  so the specialist reaches the committee it should and leaves untouched the one whose finished runs
+  must stay valid. The cache carries the specialist; the adapted teacher has six classes; the
+  implicit-pretrained control has three. The ablation log line `w_implicit-spec: 1.0` confirms
+  `spec_only` distils from the specialist and nobody else.
+  One bug, in the test script rather than the driver: the closing summary re-read
+  `dropped_teachers.json` after pass 4 had cleared `runs/tweets`, so the script raised at its last
+  line having already passed everything. The content is now captured when it is asserted. Re-running
+  from scratch to confirm a clean exit.
