@@ -13,6 +13,8 @@ Every `[x]` names where the evidence lives.
 - [x] Out-of-domain test set (27,096 ISHate rows) held fully out of training — `data/implicit/test_ood_ishate.csv`
 - [x] Every score on a multi-source benchmark also reported within each source — `evaluate.py --group_col`
 - [x] Teacher provenance rule written and enforced (no test set overlaps any teacher's training data) — `paper/setup_draft.md`, `build_probes.py`
+- [x] Implicit-abuse specialist trained and above the floor — HateBERT on `implicit3` scores 0.6029 macro-F1 and 0.8247 implicit-discrimination AUC against the 0.5620 / 0.7610 floor; task-adapted to tweets it scores 0.8931, inside a 0.008 band with the three existing teachers
+- [x] Data-versus-distillation control trained — BERT-mini fine-tuned on the implicit corpus scores 0.5549 macro-F1 (*below* the 0.5620 floor) and 0.8196 AUC (well above 0.7610): it ranks implication and cannot threshold it, which is the benchmark-grounded form of the Section 5.7 argument
 - [x] Classical floor on every benchmark — tweets 0.8798, Wikipedia 0.8759, implicit 0.5620 (implicit_hate F1 0.5562, implicit-discrimination AUC 0.7610)
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)

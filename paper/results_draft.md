@@ -171,6 +171,37 @@ errors going to `not_cyberbullying`, and `not_cyberbullying` recall 0.681 with 1
 way. The two catch-all classes bleed into each other, which is a label-quality problem as much as a
 model one.
 
+## 5.6a The same failure on a corpus that labels implication
+
+Section 5.6 infers a discrimination failure from probe sets we wrote. The implicit benchmark tests it
+against other people's labels. It is the Implicit Hate Corpus reduced to one source and three classes
+(16,509 / 2,064 / 2,064 rows; train `not_hate` 10,616, `implicit_hate` 5,029, `explicit_hate` 864),
+and the question is whether a model that ranks implied abuse correctly also thresholds it correctly.
+
+| Model | macro-F1 | `not_hate` F1 | `explicit_hate` F1 | `implicit_hate` F1 | implicit-discrimination AUC |
+|---|---|---|---|---|---|
+| Classical floor (TF-IDF, linear) | 0.5620 | - | - | 0.5562 | 0.7610 |
+| BERT-mini, fine-tune only | 0.5549 | 0.8347 | 0.2857 | 0.5443 | 0.8196 |
+| HateBERT specialist | **0.6029** | 0.8352 | 0.3662 | 0.6072 | **0.8247** |
+
+**The compact student loses to a bag of n-grams on F1 and beats it decisively on ranking.** BERT-mini
+scores 0.5549 macro-F1 against the floor's 0.5620, and 0.5443 against 0.5562 on the implicit class
+itself, while separating implied abuse from benign text at 0.8196 AUC against the floor's 0.7610. The
+two measures disagree in direction, not merely in degree. A reader looking only at F1 would conclude
+the neural model had learned nothing the n-grams had not; the ranking says it has learned a great
+deal and cannot convert it into a decision. This is the clearest evidence we have for the argument of
+Section 5.7, and unlike the probe evidence it does not depend on any set we wrote ourselves.
+
+**Two honest qualifications.** First, `explicit_hate` has 864 training rows and both neural models
+score between 0.29 and 0.37 on it, against 0.83 on `not_hate`. Macro-F1 here is therefore dominated
+by a scarce class the paper does not argue about, which is a further reason to lead with the
+threshold-free measure rather than a reason to distrust it. Second, these are single-seed results and
+the full student grid on this benchmark has not yet run; the direction is what we rely on, not the
+third decimal.
+
+The specialist clears the floor on both measures and is the teacher the `spec` committee routes to in
+Section 5.5.
+
 ## 5.7 No method in the grid discriminates better than any other
 
 This is the strongest result in the paper and it is not the one we expected.
