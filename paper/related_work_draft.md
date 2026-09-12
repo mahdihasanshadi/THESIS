@@ -82,12 +82,30 @@ through learned projections \cite{wu2021one}; dynamic weighting by teacher confi
 been used for semantic parsing \cite{zou2025dynamic}. Heterogeneous distillation, where the
 architectures differ, needs an explicit information-flow model \cite{passalis2020heterogeneous}.
 
-**Gap and positioning.** Our per-instance weights follow the error-based family
-\cite{wu2021one, zhang2022confidence}; what is new is (i) a committee of *cross-task* teachers
-(general, explicit abuse, sarcasm) with an auxiliary head distilled from a teacher whose label
-space differs from the task, (ii) reliability measured against annotator fractions rather than
-majority labels, and (iii) a controlled comparison of homogeneous and heterogeneous teacher
-committees and student families, including a non-transformer student. [Contributions 1, 2, 4.]
+**Gap and positioning.** This is the section where the paper is most exposed, so the overlap is
+stated before the difference. Our per-instance weights follow the error-based family
+\cite{wu2021one, zhang2022confidence}, and the combination of error-weighted soft labels with
+projected hidden-state alignment is MT-BERT's \cite{wu2021one}. We do not claim that combination as
+novel and we do not present it as our contribution.
+
+What the existing work assumes, and what we do not, is that the teachers collectively know the task.
+Every weighting scheme above decides *how much* to trust each teacher on an instance; none of them
+can supply an expertise that no teacher has. On the problem this paper addresses that assumption
+fails: the corpora from which teachers are fine-tuned record topic or a binary attack flag, so no
+member of a committee assembled in the usual way has ever seen abuse-by-implication marked as such,
+and there is nothing for a weighting scheme to route to. Our contribution is therefore about what is
+in the committee rather than about how it is combined: a cross-task committee whose members are
+chosen for complementary expertise, including one member trained specifically on the distinction the
+task does not label, plus an auxiliary head distilled from a teacher whose label space differs from
+the task and which therefore cannot be weighted at all.
+
+Two further differences are methodological rather than architectural. Reliability is measured against
+annotator fractions rather than majority labels where a corpus provides them, which connects this
+family to the disagreement literature in Section 2.4. And the weighting is examined rather than
+assumed: because the teachers are frozen and cached, the weights are a fixed function of the data,
+and we report where they actually go, which of the cited papers does not.
+
+[Contributions 1, 2, 4.]
 
 ## 2.4 Learning from annotator disagreement
 
