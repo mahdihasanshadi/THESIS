@@ -443,3 +443,90 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   `dropped_teachers.json` after pass 4 had cleared `runs/tweets`, so the script raised at its last
   line having already passed everything. The content is now captured when it is asserted. Re-running
   from scratch to confirm a clean exit.
+
+## 2026-09-13
+
+- **The tweet grid is finished: 120 student runs, 8.24 h, and the central claim does not survive it.**
+  Kaggle version 4 completed the full comparison. Numbers below are test macro-F1, mean over three
+  seeds, read from `summary_fixed.csv` after correcting the aggregation bug described further down.
+  The classical floor is 0.8798 and the best teacher is BERT-large at 0.8973.
+
+  | Student | params | ft | skd | uniform | D-MTHD | uniform+het | D-MTHD+het |
+  |---|---|---|---|---|---|---|---|
+  | BERT-mini | 11.2M | 0.8393 | 0.8405 | 0.8385 | 0.8378 | 0.8378 | 0.8373 |
+  | BERT-small | 28.8M | 0.8469 | 0.8488 | 0.8505 | 0.8471 | 0.8509 | 0.8477 |
+  | DistilBERT | 67.0M | 0.8907 | 0.8963 | 0.8960 | 0.8960 | 0.8975 | 0.8966 |
+  | DeBERTa-v3-xsmall | 70.8M | 0.8825 | 0.8865 | 0.8862 | 0.8833 | 0.8847 | 0.8828 |
+  | BiLSTM | 10.4M | 0.8693 | 0.8748 | 0.8761 | 0.8732 | 0.8760 | 0.8764 |
+
+  **Distillation helps, and it is the only thing that does.** Every student gains from having a
+  teacher: +0.0012 (BERT-mini), +0.0040 (BERT-small), +0.0068 (DistilBERT), +0.0040
+  (DeBERTa-v3-xsmall), +0.0071 (BiLSTM).
+
+  **D-MTHD does not beat uniform averaging on any student.** The differences are -0.0007, -0.0034,
+  +0.0000, -0.0029 and -0.0029. Four negative, one tie, none positive. The best configuration is
+  uniform or single-teacher for four of the five students; the only student where a D-MTHD variant
+  wins is the BiLSTM, by 0.0004 over uniform with the heterogeneous committee, which is noise.
+
+  **On the headline student nothing beats the no-teacher control at all**, and the paired bootstrap
+  says so: ft versus D-MTHD -0.0015 [-0.0076, +0.0048]; versus uniform -0.0007 [-0.0074, +0.0058];
+  versus single-teacher +0.0012 [-0.0057, +0.0079]; versus D-MTHD with the heterogeneous committee
+  -0.0019 [-0.0082, +0.0041]. Every interval contains zero.
+
+  This is Decision 4 of `paper/OPEN_DECISIONS.md` coming true, written down before the result arrived
+  precisely so the response would not be improvised afterwards.
+
+- **The tau sweep that ran was the old grid and cannot settle the weighting question.** The finished
+  version tried tau = 0.5, 2.0 and 5.0, giving 0.8390, 0.8390 and 0.8389, and mean weights of
+  0.330 / 0.340 / 0.330 at the sharpest of them. All three are effectively uniform, so all three
+  score the same, which is arithmetic rather than evidence. The values that could make a difference,
+  0.05, 0.1 and 0.2, are in the current grid and have not run. **Until they do, the correct statement
+  is that D-MTHD has not been shown to differ from uniform averaging at any tau yet tested**, which
+  is weaker than "it does not work" and stronger than nothing.
+
+- **Everything else in the sweep is flat too.** T: 0.8386 / 0.8402 / 0.8391 at 1, 2 and 8.
+  alpha 0.2 / 0.6: 0.8386 / 0.8394. delta 0.1 / 0.5: 0.8389 / 0.8399. Ablations on BERT-mini, one
+  seed: no_dynamic 0.8386, per_batch 0.8389, no_hidden 0.8369, no_aux 0.8364, against full D-MTHD at
+  0.8378. Removing the dynamic weighting *improves* the score by 0.0008. Only `from_scratch` moves
+  anything, and it moves it down by 0.047, which says pre-training matters and nothing else does.
+
+- **`skd_hetero` is bit-identical to `skd` across all five students**, as expected: single-teacher
+  distillation uses the committee's first teacher, so the committee it nominally belongs to makes no
+  difference. The redundancy was removed from the driver earlier; these runs predate that and are
+  kept as a consistency check on the resume logic rather than deleted.
+
+- **BUG: aggregate was pooling two different experiments into one row.** It grouped on the `mode`
+  field inside results.json, which records the objective and not the committee, so `dmthd` and
+  `dmthd_hetero` landed together and their means were silently averaged, as did `uniform` with
+  `uniform_hetero` and `skd` with `skd_hetero`. Every "6 seeds" row in the first summary was two
+  experiments of three seeds each. Fixed to group on the run directory, which is what distinguishes
+  them; `tables.py` was already correct because it reads the directory name. The table above is from
+  the corrected aggregation.
+
+- **fp16 is exonerated as the cause of the BERT-mini discrepancy.** BERT-mini fine-tune-only scores
+  0.8779 on this laptop and 0.8393 on Kaggle under a nominally identical configuration, and mixed
+  precision was the obvious suspect. `scripts/fp16_check.py` trains the same student with and without
+  it on the same seeds. Seed 1 tracks almost exactly: validation macro-F1 0.7993 / 0.8276 / 0.8423 /
+  0.8499 with fp16 against 0.8008 / 0.8299 / 0.8438 / 0.8505 without, a difference of roughly 0.0015
+  which is noise. The hypothesis was wrong.
+
+- **The two runs are scoring on the same test set, so the data is not the explanation either.**
+  Compared the gold-label sequence recorded in `test_labels.npy` by the local run against the one
+  from Kaggle: 4,326 rows, identical row for row. The split is reproducible across environments,
+  which is worth knowing in its own right.
+
+- **What is left is the training itself, and the local history is missing a column the current code
+  writes.** Local: validation 0.8431 / 0.8658 / 0.8750 / 0.8818 / 0.8833 / 0.8839, training CE 0.874
+  falling to 0.208. Kaggle: 0.7993 / 0.8276 / 0.8423 / 0.8499 / 0.8487 / 0.8537, CE 1.019 falling to
+  0.297. The Kaggle model is behind from the first epoch and stays behind, with a systematically
+  higher training loss, which is a model learning more slowly rather than one generalising worse. The
+  local `history.csv` has no `nan_batches` column, so those runs were produced by a version of
+  `train_student.py` from before the NaN-guard commit. A re-run of the current code on this laptop,
+  same seed and configuration, is under way and will say whether the code changed or the environment
+  did. **Until it finishes, the local BERT-mini numbers and the Kaggle BERT-mini numbers must not
+  appear in the same table.**
+
+- **Driver smoke test passed on the committed code**, all five passes, exit 0: the full grid; every
+  teacher collapsing and being retrained once then dropped; the implicit benchmark end to end under
+  the `implicit3` scheme; the specialist re-headed from three classes to six for the tweet committee;
+  and the `spec` committee running while `homo` stays clean.

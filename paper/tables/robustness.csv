@@ -1,0 +1,3 @@
+Student,Method,Clean,Leet,Swap,Space,Mixed
+BERT-mini,Fine-tune only,0.8394,0.7475,0.7417,0.7275,0.7116
+BERT-mini,D-MTHD,0.8385,0.7460,0.7361,0.7250,0.7077

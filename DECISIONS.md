@@ -223,15 +223,27 @@ validation-test gap vanishes. Wikipedia needed 522 short comments, 646 within-sp
 Tweets, test macro-F1: BERT-large 0.8973, irony-RoBERTa (adapted) 0.8926, HateBERT 0.8887, against a
 classical floor of 0.8798 and a fine-tune-only BERT-mini at 0.8770. Distillation has headroom.
 
-### F3. A compact student alone does not beat the classical floor on tweets
-BERT-mini fine-tune-only: 0.8779 / 0.8770 / 0.8760, mean 0.8770 ± 0.0010, against the floor's 0.8798;
-paired bootstrap on seed 1 gives −0.0018, 95% CI [−0.0108, +0.0070]. This is the gap distillation has
-to fill, and it is reported as such rather than buried.
+### F3. Distillation helps every student, and it is the only component that does
+On the tweet corpus, best distilled configuration minus fine-tune-only: BERT-mini **+0.0012**,
+BERT-small **+0.0040**, DistilBERT **+0.0068**, DeBERTa-v3-xsmall **+0.0040**, BiLSTM **+0.0071**.
+Five out of five positive. Against that, the per-instance weighting contributes nothing (F6), the
+hidden-state term contributes 0.0009 on the headline student, and the auxiliary head contributes
+0.0014.
 
-### F4. Distillation closes almost the whole teacher-student gap
-DistilBERT with single-teacher distillation: 0.8963 / 0.8961 / 0.8965 (mean 0.8963, spread 0.0004)
-against BERT-large's 0.8973. A 66M student lands within 0.001 of a 335M teacher. This is the paper's
-central efficiency claim and it is now evidence, not hope.
+The one component that matters enormously is pre-training: a randomly initialised student scores
+0.7905 against 0.8378, a gap of 0.047, forty times anything else in the grid.
+
+**On the headline student the gain does not clear noise.** Paired bootstrap against fine-tune-only:
+D-MTHD -0.0015 [-0.0076, +0.0048]; uniform -0.0007 [-0.0074, +0.0058]; single-teacher +0.0012
+[-0.0057, +0.0079]; D-MTHD with the heterogeneous committee -0.0019 [-0.0082, +0.0041]. Every
+interval contains zero, so on BERT-mini the correct statement is that no method has been shown to
+beat training without teachers at all.
+
+### F4. A 67M student lands within 0.001 of a 335M teacher
+DistilBERT with single-teacher distillation reaches 0.8963 ± 0.0002 against BERT-large's 0.8973, and
+0.8975 ± 0.0031 with the uniform heterogeneous committee, which is *above* the teacher. Five times
+fewer parameters, 5.2 ms per example against 26.6 ms at batch 1 on the same GPU. This is the paper's
+efficiency claim and it is the one result that survived the grid intact.
 
 ### F5. The two corpora tell opposite stories, and that is the framing
 On Wikipedia the same 11M student reaches 0.8884 ± 0.0044 on its own, above the floor (0.8759) and
@@ -239,13 +251,36 @@ On Wikipedia the same 11M student reaches 0.8884 ± 0.0044 on its own, above the
 level, distillation has little room; where it is two points behind, it has a lot. The paper should
 say when distillation is worth doing, not only that it works.
 
-### F6. The dynamic weighting is currently indistinguishable from uniform averaging
-Epoch-mean weights in every heterogeneous D-MTHD run: 0.254 / 0.259 / 0.254 / 0.233 against a uniform
-0.25, identical across epochs and seeds. Not a bug: with frozen teachers the weights are a fixed
-function of the data. The cause is tau: on a synthetic three-teacher cache the weight entropy ratio
-is 0.94 at tau = 1 (near-uniform) and 0.50 at tau = 0.1. The sweep now covers tau in
-{0.05, 0.1, 0.2, 0.5}. **Until this is resolved, no claim about dynamic weighting may be made.**
-Current evidence: DistilBERT uniform 0.8976 versus D-MTHD 0.8966 on the heterogeneous committee.
+### F6. The dynamic weighting does not beat uniform averaging on any student
+*Settled 2026-09-13 by the finished grid; the earlier diagnostic version of this entry predicted it
+from the weights alone and is summarised at the end.*
+
+Test macro-F1, three seeds, tweet corpus. Classical floor 0.8798, best teacher 0.8973.
+
+| Student | params | ft | skd | uniform | D-MTHD | uniform+het | D-MTHD+het |
+|---|---|---|---|---|---|---|---|
+| BERT-mini | 11.2M | 0.8393 | 0.8405 | 0.8385 | 0.8378 | 0.8378 | 0.8373 |
+| BERT-small | 28.8M | 0.8469 | 0.8488 | 0.8505 | 0.8471 | 0.8509 | 0.8477 |
+| DistilBERT | 67.0M | 0.8907 | 0.8963 | 0.8960 | 0.8960 | 0.8975 | 0.8966 |
+| DeBERTa-v3-xsmall | 70.8M | 0.8825 | 0.8865 | 0.8862 | 0.8833 | 0.8847 | 0.8828 |
+| BiLSTM | 10.4M | 0.8693 | 0.8748 | 0.8761 | 0.8732 | 0.8760 | 0.8764 |
+
+D-MTHD minus uniform, per student: **-0.0007, -0.0034, +0.0000, -0.0029, -0.0029**. Four negative,
+one tie, none positive. The best configuration is uniform or single-teacher for four of the five
+students. Removing the weighting entirely (`ablation_no_dynamic`, 0.8386) scores *above* full D-MTHD
+(0.8378) on the headline student.
+
+**Why this is not yet the final word.** Every tau the finished run tried was 0.5 or larger, where the
+mean weights are 0.330 / 0.340 / 0.330, so all those configurations optimise nearly the same
+objective and scoring the same is arithmetic rather than evidence. The values that could separate
+them, 0.05, 0.1 and 0.2, are in the current grid and have not run. The honest present claim is
+**"not shown to differ from uniform averaging at any tau yet tested"**, which is weaker than "it does
+not work" and is what the paper should say until the sharp values return.
+
+*Superseded diagnostic:* epoch-mean weights in every heterogeneous run were 0.254 / 0.259 / 0.254 /
+0.233 against a uniform 0.25, identical across epochs and seeds, because with frozen teachers the
+weights are a fixed function of the data. On a synthetic cache the weight entropy ratio was 0.94 at
+tau = 1 and 0.50 at tau = 0.1. That diagnosis predicted this result before the runs existed.
 
 ### F7. The heterogeneous student is weaker and slower
 DeBERTa-v3-xsmall: skd 0.8865, uniform 0.8847, D-MTHD 0.8835 (two seeds), against DistilBERT's
@@ -352,19 +387,41 @@ against 0.562) precisely because the aggregate rewards the shortcut.
 This is the failure mode that would have sunk the paper quietly: a strong headline number, a
 plausible story, and a reviewer asking why implicit and explicit examples come from different places.
 
+### F17. Mixed precision is not why the small students score low
+BERT-mini fine-tune-only scores 0.8779 on a CPU here and 0.8393 on a T4 under a nominally identical
+configuration, and mixed precision was the obvious suspect. Measured directly: validation macro-F1
+by epoch is 0.7993 / 0.8276 / 0.8423 / 0.8499 with fp16 against 0.8008 / 0.8299 / 0.8438 / 0.8505
+without, a difference of about 0.0015. The hypothesis was wrong and is recorded as wrong.
+
+The splits are also identical: the gold-label sequence in `test_labels.npy` matches row for row
+across the two environments, 4,326 rows, so the two scores describe the same test set and the data
+pipeline is reproducible across machines. What remains is the training itself. The Kaggle model is
+behind from the first epoch with a systematically higher training loss, and the local `history.csv`
+lacks a column the current code writes, so those runs came from an older version of the trainer. A
+controlled re-run decides it. **Until then no table may mix numbers from the two environments.**
+
+### F18. Aggregation was silently averaging two different experiments
+`aggregate.py` grouped on the `mode` field inside `results.json`, which records the objective and not
+the committee, so `dmthd` and `dmthd_hetero` were pooled into one row, as were `uniform` with
+`uniform_hetero` and `skd` with `skd_hetero`. Every "6 seeds" row in the first summary was two
+experiments of three seeds each, averaged. Found by noticing that a three-seed grid was reporting six
+seeds. `tables.py` was unaffected because it reads the run directory. Recorded because it is the
+class of bug that produces a plausible number nobody questions.
+
 ---
 
 ## 5. What the paper may and may not claim
 
 **May claim, with the evidence above:**
-- A 66M student distilled from a single large teacher lands within 0.001 macro-F1 of that teacher, at
-  a fraction of its cost (F4, F11).
-- Distillation is worth doing exactly where a compact model is behind, and barely worth it where it
-  is not (F3, F5).
+- A 67M student distilled from a single large teacher reaches 0.8963 against that teacher's 0.8973,
+  and 0.8975 with a uniform committee, at a fifth of the parameters and a fifth of the latency (F4,
+  F11).
+- Distillation helps all five students, from +0.0012 to +0.0071, and pre-training matters forty times
+  more than any component of the method (F3).
+- **Per-instance dynamic weighting does not beat uniform averaging on any of five students at any tau
+  tested so far** (F6). This is a negative result about the paper's own method and it is reportable.
 - Indirect-abuse detection fails through discrimination, not lexical blindness, and the right metric
   is threshold-free (F10).
-- Two widely used corpora do not transfer to each other, and one of them is materially dirty (F1, F9).
-- A deployment profile that a practitioner can act on (F11).
 - On a corpus that labels implication, a lexical model ranks implied hate above ordinary text at an
   AUC of 0.761, close to the 0.776 the tweet student reaches on ironic abuse against benign sarcasm:
   the same difficulty, measured twice on different data (F10, F13).
@@ -372,16 +429,24 @@ plausible story, and a reviewer asking why implicit and explicit examples come f
   48.2 per cent about whether the hate is implied (F14), both carry schema traps that silently
   produce a wrong benchmark (F15), and pooling them creates a source shortcut that inflates the
   aggregate score while costing 0.075 F1 on implied hate (F16).
+- Two widely used corpora do not transfer to each other, and one of them is materially dirty (F1, F9).
+- A deployment profile a practitioner can act on (F11).
 
-**May not claim yet:**
-- That dynamic weighting beats uniform averaging. Blocked by F6 until the tau sweep resolves it.
-- That the auxiliary irony head improves sarcasm discrimination. The measurement exists (D13) but has
-  only been run on the fine-tune-only baseline; the distilled variants are still on Kaggle.
-- That homogeneity causes anything. Blocked until the hidden-term 2x2 completes.
-- "Student exceeds teachers." No seed-tested evidence.
+**May not claim:**
+- That D-MTHD beats uniform averaging. The grid says it does not, at every tau tried. The sharp tau
+  values may change this and have not run; nothing may be claimed in either direction until they do.
+- That the method beats the no-teacher control on the headline student. Four paired bootstrap
+  intervals, all containing zero (F3).
+- Anything about BERT-mini or BERT-small in absolute terms, until the environment discrepancy in F17
+  is resolved. The *comparisons within* the Kaggle grid are valid because everything in it was
+  trained the same way; the absolute numbers are not yet trustworthy.
 - Anything at all about the implicit specialist. The corpus, the scheme, the teacher and the
-  measurements exist and are smoke-tested; not one model has been trained on a GPU yet. Every number
-  for the implicit benchmark in this file is the classical floor and nothing more.
+  measurements exist and are smoke-tested; not one model has been trained on a GPU yet.
+- That the auxiliary irony head improves sarcasm discrimination. Measured only on the fine-tune-only
+  baseline so far.
+- That homogeneity causes anything. The hidden-term contribution on the headline student is 0.0009.
+- "Student exceeds teachers", except in the narrow sense of F4, where DistilBERT with a uniform
+  heterogeneous committee reaches 0.8975 against BERT-large's 0.8973, a difference far inside noise.
 
 ---
 
