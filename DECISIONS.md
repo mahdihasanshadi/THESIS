@@ -387,18 +387,40 @@ against 0.562) precisely because the aggregate rewards the shortcut.
 This is the failure mode that would have sunk the paper quietly: a strong headline number, a
 plausible story, and a reviewer asking why implicit and explicit examples come from different places.
 
-### F17. Mixed precision is not why the small students score low
-BERT-mini fine-tune-only scores 0.8779 on a CPU here and 0.8393 on a T4 under a nominally identical
-configuration, and mixed precision was the obvious suspect. Measured directly: validation macro-F1
-by epoch is 0.7993 / 0.8276 / 0.8423 / 0.8499 with fp16 against 0.8008 / 0.8299 / 0.8438 / 0.8505
-without, a difference of about 0.0015. The hypothesis was wrong and is recorded as wrong.
+### F17. The same code and data give different results on two machines, and every number must come from one of them
+BERT-mini fine-tune-only scores **0.8779** here and **0.8393** on a Kaggle T4 under a configuration
+that is identical in every respect we can name: same six epochs, batch 32, maximum length 128,
+learning rate 3e-5, same seeds. Three candidate explanations were tested and three were eliminated.
 
-The splits are also identical: the gold-label sequence in `test_labels.npy` matches row for row
-across the two environments, 4,326 rows, so the two scores describe the same test set and the data
-pipeline is reproducible across machines. What remains is the training itself. The Kaggle model is
-behind from the first epoch with a systematically higher training loss, and the local `history.csv`
-lacks a column the current code writes, so those runs came from an older version of the trainer. A
-controlled re-run decides it. **Until then no table may mix numbers from the two environments.**
+**Not mixed precision.** Trained with and without it on the same seeds and hardware: validation
+macro-F1 by epoch 0.7993 / 0.8276 / 0.8423 / 0.8499 with fp16 against 0.8008 / 0.8299 / 0.8438 /
+0.8505 without. About 0.0015 apart, which is noise.
+
+**Not the data.** The gold-label sequence recorded in `test_labels.npy` matches row for row across
+the two environments, all 4,326 rows. The preparation pipeline is reproducible across machines,
+which is worth knowing on its own.
+
+**Not the code.** Re-running the current trainer on this laptop with the same seed reproduces the old
+local run to four decimal places: epoch 1 validation 0.8431 and training loss 0.8736, against 0.8431
+and 0.8736 originally. The older runs and the current code agree exactly.
+
+What is left is the machine. The local runs are CPU on this laptop; the grid is a T4 on Kaggle. The
+gap is present from the first epoch, the Kaggle training loss is higher at every epoch (1.019 against
+0.874, ending 0.297 against 0.208), and both sets of seeds are internally tight: 0.8779 / 0.8770 /
+0.8760 locally against 0.8394 / 0.8395 / 0.8389 on Kaggle. Two tight clusters four points apart is a
+systematic difference, not seed variance, and it is a model learning more slowly rather than one
+generalising worse.
+
+**The rule this imposes, which matters more than the cause:** every number in a table must come from
+one environment. The Kaggle grid is internally consistent, so all of its *comparisons* stand; the
+local BERT-mini and BERT-small numbers may not be quoted beside them and are withdrawn from the
+paper unless re-run there. This also means the students may be capable of more than the grid shows,
+which affects how the efficiency claim is phrased but not the ranking of the methods.
+
+**What would isolate it:** one run on Kaggle with `GPU=0`, same configuration, about thirty minutes
+of CPU. If it lands near 0.878, the difference is the accelerator; if near 0.839, it is the software
+stack. Neither answer changes the rule above, which is why this is a curiosity to resolve rather
+than a blocker.
 
 ### F18. Aggregation was silently averaging two different experiments
 `aggregate.py` grouped on the `mode` field inside `results.json`, which records the objective and not

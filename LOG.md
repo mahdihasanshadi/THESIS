@@ -540,3 +540,16 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   0.082. Added `src/dmthd/tradeoff.py`. This is the strongest evidence yet that recall at a fixed
   threshold measures willingness to fire rather than understanding, and it is measured across a
   hundred models rather than one.
+- **The BERT-mini discrepancy is the environment, and the rule it imposes matters more than the
+  cause.** Three candidates tested, three eliminated. Not mixed precision: fp16 and fp32 track to
+  within 0.0015 epoch by epoch on the same hardware. Not the data: `test_labels.npy` matches row for
+  row across both environments, all 4,326 rows. Not the code: re-running the current trainer here
+  with the same seed reproduces the old local run to four decimals, epoch 1 validation 0.8431 and
+  loss 0.8736 against 0.8431 and 0.8736. What is left is the machine, CPU here against a T4 there.
+  Both seed clusters are tight (0.8779 / 0.8770 / 0.8760 against 0.8394 / 0.8395 / 0.8389), so a
+  four-point gap between them is systematic, and the Kaggle loss is higher at every epoch, so it is
+  slower learning rather than worse generalisation.
+  **Rule adopted: every number in a table comes from one environment.** The Kaggle grid is internally
+  consistent so its comparisons stand; the local BERT-mini and BERT-small numbers are withdrawn
+  unless re-run there. One Kaggle run with `GPU=0` would say whether it is the accelerator or the
+  software stack, about thirty minutes, and is worth doing but blocks nothing.
