@@ -71,9 +71,38 @@ Approximate compute: [fill from `train_time_s` in results.json] GPU-hours.
 
 ## Limitations (draft bullets)
 
-- Three seeds per configuration; five only for the headline configuration if time allowed.
-- English only; two corpora; the sarcasm probe sets are small (about 1,000 items each) and the
-  human-verified set has 300 items.
-- Teachers are fixed at one seed each.
-- Annotator disagreement is available only for the Wikipedia corpus.
-- Obfuscation robustness uses synthetic edits, not real evasion attempts.
+Ordered by how much they should change a reader's confidence, not by how comfortable they are.
+
+**About the label itself.** The distinction this paper is built on is not one that expert annotators
+agree about. The two public corpora that annotate implication share 629 texts; they agree on 99.7
+per cent of them about whether the text is hateful and on 48.2 per cent about whether the hate is
+stated or implied. Any result here, including ours, is bounded by that. It is the reason we report a
+threshold-free ranking metric rather than a single decision, and the reason a human annotation study
+is part of the paper rather than an appendix to it.
+
+**About the implicit benchmark.** It comes from a single corpus, which removes a source confound but
+means the in-domain result rests on one collection effort and one platform. The explicit class in it
+has 864 training and 108 test examples, so per-class results for that class are noisy and are not
+used to support any claim. Out-of-domain evidence comes from a second corpus that contains almost no
+implicit examples, so out-of-domain *implicit recall* is measured on the probe set rather than on a
+full held-out corpus.
+
+**About the probes.** They are built from published corpora by rule rather than by hand, about 1,000
+items each, and the human-verified subset is 300 items. The benign-sarcasm set is author-labelled for
+sarcasm, not checked by us for abusiveness beyond one screening pass over the rows a classical model
+flags. Probe metrics are only meaningful for models trained on Twitter-domain data; on a
+Wikipedia-trained model they measure domain shift and we do not report them.
+
+**About the experimental grid.** Three seeds per configuration and one seed for ablations, so
+ablation differences are read from bootstrap intervals and not from seed variance. Each teacher is
+trained once, so teacher-side variance is not estimated. The heterogeneous comparison confounds
+architecture family with model quality, since DeBERTa-v3-xsmall is simply weaker on these tasks than
+the BERT-lineage students it is compared against; the controlled version of that question is the
+hidden-state term rather than the student swap.
+
+**About robustness.** Obfuscation uses synthetic character edits, not evasion attempts by people who
+want to evade. One variant improves the Wikipedia score rather than hurting it, which we report as it
+stands and which should be read as a caution about the method rather than a result about robustness.
+
+**About scope.** English only. Bengali, which motivated this line of work, has no sarcasm teacher
+available and is therefore left to the thesis rather than this paper.
