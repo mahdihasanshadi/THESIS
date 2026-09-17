@@ -11,9 +11,13 @@ logits and the gold labels, so no training is involved.
 
 For each tau the script reports, per teacher, the mean weight inside each group and the **routing
 contrast**: mean weight on the implicit group minus mean weight on the explicit group, with a
-percentile bootstrap interval. A contrast whose interval excludes zero is evidence of routing. A
-contrast of zero says the committee treats both kinds of abuse identically, which would mean the
+percentile bootstrap interval. With tens of thousands of training instances almost any contrast
+excludes zero, so its size is what carries the evidence, read against the uniform weight 1/K. A
+contrast near zero says the committee treats both kinds of abuse alike, which would mean the
 specialist is contributing knowledge but not selection, and the paper must say that instead.
+
+The weights are a softmax over the teachers passed in, so pass the committee a student trained with.
+The default, every teacher in the cache, describes no trained model once the cache holds more.
 
 Groups, by scheme:
   implicit3  the gold classes themselves (implicit_hate against explicit_hate)
@@ -135,9 +139,9 @@ def main():
     pd.DataFrame(rows).to_csv(os.path.join(args.out, "weight_routing.csv"), index=False)
     save_json(res, os.path.join(args.out, "weight_routing.json"))
     print(f"\n-> {args.out}")
-    print("A contrast whose interval excludes zero is evidence that the weighting selects an expert "
-          "rather than averaging; one that spans zero says the committee treats both kinds of abuse "
-          "alike, and the paper reports that instead.")
+    print(f"Uniform weight for these {len(tags)} teachers: {1 / len(tags):.3f}. Read each contrast's size "
+          "against it: with this many instances almost any difference excludes zero, and a weighting that "
+          "selects an expert moves a large share of the uniform weight, not a few thousandths.")
 
 
 if __name__ == "__main__":

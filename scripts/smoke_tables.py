@@ -64,10 +64,11 @@ def build(root):
                     auc = 0.776 + 0.01 * mi
                     curve = [{"threshold": round(0.1 + 0.05 * k, 2),
                               "ironic_recall": round(0.96 - 0.04 * k, 4),
-                              "benign_fpr": round(0.79 - 0.05 * k, 4)} for k in range(17)]
+                              "benign_fpr": round(0.79 - 0.04 * k, 4)} for k in range(17)]
+                    # as on the real grid: no threshold brings benign sarcasm down to 10 per cent
                     w(os.path.join(d, "implicit_analysis", "implicit_analysis.json"),
                       {"sarcasm_discrimination_auc": round(auc, 4), "sarcasm_discrimination_ap": round(auc - 0.05, 4),
-                       "operating_point_at_0.5": curve[8], "threshold_for_fpr_10pct": curve[-1]})
+                       "operating_point_at_0.5": curve[8], "threshold_for_fpr_10pct": None})
                     pd.DataFrame(curve).to_csv(os.path.join(d, "implicit_analysis", "operating_point.csv"), index=False)
                     w(os.path.join(d, "eval_test_ood_ishate.json"),
                       {"macro_f1": round(base - 0.12, 4), "implicit_discrimination_auc": round(auc - 0.03, 4)})
@@ -89,18 +90,20 @@ def build(root):
         for v in values:
             w(os.path.join(runs, "bert-mini", f"sweep_{param}_{v}", "seed1", "results.json"),
               result(round(0.885 + rng.uniform(-0.004, 0.004), 4), tag=f"sweep_{param}_{v}"))
-    w(os.path.join(runs, "weight_routing", "weight_routing.json"),
-      {"cache": "fixture", "teachers": ["bert-large", "hatebert", "irony"], "split": "train",
-       "reliability": "hard",
-       "contrast_groups": {"implicit_like": "other_cyberbullying", "explicit_like": "targeted"},
-       "group_sizes": {"other_cyberbullying": 4664, "targeted": 25002, "not_cyberbullying": 4941},
-       "by_tau": {"0.1": {"mean_weight": {t: {"other_cyberbullying": 0.34, "targeted": 0.31,
-                                              "not_cyberbullying": 0.35}
-                                          for t in ("bert-large", "hatebert", "irony")},
-                          "routing_contrast": {t: {"delta": 0.03, "ci95": [0.01, 0.05], "n_a": 4664,
-                                                   "n_b": 25002, "excludes_zero": True}
-                                               for t in ("bert-large", "hatebert", "irony")},
-                          "lexical_contrast": {}}}})
+    def routing(teachers):
+        return {"cache": "fixture", "teachers": list(teachers), "split": "train", "reliability": "hard",
+                "contrast_groups": {"implicit_like": "other_cyberbullying", "explicit_like": "targeted"},
+                "group_sizes": {"other_cyberbullying": 4664, "targeted": 25002, "not_cyberbullying": 4941},
+                "by_tau": {"0.1": {"mean_weight": {t: {"other_cyberbullying": 0.34, "targeted": 0.31,
+                                                       "not_cyberbullying": 0.35} for t in teachers},
+                                   "routing_contrast": {t: {"delta": 0.03, "ci95": [0.01, 0.05], "n_a": 4664,
+                                                            "n_b": 25002, "excludes_zero": True} for t in teachers},
+                                   "lexical_contrast": {}}}}
+    homo = ("bert-large", "hatebert", "irony")
+    # the old pooled measurement next to the per-committee ones: the tables must prefer the latter
+    w(os.path.join(runs, "weight_routing", "weight_routing.json"), routing(homo + ("implicit-spec", "deberta-base")))
+    w(os.path.join(runs, "weight_routing", "homo", "weight_routing.json"), routing(homo))
+    w(os.path.join(runs, "weight_routing", "spec", "weight_routing.json"), routing(homo + ("implicit-spec",)))
     rows = []
     for st, params in students.items():
         rows.append({"model": f"{runs}/{st}/dmthd/seed1", "params_M": params / 1e6, "flops_G_per_seq": params / 1e9 * 2,
@@ -130,4 +133,22 @@ if __name__ == "__main__":
     for n in expected:
         tex = open(os.path.join(out, f"{n}.tex"), encoding="utf-8").read()
         assert "\\toprule" in tex and "\\bottomrule" in tex and tex.count("\\\\") >= 2, f"{n}.tex looks malformed"
+    imp = pd.read_csv(os.path.join(out, "implicit.csv"))
+    imp_tex = open(os.path.join(out, "implicit.tex"), encoding="utf-8").read()
+    rt = pd.read_csv(os.path.join(out, "routing.csv"))
+    rt_tex = open(os.path.join(out, "routing.tex"), encoding="utf-8").read()
+    checks = [
+        ("implicit: a false-positive rate no model meets is said once, not printed as a column",
+         "Ironic recall at FPR 0.10" not in imp.columns and "No analysed model kept" in imp_tex),
+        ("implicit: the caption counts the control rows that are there", "The last two rows are the controls" in imp_tex),
+        ("implicit: the caption says the probe columns come from one seed", "one seed per method" in imp_tex),
+        ("routing: one block per trained committee", set(rt["Committee"]) == {"homogeneous", "homogeneous + implicit specialist"}),
+        ("routing: the pooled measurement is not shown when committee ones exist", "every cached teacher" not in rt_tex),
+        ("routing: uniform weight per committee", set(rt["Uniform"].astype(str)) == {"0.333", "0.25"}),
+    ]
+    bad = [name for name, ok in checks if not ok]
+    for name, ok in checks:
+        print(("PASS " if ok else "FAIL ") + name)
+    if bad:
+        sys.exit(f"TABLES SMOKE FAILED: {bad}")
     print("\nTABLES SMOKE PASSED:", ", ".join(expected))

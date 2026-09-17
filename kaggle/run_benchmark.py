@@ -4,8 +4,8 @@
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset wikipedia                       (downloads from Figshare)
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset implicit                        (downloads from the Hub)
 
-Stages: prepare | specialist | teachers | cache | students | probes | sweep | robustness | quant |
-bench | aggregate | all.
+Stages, in the order `all` runs them: prepare | specialist | teachers | cache | students | sweep |
+probes | robustness | quant | bench | aggregate.
 Every stage skips work whose results.json already exists, so a killed session resumes where it stopped.
 
 Design (the comparison grid): three teacher committees x two student families.
@@ -628,17 +628,24 @@ class Bench:
         homo = self.committee("homo")
         if not homo:
             return
+        # The weights are a softmax over the committee, so both diagnostics below are measured on a
+        # committee a student actually trained with. The cache holds every teacher, and weights over all
+        # of them describe no trained model: version 4 of the tweet run measured five teachers where the
+        # students had three or four.
         # cheap diagnostic first: how far from uniform are the per-instance weights at each tau?
-        if not os.path.exists(f"{self.cache}/tau_diagnostic.csv"):
+        if not os.path.exists(f"{self.cache}/tau_diagnostic_homo.csv"):
             sh(f"python -m dmthd.tune_tau --cache {self.cache} --data_dir {self.data} --scheme {self.cfg['scheme']} "
-               f"--label_col {self.cfg['label_col']}", check=False)
+               f"--label_col {self.cfg['label_col']} --teachers {' '.join(homo)} "
+               f"--out {self.cache}/tau_diagnostic_homo.csv", check=False)
         # and the mechanism question the committee exists to answer: does the weighting send
         # implication to the specialist, or does it average over everyone?
-        if not os.path.exists(f"{self.runs}/weight_routing/weight_routing.json"):
-            rel = "soft" if self.cfg["soft"] else "hard"   # must match what the students trained with
-            sh(f"python -m dmthd.weight_routing --cache {self.cache} --data_dir {self.data} "
-               f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} "
-               f"--reliability {rel} --out {self.runs}/weight_routing", check=False)
+        rel = "soft" if self.cfg["soft"] else "hard"   # must match what the students trained with
+        for comm, tags in self.active_committees():
+            out = f"{self.runs}/weight_routing/{comm}"
+            if not os.path.exists(f"{out}/weight_routing.json"):
+                sh(f"python -m dmthd.weight_routing --cache {self.cache} --data_dir {self.data} "
+                   f"--scheme {self.cfg['scheme']} --label_col {self.cfg['label_col']} "
+                   f"--teachers {' '.join(tags)} --reliability {rel} --out {out}", check=False)
         name, stag = self.student_list[0]
         # tau: with frozen teachers the weights are a fixed function of the data, and at tau = 1 the
         # observed means sit within 0.03 of uniform, so the sweep must reach much sharper values or
@@ -740,7 +747,10 @@ if __name__ == "__main__":
                 "wikipedia": f"{ROOT}/raw_wikipedia", "implicit": IMPLICIT_RAW}[a.dataset]
     b = Bench(a.dataset, raw)
     b.resume()
-    order = ["prepare", "specialist", "teachers", "cache", "students", "probes", "sweep", "robustness", "quant", "bench", "aggregate"]
+    # probes after sweep: the implicit analysis covers every run of the headline student, and in the
+    # other order the sweep runs finished after it had passed. Version 4 of the tweet run left its three
+    # new tau values without a sarcasm-discrimination AUC that way.
+    order = ["prepare", "specialist", "teachers", "cache", "students", "sweep", "probes", "robustness", "quant", "bench", "aggregate"]
     stages = order if a.stage == "all" else [a.stage]
     ran_out = None
     for st in stages:

@@ -40,6 +40,12 @@ ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instanc
                   "ablation_spec_only": "implicit specialist alone, no committee",
                   "ablation_no_spec": "committee without the implicit specialist",
                   "ablation_implicit_pretrain": "student pre-trained on the implicit corpus, no distillation"}
+# What each control row in the implicit table isolates, for its caption.
+CONTROL_ROLE = {"ablation_spec_only": "the specialist without a committee",
+                "ablation_no_spec": "the committee without the specialist",
+                "ablation_implicit_pretrain": "the same student pre-trained on the implicit corpus instead of distilled from it"}
+COMMITTEE_LABEL = {"homo": "homogeneous", "spec": "homogeneous + implicit specialist",
+                   "hetero": "homogeneous + DeBERTa"}
 # The class whose F1 the implicit claim is argued on, per label scheme seen in a results.json.
 HARD_CLASS = ("implicit_hate", "other_cyberbullying")
 
@@ -233,51 +239,99 @@ def main():
     # improve while the model simply fires more often. Both failure modes are visible here and
     # nowhere else in the paper.
     imp_modes = main_modes + ["ablation_spec_only", "ablation_no_spec", "ablation_implicit_pretrain"]
-    im = agg(s[s["mode"].isin(imp_modes) & (s["student"] == args.headline)])
+    head = s[s["mode"].isin(imp_modes) & (s["student"] == args.headline)]
+    im = agg(head)
     has_any = any(c in im.columns and im[c].notna().any()
                   for c in ("sarcasm_auc_mean", "implicit_discrimination_auc_mean"))
     if not im.empty and has_any:
         im["order"] = im["mode"].map({k: i for i, k in enumerate(imp_modes)})
         im = im.sort_values("order")
         hard = next(iter(df.get("hard_class", pd.Series(dtype=object)).dropna().unique()), "hard class")
-        rows = [{"Method": MODE_LABEL.get(r.mode, ABLATION_LABEL.get(r.mode, r.mode)), "Seeds": int(r.n),
-                 "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
-                 f"F1 on {hard.replace('_', ' ')}": fmt(getattr(r, "hard_class_f1_mean", None),
-                                                        getattr(r, "hard_class_f1_std", None), 3),
-                 "Implicit-discrimination AUC": fmt(getattr(r, "implicit_discrimination_auc_mean", None),
-                                                    getattr(r, "implicit_discrimination_auc_std", None), 3),
-                 "Sarcasm-discrimination AUC": fmt(getattr(r, "sarcasm_auc_mean", None),
-                                                   getattr(r, "sarcasm_auc_std", None), 3),
-                 "Ironic recall at 0.5": fmt(getattr(r, "ironic_recall_at_half_mean", None), None, 3),
-                 "Benign FPR at 0.5": fmt(getattr(r, "benign_fpr_at_half_mean", None), None, 3),
-                 "Ironic recall at FPR 0.10": fmt(getattr(r, "ironic_recall_at_fpr10_mean", None), None, 3)}
-                for r in im.itertuples()]
-        write(pd.DataFrame(rows), args.out, "implicit",
-              "Detection of abuse by implication. Sarcasm-discrimination AUC ranks the ironic-abuse "
-              "probe against the benign-sarcasm probe and is threshold-free, so it separates a model "
-              "that cannot see implication from one that sees it but cannot tell it from harmless "
-              "sarcasm. The last three rows are the controls: the specialist without a committee, the "
-              "committee without the specialist, and the same student pre-trained on the implicit "
-              "corpus instead of distilled from it.", "implicit")
+        # The probe columns exist only where the implicit analysis ran. An analysed model for which no
+        # threshold meets the false-positive rate is a result, not a gap, so it is marked as such.
+        analysed = head.groupby("mode")["sarcasm_auc"].count()
+        rows = []
+        for r in im.itertuples():
+            at10 = getattr(r, "ironic_recall_at_fpr10_mean", None)
+            unmet = (at10 is None or pd.isna(at10)) and analysed.get(r.mode, 0) > 0
+            rows.append({"Method": MODE_LABEL.get(r.mode, ABLATION_LABEL.get(r.mode, r.mode)), "Seeds": int(r.n),
+                         "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
+                         f"F1 on {hard.replace('_', ' ')}": fmt(getattr(r, "hard_class_f1_mean", None),
+                                                                getattr(r, "hard_class_f1_std", None), 3),
+                         "Implicit-discrimination AUC": fmt(getattr(r, "implicit_discrimination_auc_mean", None),
+                                                            getattr(r, "implicit_discrimination_auc_std", None), 3),
+                         "Sarcasm-discrimination AUC": fmt(getattr(r, "sarcasm_auc_mean", None),
+                                                           getattr(r, "sarcasm_auc_std", None), 3),
+                         "Ironic recall at 0.5": fmt(getattr(r, "ironic_recall_at_half_mean", None), None, 3),
+                         "Benign FPR at 0.5": fmt(getattr(r, "benign_fpr_at_half_mean", None), None, 3),
+                         "Ironic recall at FPR 0.10": "n.r." if unmet else fmt(at10, None, 3)})
+        t = pd.DataFrame(rows)
+        # a column no run fills says nothing about these runs (implicit-discrimination AUC exists only
+        # on the implicit corpus), so it is dropped rather than printed as a column of dashes
+        t = t[[c for c in t.columns if (t[c].astype(str) != "--").any()]]
+        caption = ("Detection of abuse by implication. Sarcasm-discrimination AUC ranks the ironic-abuse "
+                   "probe against the benign-sarcasm probe and is threshold-free, so it separates a model "
+                   "that cannot see implication from one that sees it but cannot tell it from harmless sarcasm.")
+        controls = [CONTROL_ROLE[m] for m in im["mode"] if m in CONTROL_ROLE]
+        if len(controls) == 1:
+            caption += f" The last row is the control: {controls[0]}."
+        elif controls:
+            number = {2: "two", 3: "three"}.get(len(controls), str(len(controls)))
+            caption += f" The last {number} rows are the controls: {', '.join(controls[:-1])} and {controls[-1]}."
+        n_probe = sorted({int(v) for v in analysed if v > 0})
+        if n_probe and max(n_probe) < im["n"].max():
+            caption += (" Macro-F1 and class F1 are over all seeds; the probe columns come from "
+                        + ("one seed per method." if n_probe == [1] else "the analysed seeds only."))
+        # the threshold grid is the one dmthd.implicit_analysis scans
+        col = "Ironic recall at FPR 0.10"
+        if col in t.columns and (t[col] == "n.r.").any():
+            if t[col].isin(["n.r.", "--"]).all():
+                t = t.drop(columns=col)
+                caption += (" No analysed model kept the false-positive rate on benign sarcasm at or below "
+                            "0.10 at any threshold from 0.10 to 0.90, so recall at that rate is not reported.")
+            else:
+                caption += (" n.r.: no threshold from 0.10 to 0.90 kept the false-positive rate on benign "
+                            "sarcasm at or below 0.10.")
+        write(t, args.out, "implicit", caption, "implicit")
 
     # ---- routing: does the weighting select an expert, or average over the committee? ----
-    rt = _load(os.path.join(args.runs, "weight_routing", "weight_routing.json"))
-    if rt:
-        pos, neg = rt["contrast_groups"]["implicit_like"], rt["contrast_groups"]["explicit_like"]
+    # One measurement per trained committee, in weight_routing/<committee>/. Older runs measured a single
+    # pool of every cached teacher, which no student trained with; that is shown only when nothing else
+    # exists, and the caption says so.
+    found = [(os.path.basename(os.path.dirname(p)), _load(p))
+             for p in sorted(glob.glob(os.path.join(args.runs, "weight_routing", "*", "weight_routing.json")))]
+    pooled = not found
+    if pooled:
+        found = [("pool", _load(os.path.join(args.runs, "weight_routing", "weight_routing.json")))]
+    found = [(comm, rt) for comm, rt in found if rt]
+    if found:
+        groups = found[0][1]["contrast_groups"]
+        pos, neg = groups["implicit_like"], groups["explicit_like"]
         rows = []
-        for tau, entry in rt["by_tau"].items():
-            for teacher, c in entry["routing_contrast"].items():
-                if c:
-                    rows.append({"tau": tau, "Teacher": teacher,
-                                 f"weight on {pos.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(pos), None, 3),
-                                 f"weight on {neg.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(neg), None, 3),
-                                 "difference": f"{c['delta']:+.4f}",
-                                 "95 per cent interval": f"[{c['ci95'][0]:+.4f}, {c['ci95'][1]:+.4f}]"})
+        for comm, rt in found:
+            k = len(rt.get("teachers") or [])
+            for tau, entry in rt["by_tau"].items():
+                for teacher, c in entry["routing_contrast"].items():
+                    if c:
+                        rows.append({"Committee": "every cached teacher" if pooled else COMMITTEE_LABEL.get(comm, comm),
+                                     "Uniform": f"{1 / k:.3f}" if k else "--", "tau": tau, "Teacher": teacher,
+                                     f"weight on {pos.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(pos), None, 3),
+                                     f"weight on {neg.replace('_', ' ')}": fmt(entry["mean_weight"][teacher].get(neg), None, 3),
+                                     "difference": f"{c['delta']:+.4f}",
+                                     "95 per cent interval": f"[{c['ci95'][0]:+.4f}, {c['ci95'][1]:+.4f}]"})
         if rows:
-            write(pd.DataFrame(rows), args.out, "routing",
-                  "Where the per-instance weights go. A difference whose interval excludes zero means "
-                  "the weighting selects a teacher for abuse by implication rather than averaging over "
-                  "the committee.", "routing")
+            caption = (f"Where the per-instance weights go: the mean weight each teacher receives on "
+                       f"{pos.replace('_', ' ')} instances and on {neg.replace('_', ' ')} instances, from the "
+                       "teachers' predictions on the training split, with a 95 per cent bootstrap interval on "
+                       "the difference. With "
+                       "thousands of instances per group almost any difference excludes zero, so read its size "
+                       "against the uniform weight: a weighting that selects an expert for abuse by implication "
+                       "moves a large share of it.")
+            if pooled:
+                caption += (" These weights are computed over every cached teacher, a committee no student was "
+                            "trained with. Which teacher leads on an instance is the same in any sub-committee; "
+                            "the sizes are not.")
+            write(pd.DataFrame(rows), args.out, "routing", caption, "routing")
 
     # ---- ablations ----
     a = agg(s[s["is_ablation"]])
@@ -368,9 +422,15 @@ def main():
     rob = []
     for student in s["student"].unique():
         for mode in ("ft", "dmthd"):
-            d = s[(s["student"] == student) & (s["mode"] == mode)]
+            d = s[(s["student"] == student) & (s["mode"] == mode)].sort_values("seed")
             if d.empty:
                 continue
+            # Only the first seed is obfuscated and transferred. Taking whichever run the directory walk
+            # returned first picked another seed often enough to leave this table empty with the data
+            # sitting on disk, so prefer the run that actually carries the evaluations.
+            evaluated = [c for c in d.columns if c.startswith(("obf_", "transfer_"))]
+            if evaluated and d[evaluated].notna().any(axis=1).any():
+                d = d[d[evaluated].notna().any(axis=1)]
             r = d.iloc[0]
             row = {"Student": STUDENT_LABEL.get(student, student), "Method": MODE_LABEL.get(mode, mode),
                    "Clean": fmt(r.macro_f1)}
@@ -378,14 +438,21 @@ def main():
                 c = f"obf_{v}"
                 if c in d.columns and not pd.isna(r.get(c, np.nan)):
                     row[v.capitalize()] = f"{r[c]:.4f}"
-            for other in ("wikipedia", "tweets"):
+            for other in ("wikipedia", "tweets", "implicit"):
                 c = f"transfer_{other}"
                 if c in d.columns and not pd.isna(r.get(c, np.nan)):
                     row[f"transfer to {other}"] = f"{r[c]:.4f}"
+            # the collapsed binary score hides the case the paper is about: implicit hate against not-hate
+            c = "transfer_implicit_focus_auc"
+            if c in d.columns and not pd.isna(r.get(c, np.nan)):
+                row["implicit-hate AUC after transfer"] = f"{r[c]:.4f}"
             if len(row) > 3:
                 rob.append(row)
     write(pd.DataFrame(rob), args.out, "robustness",
-          "Robustness: obfuscated test variants and cross-dataset transfer (first seed).", "robustness")
+          "Robustness (first seed). Macro-F1 on obfuscated variants of the test set, and binary macro-F1 "
+          "(abusive or not) on the test sets of the other corpora with no further training. The last "
+          "column ranks implicit hate against non-hateful posts of the implicit corpus by the transferred "
+          "model's abuse probability.", "robustness")
 
     # ---- sweeps ----
     sw = s[s["is_sweep"]].copy()
