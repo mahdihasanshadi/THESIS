@@ -683,3 +683,15 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   on the specialist. `paper/OPEN_DECISIONS.md`: Decision 4 resolved as 4A; Decision 1's recommendation
   is now B2, a measurement paper about what distillation does and does not transfer about implication,
   with the implicit grid as the test that could make it constructive.
+- **Three further findings from the v4 tree, 17 September (F28 to F30).** The teachers' training
+  losses end at 0.03 to 0.08, so the per-instance reliability, read from cached logits on the split
+  the teachers were trained on, compares teachers that have all memorised the label; that is the
+  mechanism behind the flat tau sweep, and it also makes the teachers' soft labels on the training
+  split nearly one-hot, so distillation there reduces to fine-tuning (F28). Scored from saved test
+  probabilities, the committee is worth +0.5 to +0.8 macro-F1 over its best member under uniform
+  averaging, no gold-free weighting or cross-validated stacked gate adds more than 0.003, and the
+  students receive none of it: committee against single-teacher distillation is within 0.002 on every
+  student (F29). `dmthd.significance` now includes those rows (66 comparisons). On Kaggle the students
+  learn more slowly from epoch 1 (loss 1.02 against 0.87, validation F1 0.80 against 0.84), which
+  points at the library versions rather than the accelerator and is testable locally by pinning
+  transformers 4.4x (F30).

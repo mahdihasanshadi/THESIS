@@ -4,6 +4,9 @@ BERT-mini,does a committee help,Fine-tune only,Uniform multi-teacher,3,-0.0007,"
 BERT-mini,does the method help,Fine-tune only,D-MTHD,3,-0.0015,"[-0.0076, +0.0048]",no
 BERT-mini,does a committee with DeBERTa help,Fine-tune only,Uniform multi-teacher (het.),3,-0.0014,"[-0.0085, +0.0054]",no
 BERT-mini,does the method with DeBERTa help,Fine-tune only,D-MTHD (heterogeneous committee),3,-0.0019,"[-0.0082, +0.0041]",no
+BERT-mini,does a committee beat one teacher,Single-teacher KD,Uniform multi-teacher,3,-0.0019,"[-0.0077, +0.0038]",no
+BERT-mini,does the weighted committee beat one teacher,Single-teacher KD,D-MTHD,3,-0.0027,"[-0.0088, +0.0035]",no
+BERT-mini,does a DeBERTa teacher change averaging,Uniform multi-teacher,Uniform multi-teacher (het.),3,-0.0007,"[-0.0067, +0.0063]",no
 BERT-mini,does per-instance weighting beat averaging,Uniform multi-teacher,D-MTHD,3,-0.0007,"[-0.0074, +0.0061]",no
 BERT-mini,does a DeBERTa teacher change the method,D-MTHD,D-MTHD (heterogeneous committee),3,-0.0005,"[-0.0063, +0.0054]",no
 BERT-mini,"weighting against averaging, with DeBERTa",Uniform multi-teacher (het.),D-MTHD (heterogeneous committee),3,-0.0005,"[-0.0067, +0.0054]",no
@@ -12,6 +15,9 @@ BERT-small,does a committee help,Fine-tune only,Uniform multi-teacher,3,+0.0036,
 BERT-small,does the method help,Fine-tune only,D-MTHD,3,+0.0002,"[-0.0097, +0.0099]",no
 BERT-small,does a committee with DeBERTa help,Fine-tune only,Uniform multi-teacher (het.),3,+0.0040,"[-0.0058, +0.0126]",no
 BERT-small,does the method with DeBERTa help,Fine-tune only,D-MTHD (heterogeneous committee),3,+0.0008,"[-0.0079, +0.0088]",no
+BERT-small,does a committee beat one teacher,Single-teacher KD,Uniform multi-teacher,3,+0.0017,"[-0.0070, +0.0115]",no
+BERT-small,does the weighted committee beat one teacher,Single-teacher KD,D-MTHD,3,-0.0017,"[-0.0102, +0.0078]",no
+BERT-small,does a DeBERTa teacher change averaging,Uniform multi-teacher,Uniform multi-teacher (het.),3,+0.0004,"[-0.0061, +0.0071]",no
 BERT-small,does per-instance weighting beat averaging,Uniform multi-teacher,D-MTHD,3,-0.0034,"[-0.0106, +0.0036]",no
 BERT-small,does a DeBERTa teacher change the method,D-MTHD,D-MTHD (heterogeneous committee),3,+0.0006,"[-0.0083, +0.0080]",no
 BERT-small,"weighting against averaging, with DeBERTa",Uniform multi-teacher (het.),D-MTHD (heterogeneous committee),3,-0.0032,"[-0.0100, +0.0033]",no
@@ -20,6 +26,9 @@ BiLSTM,does a committee help,Fine-tune only,Uniform multi-teacher,3,+0.0068,"[-0
 BiLSTM,does the method help,Fine-tune only,D-MTHD,3,+0.0039,"[-0.0054, +0.0141]",no
 BiLSTM,does a committee with DeBERTa help,Fine-tune only,Uniform multi-teacher (het.),3,+0.0067,"[-0.0033, +0.0176]",no
 BiLSTM,does the method with DeBERTa help,Fine-tune only,D-MTHD (heterogeneous committee),3,+0.0071,"[-0.0039, +0.0195]",no
+BiLSTM,does a committee beat one teacher,Single-teacher KD,Uniform multi-teacher,3,+0.0014,"[-0.0073, +0.0099]",no
+BiLSTM,does the weighted committee beat one teacher,Single-teacher KD,D-MTHD,3,-0.0015,"[-0.0092, +0.0059]",no
+BiLSTM,does a DeBERTa teacher change averaging,Uniform multi-teacher,Uniform multi-teacher (het.),3,-0.0002,"[-0.0073, +0.0069]",no
 BiLSTM,does per-instance weighting beat averaging,Uniform multi-teacher,D-MTHD,3,-0.0029,"[-0.0116, +0.0056]",no
 BiLSTM,does a DeBERTa teacher change the method,D-MTHD,D-MTHD (heterogeneous committee),3,+0.0032,"[-0.0054, +0.0112]",no
 BiLSTM,"weighting against averaging, with DeBERTa",Uniform multi-teacher (het.),D-MTHD (heterogeneous committee),3,+0.0004,"[-0.0072, +0.0081]",no
@@ -28,6 +37,9 @@ DeBERTa-v3-xsmall,does a committee help,Fine-tune only,Uniform multi-teacher,3,+
 DeBERTa-v3-xsmall,does the method help,Fine-tune only,D-MTHD,3,+0.0008,"[-0.0056, +0.0075]",no
 DeBERTa-v3-xsmall,does a committee with DeBERTa help,Fine-tune only,Uniform multi-teacher (het.),3,+0.0022,"[-0.0121, +0.0122]",no
 DeBERTa-v3-xsmall,does the method with DeBERTa help,Fine-tune only,D-MTHD (heterogeneous committee),3,+0.0003,"[-0.0069, +0.0071]",no
+DeBERTa-v3-xsmall,does a committee beat one teacher,Single-teacher KD,Uniform multi-teacher,3,-0.0003,"[-0.0072, +0.0070]",no
+DeBERTa-v3-xsmall,does the weighted committee beat one teacher,Single-teacher KD,D-MTHD,3,-0.0032,"[-0.0100, +0.0040]",no
+DeBERTa-v3-xsmall,does a DeBERTa teacher change averaging,Uniform multi-teacher,Uniform multi-teacher (het.),3,-0.0015,"[-0.0169, +0.0092]",no
 DeBERTa-v3-xsmall,does per-instance weighting beat averaging,Uniform multi-teacher,D-MTHD,3,-0.0029,"[-0.0086, +0.0029]",no
 DeBERTa-v3-xsmall,does a DeBERTa teacher change the method,D-MTHD,D-MTHD (heterogeneous committee),3,-0.0005,"[-0.0080, +0.0066]",no
 DeBERTa-v3-xsmall,"weighting against averaging, with DeBERTa",Uniform multi-teacher (het.),D-MTHD (heterogeneous committee),3,-0.0019,"[-0.0108, +0.0108]",no
@@ -36,6 +48,9 @@ DistilBERT,does a committee help,Fine-tune only,Uniform multi-teacher,3,+0.0052,
 DistilBERT,does the method help,Fine-tune only,D-MTHD,3,+0.0053,"[-0.0016, +0.0122]",no
 DistilBERT,does a committee with DeBERTa help,Fine-tune only,Uniform multi-teacher (het.),3,+0.0068,"[-0.0013, +0.0139]",no
 DistilBERT,does the method with DeBERTa help,Fine-tune only,D-MTHD (heterogeneous committee),3,+0.0058,"[-0.0025, +0.0154]",no
+DistilBERT,does a committee beat one teacher,Single-teacher KD,Uniform multi-teacher,3,-0.0003,"[-0.0070, +0.0060]",no
+DistilBERT,does the weighted committee beat one teacher,Single-teacher KD,D-MTHD,3,-0.0003,"[-0.0072, +0.0070]",no
+DistilBERT,does a DeBERTa teacher change averaging,Uniform multi-teacher,Uniform multi-teacher (het.),3,+0.0016,"[-0.0064, +0.0096]",no
 DistilBERT,does per-instance weighting beat averaging,Uniform multi-teacher,D-MTHD,3,+0.0000,"[-0.0079, +0.0082]",no
 DistilBERT,does a DeBERTa teacher change the method,D-MTHD,D-MTHD (heterogeneous committee),3,+0.0006,"[-0.0083, +0.0109]",no
 DistilBERT,"weighting against averaging, with DeBERTa",Uniform multi-teacher (het.),D-MTHD (heterogeneous committee),3,-0.0010,"[-0.0087, +0.0069]",no

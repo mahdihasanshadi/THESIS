@@ -669,6 +669,57 @@ DeBERTa-v3-xsmall +0.0040 [-0.0024, +0.0109], BiLSTM +0.0071 [-0.0039, +0.0195].
 helps every student" was a statement about point estimates. Five of five positive is still worth
 reporting, as consistency of direction, but a 4,326-post test set cannot resolve differences this size.
 
+### F28. The reliability signal is measured where every teacher has memorised the label
+The weights `w_k(i) = softmax_k(-CE_k(i)/tau)` are computed from cached teacher logits on the *training
+split*, the same split each teacher was fine-tuned on. By their last epoch the teachers' training losses
+are 0.033 (BERT-large), 0.059 (HateBERT), 0.077 (irony), 0.061 (implicit specialist) and 0.227
+(DeBERTa-v3-base): on the data the weights are read from, every task-adapted teacher assigns the gold
+label a probability near one on nearly every instance. Cross-entropy differences between teachers are
+therefore a few hundredths, which is why the weights stay within 0.03 of uniform even at tau = 0.05
+(F22), and why DeBERTa, the one teacher that did not memorise the split, is the one whose weight moves.
+
+The same fact bears on the distillation itself. On the training split the teachers' soft labels are
+close to the one-hot gold labels, so the KL term carries little that the cross-entropy term does not,
+and single-teacher, uniform and weighted distillation all reduce to fine-tuning with a slightly
+smoothed target (F27). This is a known hazard of distilling a memorising teacher on its own training
+data (Stanton et al. 2021; Beyer et al. 2022) and it applies with full force to every error-weighted
+multi-teacher scheme that measures reliability against the gold label on the training set, MT-BERT
+and CA-MKD included. Two consequences: reliability must be estimated out of sample (cross-fitted
+teachers, or a validation-fitted gate), and distillation needs data the teachers have not fitted
+(held-out folds or an unlabelled transfer set) before its soft labels carry information.
+
+### F29. The committee is worth 0.5 to 0.8 points over its best member, and the student receives none of it
+Scored directly from the teachers' saved test probabilities (`scratchpad/teacher_ensemble.py`, 17
+September), uniform averaging of the committee beats the best single teacher: homogeneous 0.9026,
+with the specialist 0.9000, with DeBERTa 0.9051, all five 0.9036, against BERT-large's 0.8973. No
+gold-free combination improves on the uniform mean by more than 0.003: confidence weighting 0.9018 to
+0.9055, entropy weighting 0.9011 to 0.9052, taking the most confident teacher 0.9000 to 0.9015, and a
+stacked logistic-regression gate fitted by five-fold cross-validation over the test set 0.9041 to
+0.9055. The oracle sits at 0.945 to 0.955 accuracy, but where the teachers disagree (10 to 14 per cent
+of items) their own probabilities do not say which of them is right: there the uniform mean is right
+on 55 to 62 per cent and some teacher on about 90 per cent, and the gate cannot tell them apart.
+
+So even a corrected reliability signal (F28) has a ceiling of about +0.3 macro-F1 over uniform
+averaging on this committee, and the five-point oracle gap is not reachable from teacher outputs. The
+students, meanwhile, do not receive even the 0.5 to 0.8 the committee has: uniform multi-teacher
+distillation against single-teacher distillation is -0.0019, +0.0017, -0.0003, -0.0003 and +0.0014
+across the five students, every interval containing zero (`significance.csv`, rows "does a committee
+beat one teacher"). A better label on the same 34,607 training texts does not make a better student.
+What a small student needs is more texts to imitate the committee on, which is where the transfer-set
+literature (Tang et al. 2019; Jiao et al. 2020; Turc et al. 2019) locates the gains, and where a
+committee has a job a single teacher does not: it is the better labeller.
+
+### F30. The Kaggle students learn more slowly from the first epoch, not just at the end
+On BERT-mini fine-tune-only, seed 1, the training loss after epoch 1 is 1.019 on Kaggle against 0.874
+on the laptop, and validation macro-F1 0.799 against 0.843; the gap persists at every epoch and ends at
+0.854 against 0.884 on validation. Same steps, learning rate, schedule, clipping and data; mixed
+precision accounts for 0.0014 (F17). The local environment is torch 2.14 with transformers 5.17; the
+Kaggle image is older. Two experiments isolate the cause without a GPU: pin transformers 4.4x locally
+and re-run seed 1 (30 minutes of CPU), and run the Kaggle notebook with `GPU=0` (F17). Until one of
+them runs, every absolute BERT-mini and BERT-small number on Kaggle should be read as possibly
+under-trained by four points, which is also why both sit below the classical floor; the comparisons
+within the grid remain valid because every run shares the condition.
+
 ---
 
 ## 5. What the paper may and may not claim
