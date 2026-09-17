@@ -136,6 +136,14 @@ at the top either way: the best teacher ranks at 0.8247 and the fine-tune-only s
 introduction and abstract should be rewritten around implication; the results section already has
 been. The title waits for the implicit grid.
 
+**17 September, evening: Mahdi's decision.** He does not want the negative-result paper as the paper,
+and asked for the strongest positive route inside knowledge distillation. The B2 manuscript is
+preserved on the branch `paper-b2-audit`. The route chosen is out-of-sample distillation with an
+unlabelled transfer set (DECISIONS D19), which attacks the mechanism the audit found (F28, F29) rather
+than re-weighting the same knowledge. Its predictions are written down; one resumed Kaggle session of
+the tweet notebook decides them. If prediction 1 holds, Decision 1 becomes a constructive paper whose
+audit explains why the in-sample grid found nothing; if it fails, B2 stands.
+
 ---
 
 ## Decision 2. How the remaining GPU quota is spent — this one is needed now

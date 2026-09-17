@@ -30,7 +30,12 @@ MODE_LABEL = {"ft": "Fine-tune only", "skd": "Single-teacher KD", "uniform": "Un
               "skd_hetero": "Single-teacher KD (het.)", "uniform_hetero": "Uniform multi-teacher (het.)",
               "dmthd_hetero": "D-MTHD (heterogeneous committee)",
               "uniform_spec": "Uniform multi-teacher + implicit specialist",
-              "dmthd_spec": "D-MTHD + implicit specialist"}
+              "dmthd_spec": "D-MTHD + implicit specialist",
+              "skd_transfer": "Single-teacher KD + transfer set",
+              "uniform_transfer": "Uniform multi-teacher + transfer set",
+              "uniform_hetero_transfer": "Uniform multi-teacher (het.) + transfer set",
+              "dmthd_knn_transfer": "Out-of-sample reliability weighting + transfer set",
+              "pseudo_transfer": "Committee hard pseudo-labels + transfer set"}
 STUDENT_LABEL = {"bert-mini": "BERT-mini", "bert-small": "BERT-small", "distilbert": "DistilBERT",
                  "deberta-xsmall": "DeBERTa-v3-xsmall", "bilstm": "BiLSTM", "tiny": "BERT-tiny"}
 ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instance",
@@ -220,7 +225,8 @@ def main():
     s["is_sweep"] = s["mode"].str.startswith("sweep_")
 
     # ---- main table ----
-    main_modes = ["ft", "skd", "uniform", "dmthd", "uniform_spec", "dmthd_spec", "dmthd_dis"]
+    main_modes = ["ft", "skd", "uniform", "dmthd", "uniform_spec", "dmthd_spec", "skd_transfer", "uniform_transfer",
+                  "uniform_hetero_transfer", "dmthd_knn_transfer", "pseudo_transfer", "dmthd_dis"]
     m = agg(s[s["mode"].isin(main_modes)])
     if not m.empty:
         m["order"] = m["mode"].map({k: i for i, k in enumerate(main_modes)})

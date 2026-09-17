@@ -210,6 +210,65 @@ numbers alongside the aggregate, every time, automatically.
 
 ---
 
+### D19. Distil out of sample: an unlabelled transfer set, the committee as labeller, and a reliability the teachers cannot have memorised
+*Decided 17 September, after F28 and F29; predictions written here before the run.*
+
+F28 says the teachers' outputs on the training split are the gold labels and their reliability there
+is saturated; F29 says the committee is worth 0.5 to 0.8 points over its best member on text the
+teachers have not fitted, and that no re-weighting of the same knowledge recovers more than 0.3. The
+one lever those two findings leave inside knowledge distillation is the data the student imitates
+the committee on. That is also where the recipes that report large gains for small students put it
+(Tang et al. 2019; Jiao et al. 2020; Turc et al. 2019), and it is what this grid never had.
+
+**What was built** (`prepare_transfer.py`, `knn_reliability.py`, `train_student.py --transfer`, driver
+stage `transfer`, all smoke-tested on CPU):
+- A transfer set of unlabelled in-domain tweets: OLID and HatEval through TweetEval, Davidson et al.
+  2017, used as text only, plus the 1,563 tweets our own cleaning dropped for carrying more than one
+  label. The TweetEval irony configuration is excluded because it is the irony teacher's fine-tuning
+  data, and Founta et al. 2018 under the provenance rule. Every text is matched on the splits' own key
+  against train, validation, test, every probe set and the implicit benchmark, and dropped on any
+  hit. About 50,000 texts survive, 1.5 times the training split.
+- On transfer rows the student trains on the committee alone: the KL term, the hidden term and, where
+  used, the irony head, with the hard-label term masked out. The teachers' outputs there are cached
+  like the training split's.
+- A gold-free, out-of-sample reliability: for each teacher, its accuracy on the k = 20 validation texts
+  nearest the instance in the teacher's own representation space, Laplace-smoothed, turned into
+  weights by a softmax of its log at tau = 1. It is defined on unlabelled text, it cannot be memorised
+  because the teachers never trained on validation, and it is what F28 says the original signal
+  should have been.
+
+**The arms**, BERT-mini, three seeds each, against the in-sample runs already in the grid:
+`skd_transfer` (BERT-large with the transfer set), `uniform_transfer` (the homogeneous committee
+averaged), `uniform_hetero_transfer` (the DeBERTa committee, the best labeller in F29),
+`dmthd_knn_transfer` (the homogeneous committee under the corrected weights), and `pseudo_transfer`
+(the committee's hard argmax as a pseudo-label with cross-entropy only: the control that separates
+soft labels from simply having more labelled-looking data). Every pairwise question is a row of
+`significance.csv`.
+
+**Predictions, in the order they would be read.**
+1. `uniform_transfer` beats fine-tune-only by at least 0.010 macro-F1 on BERT-mini, with an interval
+   that excludes zero. This is the prediction the route stands or falls on. If it fails, the transfer
+   route is closed and the paper stays as the branch `paper-b2-audit` has it.
+2. `uniform_transfer` beats `skd_transfer`: the committee is the better labeller, by roughly the 0.5
+   points F29 measured on the test set. An interval that includes zero here is expected and would not
+   retire the claim, which rests on F29's direct measurement.
+3. `dmthd_knn_transfer` does not beat `uniform_transfer` by more than 0.003: F29's ceiling. The
+   corrected reliability is reported as the completion of the audit, not as a method.
+4. `pseudo_transfer` gains less than `uniform_transfer`; if they tie, the gain is "more data" rather
+   than "dark knowledge", and the paper says so.
+5. Sarcasm-discrimination AUC on the transfer arms stays inside 0.756 to 0.777 (F23), because nothing
+   in the transfer set teaches the distinction the probes measure.
+
+**Cost.** Caching five teachers on 55,000 texts, about ten minutes on a T4; fifteen runs of about
+seven minutes; probes and the implicit analysis on them; about 2.5 GPU-hours in all, inside one
+resumed session of the tweet notebook.
+
+**What it would mean.** If prediction 1 holds, the paper has its positive result and it is a
+distillation result: a compact student improves on data the teachers labelled and the annotators did
+not, and a committee is the right thing to label it with. The audit then explains why the in-sample
+grid found nothing, which is a stronger paper than either half alone. If prediction 1 fails, the
+audit gains one more measured negative and the branch manuscript stands.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.

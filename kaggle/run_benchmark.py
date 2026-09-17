@@ -4,8 +4,8 @@
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset wikipedia                       (downloads from Figshare)
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset implicit                        (downloads from the Hub)
 
-Stages, in the order `all` runs them: prepare | specialist | teachers | cache | students | sweep |
-probes | robustness | quant | bench | aggregate.
+Stages, in the order `all` runs them: prepare | specialist | teachers | cache | students | transfer |
+sweep | probes | robustness | quant | bench | aggregate.
 Every stage skips work whose results.json already exists, so a killed session resumes where it stopped.
 
 Design (the comparison grid): three teacher committees x two student families.
@@ -101,6 +101,17 @@ LIMIT = os.environ.get("LIMIT", "")
 RESUME_WEIGHTS = os.environ.get("RESUME_WEIGHTS", "auto")
 STUDENT_EPOCHS = os.environ.get("STUDENT_EPOCHS", "6")
 ABLATION_SEEDS = [int(x) for x in os.environ.get("ABLATION_SEEDS", ",".join(str(s) for s in SEEDS)).split(",")]
+# Out-of-sample distillation (DECISIONS D19, F28, F29). The teachers' outputs on the training split are
+# the gold labels, because they memorised it; on unlabelled in-domain text they are informative and the
+# committee is the better labeller. The transfer set is built from public tweet corpora used as text
+# only (dmthd.prepare_transfer) and kept disjoint from every split and probe. The arms are run on the
+# headline student; TRANSFER=0 turns the stage off, and it applies to the tweet benchmark only.
+TRANSFER = os.environ.get("TRANSFER", "1") == "1"
+TRANSFER_SOURCES = os.environ.get("TRANSFER_SOURCES", "olid,hateval,davidson")
+TRANSFER_STUDENTS = [s for s in os.environ.get("TRANSFER_STUDENTS", "").split(",") if s]   # empty: the headline student
+TRANSFER_ARMS = [a for a in os.environ.get(
+    "TRANSFER_ARMS", "skd_transfer,uniform_transfer,dmthd_knn_transfer,uniform_hetero_transfer,pseudo_transfer").split(",") if a]
+KNN_K = os.environ.get("KNN_K", "20")
 # Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
 # before that so the notebook finishes cleanly with a downloadable output.
 TIME_BUDGET_S = float(os.environ.get("TIME_BUDGET_S", "39600"))
@@ -397,6 +408,11 @@ class Bench:
                 print(f"resuming: {src} -> {ROOT}/cache/{self.name}", flush=True)
                 shutil.copytree(src, f"{ROOT}/cache/{self.name}", dirs_exist_ok=True)
                 copied.append(src)
+            for suffix in ("_val", "_transfer"):           # the transfer stage's caches, ten minutes to rebuild
+                for src in sorted(set(glob.glob(os.path.join(src_root, "**", "cache", self.name + suffix), recursive=True))):
+                    print(f"resuming: {src} -> {ROOT}/cache/{self.name}{suffix}", flush=True)
+                    shutil.copytree(src, f"{ROOT}/cache/{self.name}{suffix}", dirs_exist_ok=True)
+                    copied.append(src)
         if not copied:
             sys.exit(f"RESUME_FROM={RESUME_FROM} contains no runs/{self.name} or cache/{self.name} to resume from. "
                      f"Top level of the first source: {sorted(os.listdir(sources[0]))[:20]}. Point it at the right "
@@ -596,6 +612,77 @@ class Bench:
                        f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} "
                        f"{self.limit} --mode ft --tag implicit_pretrain")
 
+    def transfer(self):
+        """Out-of-sample distillation on the headline student. Five arms, each against the grid's
+        in-sample runs: one teacher with the transfer set, the committee with it (uniform), the committee
+        with the out-of-sample reliability weights of dmthd.knn_reliability, the DeBERTa committee with
+        it, and the committee's hard pseudo-labels as the control that separates soft labels from more
+        data. Predictions are written in DECISIONS D19 before this runs."""
+        if not TRANSFER or self.name != "tweets":
+            return
+        homo = self.committee("homo")
+        if not homo:
+            return
+        csv = f"{self.data}/transfer.csv"
+        if not os.path.exists(csv):
+            # The set must be disjoint from the implicit benchmark's files as well: ISHate incorporates
+            # HatEval, so without them about 10,000 transfer texts would sit in that benchmark's held-out
+            # set. A resumed session skips the specialist stage that builds the benchmark, so build it here.
+            implicit_dir = f"{ROOT}/data/implicit"
+            ood = f"{implicit_dir}/test_ood_ishate.csv"
+            if not os.path.exists(ood):
+                _prepare_implicit(IMPLICIT_RAW, implicit_dir)
+            extra = f"--implicit_dir {implicit_dir}" if os.path.exists(ood) else ""
+            if not extra:
+                print("WARNING: implicit benchmark unavailable; the transfer set is not screened against ISHate", flush=True)
+            raw = f"--raw {self.raw}" if self.raw and os.path.exists(self.raw) else ""
+            sh(f"python -m dmthd.prepare_transfer --data_dir {self.data} --out {csv} --probes {PROBES} "
+               f"--sources {TRANSFER_SOURCES} {raw} {extra} {self.limit}", check=False)
+        if not os.path.exists(csv):
+            print("transfer set unavailable (no internet?): transfer stage skipped", flush=True)
+            return
+        tags = [t for _, t in self.teacher_list if t not in self.dropped]
+        dirs = " ".join(f"{self.runs}/teachers/{tag}" for tag in tags)
+        for split, out in (("val", f"{self.cache}_val"), ("transfer", f"{self.cache}_transfer")):
+            meta = f"{out}/meta.json"
+            if os.path.exists(meta) and not self.cache_dirty and set(tags) <= {t["tag"] for t in json.load(open(meta))["teachers"]}:
+                continue
+            shutil.rmtree(out, ignore_errors=True)
+            sh(f"python -m dmthd.cache_teachers --data_dir {self.data} --split {split} --out {out} --teachers {dirs} "
+               f"--aux_model {AUX_MODEL} {self.common} {self.limit}")
+        committees = dict(self.active_committees())
+        for comm, ctags in committees.items():
+            out = f"{self.cache}/knn_{comm}.npz"
+            if not os.path.exists(out):
+                sh(f"python -m dmthd.knn_reliability --cache {self.cache} --val_cache {self.cache}_val "
+                   f"--transfer_cache {self.cache}_transfer --data_dir {self.data} --teachers {' '.join(ctags)} "
+                   f"--k {KNN_K} {self.common} {self.limit} --out {out}", check=False)
+        arms = {"skd_transfer": (homo[:1], "--mode skd"),
+                "uniform_transfer": (homo, "--mode uniform"),
+                "dmthd_knn_transfer": (homo, f"--mode dmthd --knn_weights {self.cache}/knn_homo.npz"),
+                "pseudo_transfer": (homo, "--mode uniform --transfer_ce --alpha 0 --beta 1 --gamma 0 --no_hidden")}
+        if committees.get("hetero"):
+            arms["uniform_hetero_transfer"] = (committees["hetero"], "--mode uniform")
+        targets = TRANSFER_STUDENTS or [self.student_list[0][1]]
+        for name, stag in self.student_list:
+            if stag not in targets:
+                continue
+            for arm in TRANSFER_ARMS:
+                if arm not in arms:
+                    continue
+                ctags, flags = arms[arm]
+                if "--knn_weights" in flags and not os.path.exists(f"{self.cache}/knn_homo.npz"):
+                    print(f"{arm} skipped: no knn weights", flush=True)
+                    continue
+                for seed in SEEDS:
+                    out = f"{self.runs}/{stag}/{arm}/seed{seed}"
+                    if not done(out):
+                        check_budget(f"{stag}/{arm}/seed{seed}")
+                        sh(f"python -m dmthd.train_student --student {name} --data_dir {self.data} --out_dir {out} --seed {seed} "
+                           f"--batch {self.cfg['student_batch']} --epochs {STUDENT_EPOCHS} {self.fp} {self.common} {self.limit} "
+                           f"--cache {self.cache} --teachers {' '.join(ctags)} --transfer {csv} "
+                           f"--transfer_cache {self.cache}_transfer {flags} --tag {arm}")
+
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]
         for _, stag in self.student_list:
@@ -750,7 +837,7 @@ if __name__ == "__main__":
     # probes after sweep: the implicit analysis covers every run of the headline student, and in the
     # other order the sweep runs finished after it had passed. Version 4 of the tweet run left its three
     # new tau values without a sarcasm-discrimination AUC that way.
-    order = ["prepare", "specialist", "teachers", "cache", "students", "sweep", "probes", "robustness", "quant", "bench", "aggregate"]
+    order = ["prepare", "specialist", "teachers", "cache", "students", "transfer", "sweep", "probes", "robustness", "quant", "bench", "aggregate"]
     stages = order if a.stage == "all" else [a.stage]
     ran_out = None
     for st in stages:

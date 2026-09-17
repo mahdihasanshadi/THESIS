@@ -172,3 +172,40 @@ paper reports that instead of the claim it would have preferred.
 The contrast depends sharply on $\tau$, which is why $\tau$ is swept rather than fixed. At
 $\tau = 1$ the observed weights sit within 0.03 of uniform and D-MTHD optimises nearly the same
 objective as uniform averaging; the sweep therefore reaches $\tau = 0.05$.
+
+## 3.8 Out-of-sample distillation
+
+*Added 17 September after the audit of Sections 5.3 to 5.5; the design responds to two measured facts.*
+
+Two measurements say where the objective above goes wrong. The teachers are fine-tuned on the training
+split and their outputs are cached on it, where their training losses end at 0.03 to 0.08: on the data
+the student imitates them on, their soft labels are the gold labels and the reliability of Section 3.2
+is saturated for all of them. And scored on the test split, where the teachers are uncertain, the
+committee's uniform mean beats its best member by 0.3 to 0.8 macro-F1, a gain the students trained in
+sample never receive.
+
+The remedy is to distil where the teachers are uncertain. A transfer set $\mathcal{U}$ of unlabelled
+in-domain text is added to the training split: public tweet corpora used as text only, and the tweets
+our own cleaning dropped for carrying conflicting labels, matched against every split and probe and
+removed on any hit. On $x_u \in \mathcal{U}$ the objective keeps the terms that need no label,
+$\alpha\, \mathcal{L}_{\mathrm{KL}}(u) + \gamma\, \mathcal{L}_{\mathrm{hid}}(u) + \delta\,
+\mathcal{L}_{\mathrm{irony}}(u)$, and drops the hard-label term. A control replaces the soft labels by
+the committee's hard $\arg\max$ and trains with cross-entropy alone, which separates what the soft
+labels carry from what more data carries.
+
+The reliability of Section 3.2 is replaced by one the teachers cannot have memorised and that is
+defined without a label at the instance. Let $\mathcal{V}$ be the validation split, $c_k(v) \in
+\{0, 1\}$ whether teacher $k$ is correct on $v \in \mathcal{V}$, and $N_k(x)$ the $m$ validation
+texts nearest $x$ by cosine similarity in teacher $k$'s own pooled space. Then
+
+$$
+r_k(x) = \frac{1 + \sum_{v \in N_k(x)} c_k(v)}{m + 2}, \qquad
+w_k(x) = \frac{r_k(x)^{1/\tau}}{\sum_j r_j(x)^{1/\tau}},
+$$
+
+with $m = 20$ and $\tau = 1$, so the weight is proportional to the teacher's local out-of-sample
+accuracy. It applies to labelled and unlabelled rows alike. Its routing contrast is reported before any
+student trains on it, and Section 5.4 sets its ceiling: on this committee the teachers' outputs do not
+say which of them is right where they disagree, so the corrected weighting is expected to complete the
+audit rather than to add to the score. The transfer set is the intervention; the weighting is the
+control that shows the in-sample signal was the problem and not its formula.

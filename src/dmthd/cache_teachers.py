@@ -52,7 +52,13 @@ def main():
 
     device = get_device()
     C = len(label_names(args.scheme))
-    df = map_labels(pd.read_csv(os.path.join(args.data_dir, f"{args.split}.csv")), args.label_col, args.scheme)
+    raw = pd.read_csv(os.path.join(args.data_dir, f"{args.split}.csv"))
+    labelled = args.label_col in raw.columns
+    if labelled:
+        df = map_labels(raw, args.label_col, args.scheme)
+    else:                       # an unlabelled transfer set (dmthd.prepare_transfer): outputs only
+        df = raw.copy()
+        df["label"] = -1
     if args.limit:
         df = df.head(args.limit)
     ensure_dir(args.out)
@@ -71,15 +77,17 @@ def main():
             "RESUME_WEIGHTS=all, or resume from a session whose output still holds the teacher "
             "weights, or retrain the teachers.")
     meta = {"split": args.split, "n": int(len(df)), "scheme": args.scheme, "teachers": [], "aux": None,
-            "fingerprint": split_fingerprint(df["text"].tolist(), df["label"].tolist())}
+            "labelled": labelled,
+            "fingerprint": split_fingerprint(df["text"].tolist(), df["label"].tolist() if labelled else None)}
     for tdir in args.teachers:
         tag = os.path.basename(os.path.normpath(tdir))
         logits, pooled = run_teacher(tdir, C, df, args.max_len, args.batch, device)
         np.savez_compressed(os.path.join(args.out, f"{tag}.npz"), logits=logits.astype(np.float16),
                             pooled=pooled.astype(np.float16))
-        acc = float((logits.argmax(1) == df["label"].values).mean())
+        acc = float((logits.argmax(1) == df["label"].values).mean()) if labelled else None
         meta["teachers"].append({"tag": tag, "dir": tdir, "dim": int(pooled.shape[1]), "train_acc": acc})
-        print(f"cached {tag}: logits {logits.shape} pooled {pooled.shape} train-acc {acc:.4f}", flush=True)
+        print(f"cached {tag}: logits {logits.shape} pooled {pooled.shape}"
+              + (f" acc {acc:.4f}" if labelled else " (unlabelled split)"), flush=True)
     if args.aux_model:
         logits, _ = run_teacher(args.aux_model, args.aux_labels, df, args.max_len, args.batch, device)
         np.savez_compressed(os.path.join(args.out, "aux_irony.npz"), logits=logits.astype(np.float16))

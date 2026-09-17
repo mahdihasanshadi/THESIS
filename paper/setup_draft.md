@@ -88,6 +88,28 @@ implicit. Two expert annotation efforts placing the boundary in materially diffe
 direct measurement of how hard this label is, it is the reason we do not pool the corpora, and it
 bounds how sharp any implicit-hate result on either of them can be.
 
+### Transfer set (unlabelled, training only)
+
+*Added 17 September; see DECISIONS D19 for why.* The teachers are fine-tuned on the training split and
+their outputs are cached on it, where each assigns the gold label a probability near one, so a student
+distilled there receives the gold labels back. The transfer set is in-domain text the teachers have
+not fitted, on which the student trains from the committee alone. It is built by
+`dmthd.prepare_transfer` from public tweet corpora used as text only, their labels discarded before
+anything reads them: OLID (OffensEval 2019, 14,100 tweets) and HatEval 2019 (12,970) through TweetEval,
+Davidson et al. (2017, 24,783), and the 1,563 tweets of the cyberbullying corpus that our own cleaning
+dropped for carrying more than one label. TweetEval's irony configuration is not used, because it is
+the irony teacher's own fine-tuning data; Founta et al. (2018) is excluded under the provenance rule.
+
+Every text is matched on the splits' own key against the train, validation and test splits, all five
+probe files, and every file of the implicit benchmark including the held-out ISHate set, and dropped
+on any hit; duplicates within the set are dropped too. Of 53,416 texts, 318 are shorter than two
+tokens, 877 are duplicates, 117 occur in a tweet split, 103 in the ironic- and implicit-abuse probes,
+2 in the implicit benchmark's test split and 9,988 in the held-out ISHate set, which incorporates
+HatEval's tweets. **42,013 texts remain**
+(Davidson 24,139; OLID 13,760; HatEval 2,556; conflicting-label tweets 1,558), 1.2 times the training
+split, unseen by every evaluation in the paper. `transfer_report.json` records every count and the
+Kaggle run rebuilds the set from the same sources with the same seed.
+
 ## Targeted test sets for the sarcasm claim (inference only)
 
 | Set | Size | Source | Metric |

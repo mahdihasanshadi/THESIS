@@ -32,21 +32,30 @@ def agreement_from_soft(s: torch.Tensor) -> torch.Tensor:
 
 
 def teacher_weights(teacher_logits: torch.Tensor, labels: torch.Tensor, tau: float, per_instance: bool = True,
-                    uniform: bool = False, soft_targets: torch.Tensor = None) -> torch.Tensor:
+                    uniform: bool = False, soft_targets: torch.Tensor = None, override: torch.Tensor = None) -> torch.Tensor:
     """teacher_logits [K, B, C] -> weights [B, K]. With soft_targets (binary tasks), reliability is
-    measured against the annotator fraction instead of the majority label."""
+    measured against the annotator fraction instead of the majority label.
+
+    `override` [B, K] replaces the computed weights on every row that is not NaN. An unlabelled
+    transfer row has no gold label to score reliability against and must arrive with one (uniform,
+    entropy-based, or the out-of-sample estimate of dmthd.knn_reliability); a labelled row may arrive
+    with the out-of-sample estimate too, since the in-sample one is saturated (DECISIONS F28)."""
     K, B, C = teacher_logits.shape
     if uniform:
-        return torch.full((B, K), 1.0 / K, device=teacher_logits.device)
-    if soft_targets is not None and C == 2:
-        p1 = F.softmax(teacher_logits, dim=-1)[..., 1].clamp(1e-6, 1 - 1e-6)          # [K, B]
-        s = soft_targets.unsqueeze(0).expand_as(p1).to(p1.dtype)
-        err = F.binary_cross_entropy(p1, s, reduction="none").t()                   # [B, K]
+        w = torch.full((B, K), 1.0 / K, device=teacher_logits.device)
     else:
-        err = torch.stack([F.cross_entropy(teacher_logits[k], labels, reduction="none") for k in range(K)], dim=1)
-    if not per_instance:
-        err = err.mean(0, keepdim=True).expand(B, K)
-    return F.softmax(-err / tau, dim=1)
+        if soft_targets is not None and C == 2:
+            p1 = F.softmax(teacher_logits, dim=-1)[..., 1].clamp(1e-6, 1 - 1e-6)          # [K, B]
+            s = soft_targets.unsqueeze(0).expand_as(p1).to(p1.dtype)
+            err = F.binary_cross_entropy(p1, s, reduction="none").t()                   # [B, K]
+        else:
+            err = torch.stack([F.cross_entropy(teacher_logits[k], labels, reduction="none") for k in range(K)], dim=1)
+        if not per_instance:
+            err = err.mean(0, keepdim=True).expand(B, K)
+        w = F.softmax(-err / tau, dim=1)
+    if override is not None:
+        w = torch.where(torch.isnan(override), w, override.to(w.dtype))
+    return w
 
 
 def kd_kl_per_instance(student_logits: torch.Tensor, target_probs: torch.Tensor, T: float) -> torch.Tensor:
@@ -64,24 +73,29 @@ def dmthd_loss(student_logits, labels, *, teacher_logits=None, T=4.0, tau=1.0, a
                gamma=0.2, per_instance=True, uniform=False, student_pooled=None, teacher_pooled=None,
                projections=None, use_hidden=True, soft_targets=None, aux_logits=None,
                aux_teacher_logits=None, delta=0.0, class_weights=None, agreement=None, kappa=1.0,
-               reliability="hard"):
+               reliability="hard", weights=None, label_mask=None):
     """Returns (total, parts dict, mean teacher weights [K] or None).
 
     teacher_logits : [K, B, C] cached logits of the committee (None for fine-tune only)
     teacher_pooled : list of K tensors [B, d_k]
     projections    : nn.ModuleList of K Linear(d_s, d_k)
     agreement      : [B] annotator agreement a_i (disagreement-aware variant) or None
+    weights        : [B, K] weight override, NaN where the computed weight stands (see teacher_weights)
+    label_mask     : [B] 1 where the row has a gold label. The hard-label term is averaged over those
+                     rows only, so an unlabelled transfer row trains on the committee alone.
     """
     dev = student_logits.device
     parts = {}
     ce_i = F.cross_entropy(student_logits, labels, weight=class_weights, reduction="none")
-    ce = (agreement * ce_i).mean() if agreement is not None else ce_i.mean()
+    if agreement is not None:
+        ce_i = agreement * ce_i
+    ce = (ce_i * label_mask).sum() / label_mask.sum().clamp(min=1.0) if label_mask is not None else ce_i.mean()
     parts["ce"] = ce
     if teacher_logits is None:
         return ce, parts, None
 
     w = teacher_weights(teacher_logits, labels, tau, per_instance=per_instance, uniform=uniform,
-                        soft_targets=soft_targets if reliability == "soft" else None)            # [B, K]
+                        soft_targets=soft_targets if reliability == "soft" else None, override=weights)   # [B, K]
     tprobs = F.softmax(teacher_logits / T, dim=-1)                                                  # [K, B, C]
     ensemble = (w.t().unsqueeze(-1) * tprobs).sum(0)                                                # [B, C]
     kl_i = kd_kl_per_instance(student_logits, ensemble, T)

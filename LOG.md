@@ -695,3 +695,19 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   learn more slowly from epoch 1 (loss 1.02 against 0.87, validation F1 0.80 against 0.84), which
   points at the library versions rather than the accelerator and is testable locally by pinning
   transformers 4.4x (F30).
+- **Out-of-sample distillation built (D19).** Mahdi chose the transfer-set route over the negative-result
+  paper. New: `dmthd.prepare_transfer` (OLID, HatEval, Davidson as text only, plus our dropped
+  conflicting-label tweets; disjoint from every split, probe and the implicit benchmark; report beside
+  the output), `dmthd.knn_reliability` (out-of-sample per-teacher reliability from the k nearest
+  validation texts in the teacher's own space, with a routing contrast in its report),
+  `train_student --transfer/--transfer_cache/--knn_weights/--transfer_ce` (unlabelled rows train on the
+  committee alone through a label mask; a weight override replaces the in-sample weights),
+  `cache_teachers` on unlabelled splits, a driver stage `transfer` with five arms on the headline
+  student, table labels and twelve significance rows. `scripts/test_transfer_pieces.py` passes (15
+  checks); the full driver smoke test passes with the stage, and a second check on a tree without
+  `data/implicit` confirms that a resumed session builds the implicit benchmark before screening the
+  transfer set against ISHate, which incorporates HatEval: without that screen the set is 52,001 texts,
+  with it 42,013. `scripts/transfer_verdict.py` scores the five predictions of D19 off the tables once
+  the Kaggle run is in. The manuscript as it stands is on the branch `paper-b2-audit`
+  (`paper/PAPER.md`), so the framing decision does not block this work. Next: rerun the tweet notebook
+  with v4's output attached, about 2.5 GPU-hours.

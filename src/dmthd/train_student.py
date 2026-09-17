@@ -7,6 +7,10 @@ same code path with different flags.
   dmthd    multi-teacher, dynamic weights          --mode dmthd --teachers a b c [--aux --delta 0.3]
 
 Ablations: --per_batch (instead of per-instance), --no_hidden, --from_scratch.
+Out-of-sample distillation: --transfer data/tweets/transfer.csv --transfer_cache cache/tweets_transfer adds
+unlabelled in-domain text (dmthd.prepare_transfer) on which the student trains from the committee alone;
+--knn_weights cache/tweets/knn_homo.npz replaces the in-sample reliability with the out-of-sample estimate
+of dmthd.knn_reliability on every row; --transfer_ce trains on the committee's hard pseudo-label as well.
 Disagreement-aware variant (datasets with an annotator-fraction column): --disagreement --kappa 1.0
 [--reliability soft].
 Students: any HF encoder name, or `bilstm` for the non-transformer heterogeneous student.
@@ -29,10 +33,10 @@ from .models import Student, count_params, is_bilstm, load_classifier, load_toke
 from .utils import Timer, ensure_dir, get_device, label_names, load_json, map_labels, save_json, set_seed, split_fingerprint
 
 
-def load_caches(cache_dir, tags, train_df=None):
+def load_caches(cache_dir, tags, train_df=None, labelled=True):
     meta = load_json(os.path.join(cache_dir, "meta.json"))
     if train_df is not None and meta.get("fingerprint"):
-        fp = split_fingerprint(train_df["text"].tolist(), train_df["label"].tolist())
+        fp = split_fingerprint(train_df["text"].tolist(), train_df["label"].tolist() if labelled else None)
         if fp != meta["fingerprint"]:
             raise SystemExit(
                 f"cache/split mismatch: {cache_dir} was built on a different training split "
@@ -85,7 +89,19 @@ def main():
     ap.add_argument("--tag", default="", help="free-text label stored in results.json (e.g. ablation name)")
     ap.add_argument("--no_resume", action="store_true", help="ignore an existing ckpt_last.pt and start over")
     ap.add_argument("--keep_ckpt", action="store_true", help="keep ckpt_last.pt after a successful run (testing)")
+    ap.add_argument("--transfer", default=None, help="CSV of unlabelled in-domain text (dmthd.prepare_transfer)")
+    ap.add_argument("--transfer_cache", default=None, help="teacher cache built on that CSV (dmthd.cache_teachers --split transfer)")
+    ap.add_argument("--transfer_weights", default="uniform", choices=["uniform", "entropy"],
+                    help="committee weights on transfer rows in dmthd mode when no --knn_weights is given")
+    ap.add_argument("--knn_weights", default=None,
+                    help="npz from dmthd.knn_reliability: out-of-sample weights for every row, training and transfer")
+    ap.add_argument("--transfer_ce", action="store_true",
+                    help="also apply the hard-label term to transfer rows, against the committee's pseudo-label")
     args = ap.parse_args()
+    if args.transfer and (args.mode == "ft" or not args.transfer_cache):
+        raise SystemExit("--transfer needs a distillation mode and --transfer_cache")
+    if args.knn_weights and args.mode != "dmthd":
+        raise SystemExit("--knn_weights is a weighting, so it needs --mode dmthd")
 
     if args.mode != "ft" and not (args.cache and args.teachers):
         raise SystemExit("--mode skd/uniform/dmthd needs --cache and --teachers")
@@ -109,11 +125,50 @@ def main():
 
     t_logits, t_pooled, dims = (None, None, [])
     aux_logits = None
+    n_train, n_transfer, w_over, label_mask = len(tr), 0, None, None
     if args.mode != "ft":
         t_logits, t_pooled, dims = load_caches(args.cache, args.teachers, train_df=tr)
         assert t_logits.shape[1] >= len(tr), "cache shorter than training split: rebuild the cache on this split"
         if args.aux:
             aux_logits = torch.from_numpy(np.load(os.path.join(args.cache, "aux_irony.npz"))["logits"].astype(np.float32))
+    K = len(args.teachers)
+    if args.transfer:
+        # Unlabelled rows join the training frame after the labelled ones, so cached teacher outputs
+        # stay indexed by row position. Their "label" is the committee's hard pseudo-label, used by the
+        # cross-entropy term only under --transfer_ce; otherwise label_mask removes them from it.
+        if has_soft:
+            raise SystemExit("--transfer is not implemented for corpora with annotator fractions")
+        tf = pd.read_csv(args.transfer)
+        if args.limit:
+            tf = tf.head(args.limit)
+        f_logits, f_pooled, _ = load_caches(args.transfer_cache, args.teachers, train_df=tf, labelled=False)
+        assert f_logits.shape[1] >= len(tf), "transfer cache shorter than the transfer set: rebuild it"
+        n_transfer = len(tf)
+        f_logits, f_pooled = f_logits[:, :n_transfer], [p[:n_transfer] for p in f_pooled]
+        pseudo = torch.softmax(f_logits, -1).mean(0).argmax(1).numpy()
+        tf = pd.DataFrame({"text": tf["text"].map(str).values, "label": pseudo})
+        t_logits = torch.cat([t_logits[:, :n_train], f_logits], 1)
+        t_pooled = [torch.cat([p[:n_train], q], 0) for p, q in zip(t_pooled, f_pooled)]
+        if aux_logits is not None:
+            f_aux = np.load(os.path.join(args.transfer_cache, "aux_irony.npz"))["logits"].astype(np.float32)[:n_transfer]
+            aux_logits = torch.cat([aux_logits[:n_train], torch.from_numpy(f_aux)], 0)
+        tr = pd.concat([tr[["text", "label"]], tf], ignore_index=True)
+        label_mask = torch.cat([torch.ones(n_train), torch.full((n_transfer,), 1.0 if args.transfer_ce else 0.0)])
+    if args.mode == "dmthd" and (args.transfer or args.knn_weights):
+        w_over = torch.full((len(tr), K), float("nan"))
+        if args.knn_weights:
+            z = np.load(args.knn_weights)
+            assert list(z["teachers"]) == list(args.teachers), \
+                f"--knn_weights was computed for {list(z['teachers'])}, not {args.teachers}"
+            w_over[:n_train] = torch.from_numpy(z["train"][:n_train].astype(np.float32))
+            if n_transfer:
+                w_over[n_train:] = torch.from_numpy(z["transfer"][:n_transfer].astype(np.float32))
+        elif args.transfer_weights == "uniform":
+            w_over[n_train:] = 1.0 / K
+        else:   # entropy: a teacher sure of itself counts for more; gold-free, so defined on unlabelled rows
+            p = torch.softmax(f_logits, -1)                                            # [K, M, C]
+            ent = -(p * torch.log(p.clamp_min(1e-8))).sum(-1).t()                     # [M, K]
+            w_over[n_train:] = torch.softmax(-ent / args.tau, dim=1)
 
     tok = load_tokenizer(args.student)
     use_hidden = (args.mode != "ft") and not args.no_hidden
@@ -157,6 +212,10 @@ def main():
                     kw["projections"] = student.proj
                 if aux_logits is not None:
                     kw["aux_teacher_logits"] = aux_logits[idx].to(device)
+                if w_over is not None:
+                    kw["weights"] = w_over[idx].to(device)
+                if label_mask is not None:
+                    kw["label_mask"] = label_mask[idx].to(device)
             if has_soft and "soft" in batch:
                 soft = batch["soft"].to(device)
                 kw["soft_targets"] = soft
@@ -221,6 +280,8 @@ def main():
            "disagreement": args.disagreement, "kappa": args.kappa if args.disagreement else None, "reliability": args.reliability,
            "scheme": args.scheme, "seed": args.seed, "T": args.T, "tau": args.tau, "alpha": args.alpha, "beta": args.beta,
            "gamma": args.gamma, "delta": args.delta if aux_logits is not None else 0.0, "lr": lr, "epochs_run": len(history),
+           "transfer_rows": n_transfer, "transfer_ce": bool(args.transfer_ce) if n_transfer else None,
+           "weights": ("knn" if args.knn_weights else (args.transfer_weights if n_transfer and args.mode == "dmthd" else None)),
            "best_val_macro_f1": best_f1, "params": count_params(best), "train_time_s": elapsed_before + timer.elapsed(),
            "test": compute_metrics(te["label"].values, probs, names)}
     np.save(os.path.join(args.out_dir, "test_probs.npy"), probs)

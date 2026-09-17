@@ -41,7 +41,19 @@ HEADLINE_ONLY = [("ft", "uniform_spec", "does a committee with the specialist he
                  ("dmthd_spec", "ablation_implicit_pretrain", "the same knowledge by pre-training, not distillation"),
                  ("uniform", "sweep_tau_0.05", "the sharpest weighting against averaging"),
                  ("dmthd", "sweep_tau_0.05", "the sharpest weighting against the default"),
-                 ("ft", "ablation_from_scratch", "what pre-training is worth")]
+                 ("ft", "ablation_from_scratch", "what pre-training is worth"),
+                 # out-of-sample distillation (D19): the transfer set, the committee as labeller, and the corrected weights
+                 ("ft", "skd_transfer", "one teacher with a transfer set against fine-tuning"),
+                 ("ft", "uniform_transfer", "the committee with a transfer set against fine-tuning"),
+                 ("ft", "uniform_hetero_transfer", "the DeBERTa committee with a transfer set against fine-tuning"),
+                 ("ft", "dmthd_knn_transfer", "corrected weighting with a transfer set against fine-tuning"),
+                 ("ft", "pseudo_transfer", "hard pseudo-labels with a transfer set against fine-tuning"),
+                 ("skd", "skd_transfer", "what the transfer set adds to one teacher"),
+                 ("uniform", "uniform_transfer", "what the transfer set adds to the committee"),
+                 ("skd_transfer", "uniform_transfer", "is the committee the better labeller"),
+                 ("uniform_transfer", "uniform_hetero_transfer", "does the DeBERTa teacher help as a labeller"),
+                 ("uniform_transfer", "dmthd_knn_transfer", "does out-of-sample reliability beat averaging"),
+                 ("uniform_transfer", "pseudo_transfer", "soft labels against hard pseudo-labels")]
 
 
 def label(mode):

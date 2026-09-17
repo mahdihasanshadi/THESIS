@@ -51,8 +51,22 @@ ap.add_argument("--root", default="smoke_driver")
 a = ap.parse_args()
 shutil.rmtree(a.root, ignore_errors=True)
 
-# 1. the full grid
+# 1. the full grid, including the out-of-sample distillation stage
 run({"MIN_TEACHER_F1": "0"}, "all", a.root, raw=a.raw)
+tcsv = os.path.join(a.root, "data", "tweets", "transfer.csv")
+assert os.path.exists(tcsv), "transfer set was not built (is the Hub reachable?)"
+cols = open(tcsv, encoding="utf-8").readline().strip().split(",")
+assert "text" in cols and "label" not in cols and "label_name" not in cols, f"the transfer set must be unlabelled: {cols}"
+assert os.path.exists(os.path.join(a.root, "cache", "tweets", "knn_homo.npz")), "out-of-sample weights were not computed"
+for arm in ("skd_transfer", "uniform_transfer", "dmthd_knn_transfer", "pseudo_transfer", "uniform_hetero_transfer"):
+    r = os.path.join(a.root, "runs", "tweets", "tiny", arm, "seed1", "results.json")
+    assert os.path.exists(r), f"transfer arm {arm} did not run"
+    res = json.load(open(r))
+    assert res["transfer_rows"] > 0, f"{arm} trained without transfer rows"
+    assert os.path.exists(os.path.join(os.path.dirname(r), "implicit_analysis", "implicit_analysis.json")), f"{arm}: no implicit analysis"
+assert json.load(open(os.path.join(a.root, "runs", "tweets", "tiny", "dmthd_knn_transfer", "seed1", "results.json")))["weights"] == "knn"
+assert json.load(open(os.path.join(a.root, "runs", "tweets", "tiny", "pseudo_transfer", "seed1", "results.json")))["transfer_ce"] is True
+print("\ntransfer stage: set built unlabelled, knn weights present, five arms trained and analysed")
 
 # 2. every teacher collapses
 for d in ("runs/tweets/teachers", "cache/tweets"):
