@@ -601,3 +601,34 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   macro-F1 and well *above* the 0.7610 floor on AUC: it ranks implication correctly and thresholds
   it badly. The specialist adapted to tweets scores 0.8931, inside a 0.008 band with the three
   existing teachers.
+
+## 2026-09-17
+
+- **Kaggle v3 froze 34 minutes in and idled out the full 12 hours. Nothing new was produced.** Kaggle
+  killed the session at 43,200 s (exit 137). Its log ends at 2,034 s, inside the extra fp16-check
+  cell I asked for on 2026-09-12, which only repeats a measurement v2 had already made. Three
+  observations place the stop. Progress-bar output disappears from the log at 1,211 s, on a line cut
+  mid-word, while plain lines continue to 2,034 s. The saved output is 526.78 MB; the eight
+  fp16-check run directories plus the prepared data and the code checkout come to about 530 MB, with
+  bert-small fp32 seed 1 holding its best model and no `ckpt_last.pt` (about 875 MB if that file had
+  still been there). So the process had finished the sixth epoch, deleted its resume checkpoint and
+  was reloading the best model, the step that prints a large progress bar, and never returned. And
+  the benchmark cell never started: its first act copies several GB of teacher weights, and none are
+  in the output. The most likely mechanism is a blocked write, with the log capture no longer
+  draining the stream those bars go to. The benchmark driver silences progress bars, which is why
+  v1's eight hours never met this; the fp16-check script did not.
+  I also misjudged it while it ran. At 5.5 h the log still ended at 34 minutes against an expected
+  total of 3 to 4 h, and I put that down to a stale browser page instead of recommending a cancel,
+  which would have saved about six GPU-hours.
+  Fixes: `sh()` in the driver now sends each command's output to `ROOT/logs/<dataset>.log` instead
+  of a pipe, and a thread copies that file to the console, so a console that stops accepting output
+  cannot stall the work, and the complete log survives in the session output. A command that writes
+  nothing for `SILENCE_LIMIT_S` (default 2 h) is killed as hung, so a hang now costs two hours rather
+  than the session. `fp16_check.py` silences progress bars. Covered by
+  `scripts/test_driver_watchdog.py`; the full driver smoke test passes with the change.
+- **Resume now keeps the weights the implicit analysis needs.** `_copy_run_tree` dropped the weights
+  of every probe-evaluated student, the headline student's first-seed runs included, and those are
+  exactly the runs the implicit analysis and the cross-benchmark transfer load. v1's 22 BERT-mini
+  seed-1 runs finished before either stage existed, so a session resuming from v1 could not compute
+  the paper's central metric for any of them. Those runs now keep their weights until
+  `implicit_analysis.json` exists, about 1 GB. Covered by `scripts/test_resume_weights.py`.

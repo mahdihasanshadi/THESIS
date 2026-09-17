@@ -59,6 +59,30 @@ def main():
         ("a pending student keeps its weights", has_weights(os.path.join(dst, "bert-mini", "ft", "seed2")), True),
     ]
 
+    # the headline student's first-seed runs keep their weights until the implicit analysis has read them
+    src2, dst2 = os.path.join(base, "src2"), os.path.join(base, "dst2")
+    for rel, analysed in (("bert-mini/dmthd/seed1", False), ("bert-mini/uniform/seed1", True),
+                          ("bert-mini/dmthd/seed2", False), ("distilbert/dmthd/seed1", False)):
+        d = os.path.join(src2, *rel.split("/"))
+        os.makedirs(os.path.join(d, "implicit_analysis"), exist_ok=True)
+        for f in ("results.json", "eval_test.json", "config.json", "model.safetensors"):
+            open(os.path.join(d, f), "w").write("{}" if f.endswith(".json") else "x")
+        if analysed:
+            open(os.path.join(d, "implicit_analysis", "implicit_analysis.json"), "w").write("{}")
+    bench = rb.Bench.__new__(rb.Bench)
+    bench.student_list = [("google/bert_uncased_L-4_H-256_A-4", "bert-mini"), ("distilbert-base-uncased", "distilbert")]
+    rb.Bench._copy_run_tree(bench, src2, dst2)
+    checks += [
+        ("the headline student's first seed keeps its weights until its implicit analysis exists",
+         has_weights(os.path.join(dst2, "bert-mini", "dmthd", "seed1")), True),
+        ("and drops them once that analysis is written",
+         has_weights(os.path.join(dst2, "bert-mini", "uniform", "seed1")), False),
+        ("the headline student's other seeds still drop them",
+         has_weights(os.path.join(dst2, "bert-mini", "dmthd", "seed2")), False),
+        ("other students still drop them",
+         has_weights(os.path.join(dst2, "distilbert", "dmthd", "seed1")), False),
+    ]
+
     # and the backstop: caching must refuse a weightless teacher by name, not fail inside the loader
     data = os.path.join(base, "data")
     os.makedirs(data, exist_ok=True)

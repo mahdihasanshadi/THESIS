@@ -36,12 +36,16 @@ MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MI
 SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug).
 """
 import argparse
+import atexit
+import codecs
 import glob
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
+import threading
 import time
 
 DATASETS = {
@@ -119,12 +123,109 @@ def check_budget(what):
         raise OutOfTime(what)
 
 
+# Commands write into a log file, never into a pipe, and a thread copies that file to the console.
+# A process writing into a pipe blocks for good once nobody drains the pipe, and on Kaggle that is
+# what ended version 3 of the tweet notebook: 34 minutes in, while an extra cell was printing
+# progress bars, the log stopped taking output, the process stopped with it, and the session idled
+# until the 12-hour limit killed it with nothing new saved. A file never blocks its writer, so a
+# console that stops accepting output can stall the copy but not the work. The file is also a
+# complete log in the session output, whatever the log viewer shows.
+# A command that writes nothing for SILENCE_LIMIT_S is treated as hung and killed, so a hang costs
+# that long instead of the rest of the session. Training prints once per epoch and caching once per
+# teacher, so the default of two hours of silence means something is stuck.
+SILENCE_LIMIT_S = float(os.environ.get("SILENCE_LIMIT_S", "7200"))
+LOG_PATH = None      # set by log_to_file(); None keeps plain subprocess output (imports, tests)
+CONSOLE = None
+
+
+class _LogOnly:
+    """The driver's own stdout: its prints go to the log and reach the console through the copy."""
+
+    def __init__(self, path):
+        self.fh = open(path, "a", encoding="utf-8", errors="replace")
+
+    def write(self, s):
+        n = self.fh.write(s)
+        self.fh.flush()
+        return n
+
+    def flush(self):
+        self.fh.flush()
+
+
+def _copy_to_console(path, start, stop):
+    decode = codecs.getincrementaldecoder("utf-8")(errors="replace").decode
+    with open(path, "rb") as f:
+        f.seek(start)
+        while True:
+            chunk = f.read(1 << 16)
+            if chunk:
+                CONSOLE.write(decode(chunk))
+                CONSOLE.flush()
+            elif stop.is_set():
+                return
+            else:
+                time.sleep(1)
+
+
+def log_to_file(path):
+    """Send this process's prints and every command's output through `path`; see the note above."""
+    global LOG_PATH, CONSOLE
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    start = os.path.getsize(path) if os.path.exists(path) else 0
+    LOG_PATH, CONSOLE = path, sys.stdout
+    sys.stdout = _LogOnly(path)
+    stop = threading.Event()
+    copier = threading.Thread(target=_copy_to_console, args=(path, start, stop), daemon=True)
+    copier.start()
+
+    def finish():                    # runs on every exit path, sys.exit included
+        sys.stdout.flush()
+        stop.set()
+        copier.join(timeout=60)
+    atexit.register(finish)
+
+
+def _kill_tree(p):
+    try:
+        if os.name == "posix":
+            os.killpg(p.pid, signal.SIGKILL)      # the shell, the python process and its data loaders
+        else:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+    except OSError:
+        pass
+
+
 def sh(cmd, check=True):
     print("\n$", cmd, flush=True)
-    r = subprocess.run(cmd, shell=True, env={**os.environ, **QUIET})
-    if r.returncode != 0 and check:
-        sys.exit(f"command failed ({r.returncode}): {cmd}")
-    return r.returncode
+    if LOG_PATH is None:
+        rc = subprocess.run(cmd, shell=True, env={**os.environ, **QUIET}).returncode
+    else:
+        with open(LOG_PATH, "ab") as out:
+            p = subprocess.Popen(cmd, shell=True, env={**os.environ, **QUIET}, stdout=out,
+                                 stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
+        size, changed, hung = -1, time.time(), False
+        while True:
+            try:
+                p.wait(timeout=5)
+                break
+            except subprocess.TimeoutExpired:
+                pass
+            now = os.path.getsize(LOG_PATH)
+            if now != size:
+                size, changed = now, time.time()
+            elif time.time() - changed > SILENCE_LIMIT_S:
+                _kill_tree(p)
+                p.wait()
+                hung = True
+                break
+        rc = p.returncode or (124 if hung else 0)
+        if hung:
+            print(f"WATCHDOG: no output for {SILENCE_LIMIT_S / 60:.0f} min, killed as hung: {cmd}", flush=True)
+    if rc != 0 and check:
+        print(f"command failed ({rc}): {cmd}", flush=True)
+        sys.exit(f"command failed ({rc}): {cmd}")
+    return rc
 
 
 def pairs(spec):
@@ -223,13 +324,22 @@ class Bench:
         specialist joined: four resumed teachers came back as JSON with no weights and caching died
         on the first one."""
         kept = skipped = 0
+        # The headline student's first-seed runs are what the implicit analysis and the transfer to the
+        # other benchmarks read, and both need the model. Runs that finished before those stages existed
+        # have their probe results but neither output, so dropping their weights left the paper's central
+        # metric uncomputable for every one of them. They keep their weights until the analysis exists.
+        head = getattr(self, "student_list", None)
+        head = head[0][1] if head else None
         for root, _, files in os.walk(src):
             rel = os.path.relpath(root, src)
             out = os.path.join(dst, rel) if rel != "." else dst
-            is_teacher = rel.split(os.sep)[0] == "teachers"
-            needs_weights = RESUME_WEIGHTS == "all" or is_teacher or (
-                RESUME_WEIGHTS == "auto" and os.path.exists(os.path.join(root, "results.json"))
-                and not os.path.exists(os.path.join(root, "eval_test.json")))
+            parts = rel.split(os.sep)
+            is_teacher = parts[0] == "teachers"
+            finished = os.path.exists(os.path.join(root, "results.json"))
+            awaits_analysis = (finished and len(parts) == 3 and parts[0] == head and parts[2] == f"seed{SEEDS[0]}"
+                               and not os.path.exists(os.path.join(root, "implicit_analysis", "implicit_analysis.json")))
+            needs_weights = RESUME_WEIGHTS == "all" or is_teacher or (RESUME_WEIGHTS == "auto" and (
+                awaits_analysis or (finished and not os.path.exists(os.path.join(root, "eval_test.json")))))
             os.makedirs(out, exist_ok=True)
             for f in files:
                 if f.endswith(self.WEIGHT_SUFFIXES) and not needs_weights:
@@ -625,6 +735,7 @@ if __name__ == "__main__":
     ap.add_argument("--raw", default=None)
     a = ap.parse_args()
     os.environ.setdefault("PYTHONPATH", "src")
+    log_to_file(os.path.join(ROOT, "logs", f"{a.dataset}.log"))
     raw = a.raw or {"tweets": "/kaggle/working/raw/cyberbullying_tweets.csv",
                 "wikipedia": f"{ROOT}/raw_wikipedia", "implicit": IMPLICIT_RAW}[a.dataset]
     b = Bench(a.dataset, raw)

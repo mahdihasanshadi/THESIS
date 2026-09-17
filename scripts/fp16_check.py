@@ -42,7 +42,10 @@ def run(model, out, seed, fp16, data_dir, epochs, scheme, label_col, max_len, li
     if limit:
         cmd += ["--limit", str(limit)]
     print("\n$", " ".join(cmd), flush=True)
-    subprocess.run(cmd, env={**os.environ, "PYTHONPATH": SRC}, check=False)
+    # Progress bars off, as in the benchmark driver. With them on, this script is the cell that flooded
+    # the Kaggle log until the session stopped mid-print and idled out its 12 hours.
+    quiet = {"HF_HUB_DISABLE_PROGRESS_BARS": "1", "TRANSFORMERS_VERBOSITY": "error", "TOKENIZERS_PARALLELISM": "false"}
+    subprocess.run(cmd, env={**os.environ, "PYTHONPATH": SRC, **quiet}, check=False)
 
 
 def score(d):
