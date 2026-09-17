@@ -7,13 +7,15 @@ most-confident-teacher), the oracle, and a stacked gate fitted by cross-validati
 single teacher, no student distilled from the committee can be expected to gain from it either.
 """
 import os
+import sys
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import StratifiedKFold
 
-T = r"E:\dmthd-work\kaggle_d738_v4\runs\tweets\teachers"
+#     python scripts/teacher_ensemble.py runs/tweets/teachers
+T = sys.argv[1] if len(sys.argv) > 1 else os.path.join("runs", "tweets", "teachers")
 TAGS = ["bert-large", "hatebert", "irony", "implicit-spec", "deberta-base"]
 COMMITTEES = {"homo": TAGS[:3], "spec": TAGS[:4], "hetero": TAGS[:3] + ["deberta-base"], "all five": TAGS}
 
