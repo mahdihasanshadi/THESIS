@@ -632,3 +632,54 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   seed-1 runs finished before either stage existed, so a session resuming from v1 could not compute
   the paper's central metric for any of them. Those runs now keep their weights until
   `implicit_analysis.json` exists, about 1 GB. Covered by `scripts/test_resume_weights.py`.
+- **Kaggle tweets v4 finished cleanly in 1.41 h (5,076.8 s), every stage, 131 finished student runs,
+  results archive 12.8 MB.** It resumed from d738 v1 (1,046 files, 196 weight files left behind) and
+  added: the implicit specialist (in-domain test macro-F1 0.6029) and its task adaptation to tweets
+  (0.8931); the implicit-pretrained control; `uniform_spec` and `dmthd_spec` on three seeds;
+  `ablation_spec_only`; tau 0.05 / 0.1 / 0.2; probe evaluation of the v1 sweeps; the implicit analysis
+  on 26 first-seed BERT-mini runs; transfer of fine-tune-only and D-MTHD to the implicit test set; the
+  weight-routing measurement. No watchdog kill and no failed command. Results in DECISIONS F22 to F27;
+  in one line, nothing moves: not sharper weighting, not the specialist, not either control.
+- **The specialist is a near-copy of HateBERT after task adaptation.** `dmthd.analysis complementarity`
+  over the five teachers: kappa 0.962 between the two, disagreement 3.1 per cent, against 0.889 to
+  0.924 for every other pair; the oracle rises only from 0.9526 to 0.9552. This is the mechanism for
+  F23 and is in `paper/complementarity_with_specialist.json`.
+- **The archive left out two analysis files, and the tables were rebuilt around the gap.** The
+  packaging cell kept neither `implicit_analysis.json` nor `weight_routing.json`, so `dmthd.tables`
+  could not rebuild the implicit and routing tables offline. Both were rebuilt from the v4 console log,
+  into the local copy of the run tree only (`E:/dmthd-work/kaggle_d738_v4`), each carrying a `_source`
+  note: the implicit analysis prints every key but the confusion matrix at full precision, the routing
+  script prints weights to three places and contrasts to four. The regenerated tables agree with the
+  ones Kaggle produced on every shared cell, and `all_runs.csv` on every numeric cell. The packaging
+  cells of the tweet, Wikipedia and implicit notebooks now also keep `implicit_analysis.json`,
+  `operating_point.csv`, the routing files, the tau diagnostics and the driver log.
+- **Four table bugs, found by reading the v4 tables before using them.** The robustness table came out
+  empty on Kaggle: it took whichever seed the directory walk returned first, usually one without the
+  obfuscation runs. The implicit table's caption said the last three rows were controls where there
+  were two, gave no hint that its probe columns come from the first seed only, and it printed two
+  columns of dashes: implicit-discrimination AUC, which exists only on the implicit corpus, and recall
+  at a 10 per cent false-positive rate, which no model reaches. The routing caption said an interval
+  excluding zero means the weighting selects a teacher, which with tens of thousands of instances is
+  true of almost any difference. All four fixed in `tables.py`, with the caption now built from the
+  data, and `scripts/smoke_tables.py` checks each.
+- **Two driver changes from what v4 showed.** Probes now run after the sweep: in the old order the
+  three new tau runs finished after the implicit analysis had passed and have no sarcasm AUC. And the
+  routing measurement and the tau diagnostic ran over every teacher in the cache, five, where the
+  students trained with three or four. Each trained committee is now measured separately, into
+  `weight_routing/<committee>/`, and the tables prefer those files. Both are covered by the driver smoke
+  test.
+- **`dmthd.significance` added.** It recomputes every paired comparison the paper states from the
+  saved test predictions, with the test `aggregate --compare` uses, into `paper/tables/significance`.
+  The draft had copied intervals from the Kaggle console, where each comparison's output lands under
+  the next command's line; all of the copied ones check out. Of 51 comparisons one interval excludes
+  zero, removing pre-training (F27), which retires "distillation helps every student" as a claim about
+  anything but point estimates.
+- **Two sections of the results draft quoted the laptop** (F26): the implicit diagnostic in 5.6, from
+  the laptop model behind F10, and the tweet-Wikipedia transfer in 5.8. The Kaggle numbers keep the
+  diagnosis and change two details: the model does lean on profanity (recall 0.91 with it, 0.76
+  without, where the laptop gave 0.72 and 0.67), and no threshold brings false positives on benign
+  sarcasm under 10 per cent on any of the 26 models. Also corrected: F20's mean weights, which averaged
+  committees of different sizes. `paper/results_draft.md` rewritten for 17 September, with a new 5.3b
+  on the specialist. `paper/OPEN_DECISIONS.md`: Decision 4 resolved as 4A; Decision 1's recommendation
+  is now B2, a measurement paper about what distillation does and does not transfer about implication,
+  with the implicit grid as the test that could make it constructive.

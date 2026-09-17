@@ -5,6 +5,13 @@ ones below are different: they change what the paper *is*, where it is sent, or 
 remaining GPU quota is spent. Each one states the options, the argument for and against each, the
 evidence that will settle it, and when it has to be settled by.
 
+**Updated 17 September, after the specialist runs.** Three of the four numbers Decision 1 was waiting
+for are in, and they change the recommendation: the specialist does not help on the tweet corpus, the
+reason is measured, and sharper weighting does not rescue the method either, which also closes
+Decision 4. The recommendation is now a measurement paper about implication (B2 below), with the
+implicit benchmark's student grid as the last experiment that could make it constructive again.
+Decision 2's table is updated to what has run.
+
 **Updated 13 September, after the tweet grid finished.** Decision 4 has triggered: the per-instance
 dynamic weighting does not beat uniform averaging on any of five students. That removes the main
 argument for Option A in Decision 1 and makes Decision 4A the live question rather than a
@@ -35,7 +42,8 @@ benchmark becomes the primary one; the tweet and Wikipedia corpora become genera
 the discrimination AUCs are the headline metrics.
 - For: there is a real, measured gap to close, and the same gap shows up twice on different data. On
   the corpus that labels implication, a bag of n-grams ranks implied hate above ordinary text at an
-  AUC of 0.761; on the tweet corpus, our student separates ironic abuse from benign sarcasm at 0.776.
+  AUC of 0.761; on the tweet corpus, our student separates ironic abuse from benign sarcasm at 0.776
+  (the laptop model; 0.773 on Kaggle, see below).
   Well above chance, a long way from solved. The failure has a diagnosis rather than just a number:
   the model sees implication but cannot separate it from harmless sarcasm (Finding 10). There is a
   mechanism aimed at exactly that (the specialist teacher, the irony head), a way to show the
@@ -55,18 +63,78 @@ either way, and under A they sit where the contribution should be.
 **What settles it:** four numbers from the implicit benchmark and the `spec` committee run.
 1. Implicit-discrimination AUC on the implicit benchmark against the classical floor's 0.761, and
    implicit-hate F1 against its 0.556.
-2. Sarcasm-discrimination AUC on the tweet corpus against the 0.776 fine-tune-only baseline.
+2. Sarcasm-discrimination AUC on the tweet corpus against the fine-tune-only baseline (0.776 on the
+   laptop, 0.773 on Kaggle).
 3. `spec` committee against `homo` committee, three seeds, on the tweet corpus.
 4. Whether `spec` beats the two controls: the specialist alone, and the same student pre-trained on
    the implicit corpus without any distillation.
 
-**To make the choice concrete**, both abstracts are written out in `paper/abstract_draft.md`,
+**To make the choice concrete**, the abstracts are written out in `paper/abstract_draft.md`,
 with every unmeasured number marked as a placeholder and a note under each saying what that
-version is betting on. Read those two before deciding; the difference between them is easier to
-judge as prose than as an argument.
+version is betting on. Since 17 September there are three, including B2 below. Read them before
+deciding; the difference between them is easier to judge as prose than as an argument.
 
 **By when:** as soon as the implicit Kaggle run finishes. Until then the writing that is safe to do
 is the related work, the setup section and the limitations, none of which depend on the framing.
+
+### What the numbers said, 17 September
+
+Kaggle version 4 of the tweet notebook ran the specialist, its committee on three seeds, both controls
+and the sharp temperatures. Against the four numbers above:
+1. **Implicit benchmark:** the student grid has not run. The specialist itself clears the floor
+   (implicit-discrimination AUC 0.8247 against 0.761; implicit-hate F1 0.607 against 0.556).
+2. **Sarcasm-discrimination AUC on tweets:** the fine-tune-only baseline on Kaggle is 0.773; the 0.776
+   quoted above was the laptop model (DECISIONS F26). Both specialist committees score 0.768, and all 25
+   pre-trained variants of the headline student fall between 0.756 and 0.777 (F23).
+3. **`spec` against `homo`, three seeds:** +0.0005 [-0.0059, +0.0064] under uniform averaging, -0.0005
+   [-0.0069, +0.0055] under D-MTHD (F23).
+4. **Against the controls:** the specialist alone 0.8392, the implicit-pretrained student 0.8377, both
+   inside the same noise as everything else (F23).
+
+Option B as written bet on number 3 or 4 moving. Neither did, and the reason is measured rather than
+guessed: adapted to the tweet task, the specialist agrees with HateBERT at kappa 0.962, so the committee
+never held the knowledge the framing needed it to pass on (F23). The weights lean towards it by a
+twentieth of the uniform weight, and as much towards HateBERT (F24). Tweet-trained students rank the
+implicit corpus's implicit hate against not-hate at 0.600, against 0.820 in-domain (F25). And across
+the grid, of 51 paired comparisons, the only interval that excludes zero is removing pre-training (F27).
+
+**Option A is now closed.** Its contribution was the dynamic weighting, and the last way out has been
+tried: no temperature from 0.05 to 5 separates it from averaging (F22).
+
+**Option B2 — what distillation does and does not transfer about implication.** Same subject as B,
+different claim. Something like *Distillation Does Not Teach Implication: A Threshold-Free Audit of
+Multi-Teacher Knowledge Distillation for Abusive Language Detection*. The contribution is evidence and
+protocol, not a method:
+- a threshold-free way to measure implication, and the demonstration over 133 models that recall at a
+  fixed threshold measures readiness to fire rather than understanding (F19);
+- a controlled grid in which no objective, committee, temperature, specialist teacher or control moves
+  discrimination, and only pre-training does (F22, F23, F27);
+- the mechanism, measured: task adaptation removes the diversity a cross-task committee is built for,
+  down to a specialist that becomes a copy of its base model, so reliability weighting has nothing to
+  select (F20, F23, F24);
+- the data results that stand whatever else happens: the single-source implicit benchmark and the
+  source shortcut that pooling creates (F16), the corpora's 48 per cent agreement about implication
+  (F14), the schema traps (F15);
+- efficiency parity as a secondary, practical result (F4, F11).
+- For: every claim in it is already measured, and it survives either outcome of the implicit grid. It
+  also removes the overlap risk with MT-BERT, because the paper no longer proposes that method. A
+  negative result with a measured mechanism and a reusable protocol is publishable.
+- Against: journals prefer methods. A negative result is an easier sell at *Information Processing and
+  Management* or a Findings venue than at *Expert Systems with Applications* or *Knowledge-Based
+  Systems* (Decision 6). The implicit grid still has to run, because under this framing the implicit
+  benchmark is the primary one.
+
+**My recommendation now: B2, with the implicit grid as the one test that could upgrade it.** On that
+benchmark every teacher is itself trained on labelled implication, so it is the fairest chance
+distillation has. B2 makes a prediction there that could fail: implicit-discrimination AUC will not
+move beyond test-set noise, while F1, which depends on where the threshold falls, may. If AUC does
+move, the paper becomes the constructive form of B, with the tweet corpus as the case where transfer
+fails and the reason why. If it does not, B2 stands as written and loses nothing. There is little room
+at the top either way: the best teacher ranks at 0.8247 and the fine-tune-only student at 0.8196.
+
+**By when:** the framing can be adopted now, because both outcomes of the implicit grid fit it. The
+introduction and abstract should be rewritten around implication; the results section already has
+been. The title waits for the implicit grid.
 
 ---
 
@@ -77,10 +145,12 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | Work | Estimate | Status |
 |---|---|---|
 | Finish the tweet grid | done, 8.24 h | complete: 120 runs, 13 September |
-| Implicit specialist + the implicit-pretrained control | 1 h, once, inside the tweet run | not started |
-| `spec` committee on the tweet corpus, headline student, three seeds | 2 h | running now |
-| Sharp tau values, 0.05 / 0.1 / 0.2, one seed each | 20 min | running now |
-| fp16 control for the narrow students | 40 min | running now |
+| Implicit specialist + the implicit-pretrained control | 1 h, once, inside the tweet run | done, 17 September (v4) |
+| `spec` committee on the tweet corpus, headline student, three seeds | 2 h | done, 17 September (v4) |
+| Sharp tau values, 0.05 / 0.1 / 0.2, one seed each | 20 min | done, 17 September (v4) |
+| fp16 control for the narrow students | 40 min | done (v2) |
+| v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
+| Per-committee routing and probes for the sharp tau runs | under 30 min, including the resume | queued for the next tweet session |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
@@ -144,6 +214,12 @@ or larger, where the mean weights sit at a third each; those configurations opti
 objective, so scoring alike is arithmetic and not evidence. The sharp values, 0.05, 0.1 and 0.2, are
 in the current grid and have not run. **The claim available today is "not shown to differ from
 uniform averaging at any tau yet tested."**
+
+**What happened when they ran, 17 September.** Nothing changed. Mean weights sharpen from 0.332 /
+0.337 / 0.331 at tau = 1 to 0.318 / 0.356 / 0.326 at tau = 0.05, and test macro-F1 stays at 0.8385 to
+0.8392 (DECISIONS F22). Paired intervals at tau = 0.05: +0.0007 [-0.0008, +0.0023] against the
+default, +0.0020 [-0.0042, +0.0077] against uniform averaging. **This decision is resolved: 4A**, and
+Decision 1 now carries the consequence.
 
 **If the sharp tau values change it:** the paper keeps its central claim and gains an honest
 negative-to-positive story about a hyper-parameter that matters more than the literature suggests.

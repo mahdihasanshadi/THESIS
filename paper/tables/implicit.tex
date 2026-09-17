@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\caption{Detection of abuse by implication. Sarcasm-discrimination AUC ranks the ironic-abuse probe against the benign-sarcasm probe and is threshold-free, so it separates a model that cannot see implication from one that sees it but cannot tell it from harmless sarcasm. The last two rows are the controls: the specialist without a committee and the same student pre-trained on the implicit corpus instead of distilled from it. Macro-F1 and class F1 are over all seeds; the probe columns come from one seed per method. No analysed model kept the false-positive rate on benign sarcasm at or below 0.10 at any threshold from 0.10 to 0.90, so recall at that rate is not reported.}
+\label{tab:implicit}
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & Seeds & Macro-F1 & F1 on other cyberbullying & Sarcasm-discrimination AUC & Ironic recall at 0.5 & Benign FPR at 0.5 \\
+\midrule
+Fine-tune only & 3 & 0.8393 $\pm$ 0.0003 & 0.707 $\pm$ 0.003 & 0.773 & 0.792 & 0.395 \\
+Single-teacher KD & 3 & 0.8405 $\pm$ 0.0017 & 0.702 $\pm$ 0.007 & 0.765 & 0.794 & 0.391 \\
+Uniform multi-teacher & 3 & 0.8385 $\pm$ 0.0018 & 0.700 $\pm$ 0.011 & 0.774 & 0.758 & 0.350 \\
+D-MTHD & 3 & 0.8378 $\pm$ 0.0011 & 0.705 $\pm$ 0.004 & 0.773 & 0.812 & 0.414 \\
+Uniform multi-teacher + implicit specialist & 3 & 0.8390 $\pm$ 0.0035 & 0.699 $\pm$ 0.012 & 0.768 & 0.775 & 0.384 \\
+D-MTHD + implicit specialist & 3 & 0.8373 $\pm$ 0.0025 & 0.697 $\pm$ 0.007 & 0.768 & 0.779 & 0.385 \\
+implicit specialist alone, no committee & 1 & 0.8392 & 0.709 & 0.767 & 0.817 & 0.448 \\
+student pre-trained on the implicit corpus, no distillation & 1 & 0.8377 & 0.705 & 0.756 & 0.796 & 0.441 \\
+\bottomrule
+\end{tabular}
+\end{table}

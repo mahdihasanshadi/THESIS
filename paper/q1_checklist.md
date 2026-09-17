@@ -18,23 +18,23 @@ Every `[x]` names where the evidence lives.
 - [x] Classical floor on every benchmark — tweets 0.8798, Wikipedia 0.8759, implicit 0.5620 (implicit_hate F1 0.5562, implicit-discrimination AUC 0.7610)
 - [~] Sarcasm probe sets: built and screened; human verification pending — `probes/`, `annotation/`
 - [!] Human-verified sarcastic-bullying set with Fleiss' kappa — needs the four annotators (sheet sent 2026-09-11)
-- [x] Obfuscation variants on both corpora, fine-tune-only and D-MTHD — tweets 0.8394 to 0.7116 mixed, and distillation does not help (D-MTHD 0.8385 to 0.7077); Wikipedia drops 2 points with the space variant rising
-- [x] Cross-dataset transfer, both directions, full test sets — tweets->Wikipedia 0.273 (over-fires), Wikipedia->tweets 0.425 (under-fires); reported as a finding about the task definitions
-- [~] Hyper-parameter sweeps — T, alpha, delta done and flat (spread 0.0016, 0.0008, 0.0010). tau done only at 0.5/2/5, where the weights are already uniform, so the sweep cannot yet answer the question it exists for; 0.05/0.1/0.2 running
-- [x] Threshold-free sarcasm metric defined and implemented, replacing recall at an arbitrary cut — sarcasm-discrimination AUC, `implicit_analysis.py`; fine-tune-only baseline 0.776
+- [~] Obfuscation variants on both corpora, fine-tune-only and D-MTHD — tweets 0.8394 to 0.7116 mixed, and distillation does not help (D-MTHD 0.8385 to 0.7077). The Wikipedia figures (2 points, space variant rising) are from the laptop and wait for the Kaggle Wikipedia grid (DECISIONS F26)
+- [~] Cross-dataset transfer, full test sets — tweets->implicit on Kaggle: implicit-hate AUC 0.600 against 0.820 in-domain, over-firing at 81% predicted abusive against 35.7% true (F25). Tweets<->Wikipedia (0.273 / 0.425) measured on the laptop only; waits for the Kaggle Wikipedia grid (F26)
+- [x] Hyper-parameter sweeps — T, alpha, delta flat (spread 0.0016, 0.0008, 0.0010); tau from 0.05 to 5 flat too, 0.8385 to 0.8392, with the weights sharpening to 0.318 / 0.356 / 0.326 at 0.05 (F22)
+- [x] Threshold-free sarcasm metric defined and implemented, replacing recall at an arbitrary cut — sarcasm-discrimination AUC, `implicit_analysis.py`; fine-tune-only baseline 0.773 on Kaggle (the 0.776 quoted before was the laptop model, F26)
 
 ## B. Baselines, controls, ablations
 - [x] Fine-tune-only control for every student, three seeds — all five on tweets: BERT-mini 0.8393, BERT-small 0.8469, DistilBERT 0.8907, DeBERTa-v3-xsmall 0.8825, BiLSTM 0.8693. Wikipedia pending
-- [x] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, five students, three committees — 120 runs, `paper/tables/main.csv`. Distillation helps all five (+0.0012 to +0.0071); D-MTHD beats uniform on none
+- [x] Single-teacher KD, uniform-average multi-teacher, D-MTHD, three seeds, five students, three committees — 120 runs, `paper/tables/main.csv`. Distillation raises all five (+0.0012 to +0.0071) with no paired interval excluding zero (F27); D-MTHD beats uniform on none
 - [x] Ablations: no dynamic weights, no hidden term, no irony head, per-batch, from-scratch — `paper/tables/ablations.csv`. Only from-scratch moves anything (-0.0473); removing the weighting *improves* the score (+0.0008)
-- [!] Implicit-specialist ablations: `spec_only` (the specialist alone) and `no_spec` (the committee without it). Without both, the claim that the *committee* helps is unfalsifiable — driver ready, pending Kaggle
-- [!] Routing evidence: mean teacher weight on implicit rows minus explicit rows, bootstrap interval — `weight_routing.py` ready and tested, pending a real committee cache
-- [!] Focus-class transfer: tweets model scored on implicit rows alone — `transfer_eval.py --focus_class`, pending Kaggle
+- [x] Implicit-specialist committee and controls, tweets, Kaggle v4 — `spec` committee three seeds, `spec_only`, and the implicit-pretrained student; the committee without the specialist is `homo` itself. None helps: +0.0005 / -0.0005 against `homo`, AUC 0.768 against 0.773 (F23)
+- [~] Routing evidence: mean teacher weight on implicit-like rows minus explicit-like rows, bootstrap interval — measured on Kaggle over the pooled five-teacher cache: the specialist gains a twentieth of the uniform weight at the trained tau, HateBERT slightly more (F24). Per-committee measurement queued for the next tweet session
+- [x] Focus-class transfer: tweets model scored on implicit rows alone — implicit-hate AUC 0.600 (fine-tune-only) and 0.600 (D-MTHD), recall 0.85 at FPR 0.79 (F25)
 - [~] Homogeneity 2x2 — the heterogeneous committee arm is done for all five students (effects -0.0005 to +0.0032, all inside noise) and the hidden-term arm has run only on BERT-mini (+0.0009). The DeBERTa and BiLSTM hidden-term cells are outstanding, and without them no causal claim about homogeneity is available
 - [!] Disagreement-aware variant on Wikipedia (`dmthd_dis`) — Kaggle Wikipedia run
 - [ ] Optional: zero-shot LLM baseline on a 2,000-item test sample
 
-- [x] Threshold-free sarcasm metric validated across the whole grid — 114 models, false-positive rate and recall correlate at +0.673 with their difference standard deviation 0.053; no method discriminates better than any other — `python -m dmthd.tradeoff`
+- [x] Threshold-free sarcasm metric validated across the whole grid — 133 models, false-positive rate and recall correlate at +0.712 with their difference standard deviation 0.051; over 25 BERT-mini variants the AUC itself stays within 0.756 to 0.777; no method discriminates better than any other — `python -m dmthd.tradeoff`, F19, F23
 - [x] The paper's own method reported as a negative result where the evidence says so — `paper/results_draft.md` Sections 5.3 and 5.3a
 - [!] Reproducibility caveat unresolved: the same code, data and seeds give 0.8779 on a laptop CPU and 0.8393 on a Kaggle T4. Precision, data and code all eliminated. Every table is restricted to one environment; one Kaggle CPU run would isolate it
 
@@ -43,8 +43,9 @@ Every `[x]` names where the evidence lives.
 - [x] Wilcoxon across seeds when five seeds exist, otherwise bootstrap only — `aggregate.py --compare`
 - [x] Per-class F1, ECE, ROC-AUC/PR-AUC for binary — `evaluate.py`
 - [~] Per-agreement-band F1 on Wikipedia (0.2–0.8 band vs the rest) — `analysis.py agreement_bands` ready and tested; needs Wikipedia runs
-- [x] Teacher complementarity — kappa 0.889-0.922, disagreement 6.4-9.2%, error overlap 0.673-0.730, oracle macro-F1 bound 0.9469 against best single 0.8973. This is the mechanism behind the negative result
-- [x] Weight trajectories per teacher per epoch — 0.306 / 0.311 / 0.305 / 0.233, identical at every epoch, which is correct by construction with frozen teachers and is reported as such rather than plotted as a trend
+- [x] Teacher complementarity — kappa 0.889-0.922, disagreement 6.4-9.2%, error overlap 0.673-0.730, oracle macro-F1 bound 0.9469 against best single 0.8973. This is the mechanism behind the negative result. With the implicit specialist: kappa 0.962 with HateBERT, disagreement 3.1%, oracle accuracy 0.9526 -> 0.9552 (F23)
+- [x] Weight trajectories per teacher per epoch — 0.332 / 0.337 / 0.331 for the homogeneous committee and 0.254 / 0.259 / 0.254 / 0.233 with DeBERTa, identical at every epoch and seed, which is correct by construction with frozen teachers and is reported as such rather than plotted as a trend (corrected 17 September, F20)
+- [x] Every comparison the paper states as a generated table — `python -m dmthd.significance`, `paper/tables/significance.csv`: 51 paired bootstraps, one interval excludes zero (F27)
 - [x] Macro-F1 vs latency vs parameters — `paper/tables/efficiency.csv`; DistilBERT matches BERT-large at 5.1x fewer parameters and 5.8x lower batch-32 latency
 
 ## D. Efficiency

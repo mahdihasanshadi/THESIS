@@ -1,0 +1,62 @@
+\begin{table}[t]
+\centering
+\caption{Paired bootstrap on the test set: candidate minus baseline macro-F1, seeds paired by index, 1,000 resamples per seed, 95 per cent interval of the pooled differences. Rows with one seed are indicative only.}
+\label{tab:significance}
+\begin{tabular}{llllrrll}
+\toprule
+Student & Question & Baseline & Candidate & Seeds & Difference & 95 per cent interval & Interval excludes zero \\
+\midrule
+BERT-mini & does one teacher help & Fine-tune only & Single-teacher KD & 3 & +0.0012 & [-0.0057, +0.0079] & no \\
+BERT-mini & does a committee help & Fine-tune only & Uniform multi-teacher & 3 & -0.0007 & [-0.0074, +0.0058] & no \\
+BERT-mini & does the method help & Fine-tune only & D-MTHD & 3 & -0.0015 & [-0.0076, +0.0048] & no \\
+BERT-mini & does a committee with DeBERTa help & Fine-tune only & Uniform multi-teacher (het.) & 3 & -0.0014 & [-0.0085, +0.0054] & no \\
+BERT-mini & does the method with DeBERTa help & Fine-tune only & D-MTHD (heterogeneous committee) & 3 & -0.0019 & [-0.0082, +0.0041] & no \\
+BERT-mini & does per-instance weighting beat averaging & Uniform multi-teacher & D-MTHD & 3 & -0.0007 & [-0.0074, +0.0061] & no \\
+BERT-mini & does a DeBERTa teacher change the method & D-MTHD & D-MTHD (heterogeneous committee) & 3 & -0.0005 & [-0.0063, +0.0054] & no \\
+BERT-mini & weighting against averaging, with DeBERTa & Uniform multi-teacher (het.) & D-MTHD (heterogeneous committee) & 3 & -0.0005 & [-0.0067, +0.0054] & no \\
+BERT-small & does one teacher help & Fine-tune only & Single-teacher KD & 3 & +0.0019 & [-0.0124, +0.0123] & no \\
+BERT-small & does a committee help & Fine-tune only & Uniform multi-teacher & 3 & +0.0036 & [-0.0057, +0.0122] & no \\
+BERT-small & does the method help & Fine-tune only & D-MTHD & 3 & +0.0002 & [-0.0097, +0.0099] & no \\
+BERT-small & does a committee with DeBERTa help & Fine-tune only & Uniform multi-teacher (het.) & 3 & +0.0040 & [-0.0058, +0.0126] & no \\
+BERT-small & does the method with DeBERTa help & Fine-tune only & D-MTHD (heterogeneous committee) & 3 & +0.0008 & [-0.0079, +0.0088] & no \\
+BERT-small & does per-instance weighting beat averaging & Uniform multi-teacher & D-MTHD & 3 & -0.0034 & [-0.0106, +0.0036] & no \\
+BERT-small & does a DeBERTa teacher change the method & D-MTHD & D-MTHD (heterogeneous committee) & 3 & +0.0006 & [-0.0083, +0.0080] & no \\
+BERT-small & weighting against averaging, with DeBERTa & Uniform multi-teacher (het.) & D-MTHD (heterogeneous committee) & 3 & -0.0032 & [-0.0100, +0.0033] & no \\
+BiLSTM & does one teacher help & Fine-tune only & Single-teacher KD & 3 & +0.0055 & [-0.0046, +0.0159] & no \\
+BiLSTM & does a committee help & Fine-tune only & Uniform multi-teacher & 3 & +0.0068 & [-0.0039, +0.0201] & no \\
+BiLSTM & does the method help & Fine-tune only & D-MTHD & 3 & +0.0039 & [-0.0054, +0.0141] & no \\
+BiLSTM & does a committee with DeBERTa help & Fine-tune only & Uniform multi-teacher (het.) & 3 & +0.0067 & [-0.0033, +0.0176] & no \\
+BiLSTM & does the method with DeBERTa help & Fine-tune only & D-MTHD (heterogeneous committee) & 3 & +0.0071 & [-0.0039, +0.0195] & no \\
+BiLSTM & does per-instance weighting beat averaging & Uniform multi-teacher & D-MTHD & 3 & -0.0029 & [-0.0116, +0.0056] & no \\
+BiLSTM & does a DeBERTa teacher change the method & D-MTHD & D-MTHD (heterogeneous committee) & 3 & +0.0032 & [-0.0054, +0.0112] & no \\
+BiLSTM & weighting against averaging, with DeBERTa & Uniform multi-teacher (het.) & D-MTHD (heterogeneous committee) & 3 & +0.0004 & [-0.0072, +0.0081] & no \\
+DeBERTa-v3-xsmall & does one teacher help & Fine-tune only & Single-teacher KD & 3 & +0.0040 & [-0.0024, +0.0109] & no \\
+DeBERTa-v3-xsmall & does a committee help & Fine-tune only & Uniform multi-teacher & 3 & +0.0037 & [-0.0027, +0.0104] & no \\
+DeBERTa-v3-xsmall & does the method help & Fine-tune only & D-MTHD & 3 & +0.0008 & [-0.0056, +0.0075] & no \\
+DeBERTa-v3-xsmall & does a committee with DeBERTa help & Fine-tune only & Uniform multi-teacher (het.) & 3 & +0.0022 & [-0.0121, +0.0122] & no \\
+DeBERTa-v3-xsmall & does the method with DeBERTa help & Fine-tune only & D-MTHD (heterogeneous committee) & 3 & +0.0003 & [-0.0069, +0.0071] & no \\
+DeBERTa-v3-xsmall & does per-instance weighting beat averaging & Uniform multi-teacher & D-MTHD & 3 & -0.0029 & [-0.0086, +0.0029] & no \\
+DeBERTa-v3-xsmall & does a DeBERTa teacher change the method & D-MTHD & D-MTHD (heterogeneous committee) & 3 & -0.0005 & [-0.0080, +0.0066] & no \\
+DeBERTa-v3-xsmall & weighting against averaging, with DeBERTa & Uniform multi-teacher (het.) & D-MTHD (heterogeneous committee) & 3 & -0.0019 & [-0.0108, +0.0108] & no \\
+DistilBERT & does one teacher help & Fine-tune only & Single-teacher KD & 3 & +0.0056 & [-0.0011, +0.0120] & no \\
+DistilBERT & does a committee help & Fine-tune only & Uniform multi-teacher & 3 & +0.0052 & [-0.0017, +0.0124] & no \\
+DistilBERT & does the method help & Fine-tune only & D-MTHD & 3 & +0.0053 & [-0.0016, +0.0122] & no \\
+DistilBERT & does a committee with DeBERTa help & Fine-tune only & Uniform multi-teacher (het.) & 3 & +0.0068 & [-0.0013, +0.0139] & no \\
+DistilBERT & does the method with DeBERTa help & Fine-tune only & D-MTHD (heterogeneous committee) & 3 & +0.0058 & [-0.0025, +0.0154] & no \\
+DistilBERT & does per-instance weighting beat averaging & Uniform multi-teacher & D-MTHD & 3 & +0.0000 & [-0.0079, +0.0082] & no \\
+DistilBERT & does a DeBERTa teacher change the method & D-MTHD & D-MTHD (heterogeneous committee) & 3 & +0.0006 & [-0.0083, +0.0109] & no \\
+DistilBERT & weighting against averaging, with DeBERTa & Uniform multi-teacher (het.) & D-MTHD (heterogeneous committee) & 3 & -0.0010 & [-0.0087, +0.0069] & no \\
+BERT-mini & does a committee with the specialist help & Fine-tune only & Uniform multi-teacher + implicit specialist & 3 & -0.0003 & [-0.0080, +0.0075] & no \\
+BERT-mini & does the method with the specialist help & Fine-tune only & D-MTHD + implicit specialist & 3 & -0.0019 & [-0.0093, +0.0049] & no \\
+BERT-mini & does adding the specialist change averaging & Uniform multi-teacher & Uniform multi-teacher + implicit specialist & 3 & +0.0005 & [-0.0059, +0.0064] & no \\
+BERT-mini & does adding the specialist change the method & D-MTHD & D-MTHD + implicit specialist & 3 & -0.0005 & [-0.0069, +0.0055] & no \\
+BERT-mini & weighting against averaging, with the specialist & Uniform multi-teacher + implicit specialist & D-MTHD + implicit specialist & 3 & -0.0017 & [-0.0092, +0.0078] & no \\
+BERT-mini & the specialist alone against the full committee & D-MTHD + implicit specialist & implicit specialist alone, no committee & 1 & +0.0008 & [-0.0048, +0.0058] & no \\
+BERT-mini & pre-training on the implicit corpus instead & Fine-tune only & student pre-trained on the implicit corpus, no distillation & 1 & -0.0017 & [-0.0083, +0.0055] & no \\
+BERT-mini & the same knowledge by pre-training, not distillation & D-MTHD + implicit specialist & student pre-trained on the implicit corpus, no distillation & 1 & -0.0008 & [-0.0084, +0.0064] & no \\
+BERT-mini & the sharpest weighting against averaging & Uniform multi-teacher & D-MTHD, tau = 0.05 & 1 & +0.0020 & [-0.0042, +0.0077] & no \\
+BERT-mini & the sharpest weighting against the default & D-MTHD & D-MTHD, tau = 0.05 & 1 & +0.0007 & [-0.0008, +0.0023] & no \\
+BERT-mini & what pre-training is worth & Fine-tune only & randomly initialised student & 1 & -0.0488 & [-0.0603, -0.0376] & yes \\
+\bottomrule
+\end{tabular}
+\end{table}

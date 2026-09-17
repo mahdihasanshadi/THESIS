@@ -116,11 +116,11 @@ claims, and it introduces no sarcasm labels into the bullying corpora.
 Separating sarcasm from abuse is the point, and it needs a metric that can see it. Recall on
 ironically phrased abuse at a fixed decision threshold cannot distinguish a model that misses
 implication from one that reacts to any sarcastic, negative text, and our measurements show the
-second is what happens: on the fine-tune-only baseline, mean $p(\text{abusive})$ is 0.693 on
-ironic abuse and 0.375 on benign sarcasm, so the two distributions overlap heavily while their means
+second is what happens: on the fine-tune-only baseline, mean $p(\text{abusive})$ is 0.748 on
+ironic abuse and 0.449 on benign sarcasm, so the two distributions overlap heavily while their means
 differ. We therefore report **sarcasm-discrimination AUC**: the ROC-AUC of $1 - p(\text{benign})$
 with the ironic-abuse probe as positives and the benign-sarcasm probe as negatives. It is
-threshold-free and identically defined on every corpus. The baseline scores 0.776; the
+threshold-free and identically defined on every corpus. The baseline scores 0.773; the
 recall-versus-false-positive curve is reported beside it, because a deployment must choose a
 threshold even though an evaluation should not.
 

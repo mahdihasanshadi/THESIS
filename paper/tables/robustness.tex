@@ -1,13 +1,13 @@
 \begin{table}[t]
 \centering
-\caption{Robustness: obfuscated test variants and cross-dataset transfer (first seed).}
+\caption{Robustness (first seed). Macro-F1 on obfuscated variants of the test set, and binary macro-F1 (abusive or not) on the test sets of the other corpora with no further training. The last column ranks implicit hate against non-hateful posts of the implicit corpus by the transferred model's abuse probability.}
 \label{tab:robustness}
-\begin{tabular}{llrrrrr}
+\begin{tabular}{llrrrrrrr}
 \toprule
-Student & Method & Clean & Leet & Swap & Space & Mixed \\
+Student & Method & Clean & Leet & Swap & Space & Mixed & transfer to implicit & implicit-hate AUC after transfer \\
 \midrule
-BERT-mini & Fine-tune only & 0.8394 & 0.7475 & 0.7417 & 0.7275 & 0.7116 \\
-BERT-mini & D-MTHD & 0.8385 & 0.7460 & 0.7361 & 0.7250 & 0.7077 \\
+BERT-mini & Fine-tune only & 0.8394 & 0.7475 & 0.7417 & 0.7275 & 0.7116 & 0.4229 & 0.6002 \\
+BERT-mini & D-MTHD & 0.8385 & 0.7460 & 0.7361 & 0.7250 & 0.7077 & 0.4113 & 0.6003 \\
 \bottomrule
 \end{tabular}
 \end{table}

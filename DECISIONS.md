@@ -300,6 +300,9 @@ against a true rate of 11.8%. Wikipedia model on tweets: 0.425, ROC-AUC 0.718, c
 against a true rate of 85.7%. One over-fires, the other under-fires. This is a fact about two
 different task definitions, not a defect of the students.
 
+*17 September:* these come from the laptop models, which F17's rule keeps out of the paper. They stay
+here as a record and leave the results draft until the Wikipedia grid measures them on Kaggle (F26).
+
 ### F10. Indirect abuse is missed through poor discrimination, not blindness
 Measured on BERT-mini fine-tune-only, tweets, seed 1.
 - **Not lexical.** Ironic-abuse recall is 0.72 on the 43 probe items containing explicit profanity and
@@ -312,6 +315,9 @@ Measured on BERT-mini fine-tune-only, tweets, seed 1.
 - **The benchmark shows the same thing.** `other_cyberbullying` recall 0.786 (0.82 with profanity,
   0.78 without), 77 of its errors going to `not_cyberbullying`; `not_cyberbullying` recall 0.681 with
   133 errors going the other way. The two catch-all classes bleed into each other.
+
+*17 September:* measured on the laptop model. On the Kaggle models the diagnosis stands, but the lexical
+split and the 10 per cent operating point change materially; see F26 for the numbers the paper uses.
 
 ### F11. INT8 quantisation pays off by model shape, not by model size
 BERT-mini, idle CPU: 42.6 → 33.5 MB, batch-32 latency 2.42 → 1.39 ms (1.74x) for a 0.0057 macro-F1
@@ -474,6 +480,9 @@ The specialist clears the floor (0.6029 against 0.5620) and is the model the com
 kappa, but it is one more observation consistent with F20: adaptation to a shared label space pulls
 cross-task specialists towards each other.
 
+*17 September:* the kappa is measured, and it is the strongest form of that observation: 0.962 with
+HateBERT (F23).
+
 ### F18. Aggregation was silently averaging two different experiments
 `aggregate.py` grouped on the `mode` field inside `results.json`, which records the objective and not
 the committee, so `dmthd` and `dmthd_hetero` were pooled into one row, as were `uniform` with
@@ -516,8 +525,10 @@ wrong on the same 4.7 per cent of the test set while all four are right on 83.2 
 A per-instance weighting scheme can only express a preference where its members disagree. On this
 committee that is at most one instance in eleven, and on two-thirds of the errors there is no correct
 teacher to prefer. There is very little for the weights to do, and the grid shows them doing it: the
-mean weights over the whole training set are 0.306 / 0.311 / 0.305 / 0.233, identical at every epoch
-because the teachers are frozen, and never far from uniform.
+mean weights over the whole training set are 0.332 / 0.337 / 0.331 for the homogeneous committee and
+0.254 / 0.259 / 0.254 / 0.233 with DeBERTa-v3, identical at every epoch and seed because the teachers
+are frozen, and never far from uniform. (Corrected 17 September. The figures first given here,
+0.306 / 0.311 / 0.305 / 0.233, averaged runs from committees of different sizes and did not sum to one.)
 
 **The headroom exists but the weights cannot reach it.** An oracle that picked the right teacher for
 every instance would reach **0.9526** accuracy and a macro-F1 upper bound of **0.9469**, against the
@@ -533,6 +544,131 @@ to near-identical behaviour. Task adaptation is what made their logits comparabl
 and it is also what destroyed the diversity the combination was supposed to exploit. That tension is
 worth stating in the paper, because every cross-task committee will meet it.
 
+### F22. Sharper weighting changes nothing, at any temperature from 0.05 to 5
+The standing objection to F6 was that tau = 1 leaves the weights about 0.004 from uniform, so D-MTHD and
+uniform averaging optimise nearly the same objective and scoring alike proves nothing. Kaggle v4 (17
+September) extended the sweep down to tau = 0.05 on BERT-mini, one seed each.
+
+The weights do sharpen: BERT-large / HateBERT / irony move from 0.332 / 0.337 / 0.331 at tau = 1 to
+0.327 / 0.344 / 0.329 at 0.2, 0.323 / 0.349 / 0.328 at 0.1 and 0.318 / 0.356 / 0.326 at 0.05. The score
+does not: test macro-F1 0.8385 / 0.8388 / 0.8392 at 0.2 / 0.1 / 0.05, against 0.8385 at the default,
+0.8372 for uniform averaging and 0.8394 for fine-tune-only on the same seed. At tau = 0.05 the paired
+intervals are +0.0007 [-0.0008, +0.0023] against the default and +0.0020 [-0.0042, +0.0077] against
+uniform averaging. Across a hundredfold range of temperature the score stays inside 0.0007.
+
+This closes open question 1 and Decision 4 in `paper/OPEN_DECISIONS.md`. The claim loses the
+qualification it carried on 13 September: the weighting does not differ from uniform averaging at any
+temperature tested.
+
+### F23. The implicit specialist does not help on the tweet corpus, and neither control does
+BERT-mini on the tweet corpus, three seeds unless stated (Kaggle v4):
+
+| Configuration | Macro-F1 | F1 other_cyberbullying | Sarcasm AUC, seed 1 |
+|---|---|---|---|
+| Fine-tune only | 0.8393 +- 0.0003 | 0.707 | 0.773 |
+| Uniform, homogeneous | 0.8385 +- 0.0018 | 0.700 | 0.774 |
+| Uniform + specialist | 0.8390 +- 0.0035 | 0.699 | 0.768 |
+| D-MTHD, homogeneous | 0.8378 +- 0.0011 | 0.705 | 0.773 |
+| D-MTHD + specialist | 0.8373 +- 0.0025 | 0.697 | 0.768 |
+| Specialist alone (1 seed) | 0.8392 | 0.709 | 0.767 |
+| Pre-trained on the implicit corpus, no teacher (1 seed) | 0.8377 | 0.705 | 0.756 |
+
+Adding the specialist: +0.0005 [-0.0059, +0.0064] under averaging, -0.0005 [-0.0069, +0.0055] under
+D-MTHD. Class F1 and discrimination AUC both fall slightly. The pre-trained control has the lowest AUC
+of any pre-trained model analysed.
+
+**The mechanism is F20's, now measured on the specialist itself.** Adapted to the tweet task, the
+specialist agrees with HateBERT, the model it was built from, at kappa **0.962** and disagrees with it on
+**3.1 per cent** of the test set; every other pair in the committee sits at 0.889 to 0.924. 84 per cent
+of HateBERT's errors are the specialist's too. It lifts the oracle over the committee only from 0.9526
+to 0.9552 accuracy. A teacher trained on different data under a different label scheme came back from
+task adaptation as a near-copy of its base model, which is "task adaptation buys comparability and
+spends diversity" in its sharpest form.
+
+**And nothing else moves discrimination either.** Over the 25 pre-trained BERT-mini models analysed,
+which cover every objective and committee, four temperatures, the T, alpha and delta sweeps, every
+ablation and both controls, sarcasm-discrimination AUC has mean 0.771, standard deviation 0.005, range
+0.756 to 0.777. The randomly initialised student scores 0.613. The auxiliary irony head is part of this:
+without it the AUC is 0.775, with it 0.773.
+
+This answers open question 5 on the tweet corpus, the tweet half of open question 4, and open question
+2. What remains is the implicit benchmark, where the specialist's knowledge is in-domain rather than
+transferred.
+
+### F24. The weights shift towards the specialist, slightly, and as much towards HateBERT
+`weight_routing` on the training split: mean weight on `other_cyberbullying` minus mean weight on the
+four targeted classes, 2,000-sample bootstrap, uniform weight 0.200 over the five cached teachers.
+
+| Teacher | tau = 0.05 | tau = 1 |
+|---|---|---|
+| HateBERT | +0.0486 [+0.0460, +0.0512] | +0.0105 [+0.0094, +0.0116] |
+| Implicit specialist | +0.0441 [+0.0416, +0.0465] | +0.0090 [+0.0080, +0.0100] |
+| RoBERTa-irony | +0.0184 [+0.0159, +0.0210] | +0.0053 [+0.0043, +0.0064] |
+| BERT-large | -0.0063 [-0.0089, -0.0035] | +0.0011 [-0.0002, +0.0023] |
+| DeBERTa-v3-base | -0.1048 [-0.1067, -0.1028] | -0.0259 [-0.0274, -0.0245] |
+
+In the four-teacher committee the students trained with, the specialist's mean weight at tau = 1 is
+0.2519 against 0.25. So the weighting does route by class, in the direction D15 intended, but:
+- with tens of thousands of training instances almost any difference excludes zero, so the size is the evidence,
+  and at the trained temperature the specialist's shift is a twentieth of the uniform weight;
+- it is not specific to the specialist, which F23's kappa predicts;
+- the weights are computed from cross-entropy against the gold label, so a shift says a teacher fits
+  `other_cyberbullying` better, not that it reads implication;
+- **the measurement pooled all five cached teachers**, a committee no student trained with. The driver
+  called `weight_routing` without `--teachers`, so the softmax spanned the whole cache. Which teacher
+  leads on an instance is the same in any sub-committee; the sizes are not. Fixed on 17 September: the
+  driver measures each trained committee separately, into `weight_routing/<committee>/`, the tau
+  diagnostic likewise runs on the homogeneous committee, and the tables prefer the per-committee files.
+
+### F25. What the tweet students know about abuse does not include implication
+BERT-mini trained on tweets, applied with no further training to the implicit benchmark's 2,064 test
+posts (seed 1). It calls 81.0 per cent of them abusive against a true rate of 35.7 per cent (binary
+macro-F1 0.423, ROC-AUC 0.608). On implicit hate against not-hate it catches 85.1 per cent at a
+78.8 per cent false-positive rate and ranks the two at an AUC of **0.600**, against **0.820** for the
+same architecture trained on that corpus (F21). D-MTHD: binary macro-F1 0.411, implicit-hate AUC 0.600.
+It over-fires, as the tweet model did on Wikipedia (F9), and it cannot rank the one distinction the
+paper is about.
+
+### F26. Two sections of the results draft quoted the laptop, and one conclusion changes on Kaggle
+F17's rule is that every number in the paper comes from the Kaggle grid. Two did not. The diagnostic in
+F10 (results 5.6) came from the laptop's fine-tune-only model (macro-F1 0.8770), and the tweet-Wikipedia
+transfer in F9 (results 5.8) from the laptop's tweet and Wikipedia models. Found while replacing the
+draft's numbers with the v4 analysis, which runs the same measurement on the Kaggle models.
+
+BERT-mini fine-tune-only on Kaggle, seed 1, against the laptop figures in brackets:
+- sarcasm-discrimination AUC 0.773 (0.776); mean p(abusive) 0.748 on ironic abuse, 0.449 on benign
+  sarcasm (0.693, 0.375);
+- at the 0.5 cut, recall 0.792 at a false-positive rate of 0.395 (0.704 at 0.317): nearly the same
+  margin at a different operating point, which is F19 again;
+- **no threshold up to 0.90 brings the false-positive rate under 10 per cent**, on this model or on any
+  of the 26 analysed (the laptop model reached it at 0.90, with recall 0.427);
+- **the lexical split changes.** Ironic-abuse recall is 0.91 on the 43 items with profanity and 0.76 on
+  the 1,517 without (0.72 and 0.67). Across the 25 pre-trained Kaggle models the with-profanity advantage
+  is 6 to 16 points and never negative. "Not a profanity detector" survives, since items without
+  profanity are still caught about three times in four on every model, but "sees indirect abuse about as
+  well as explicit" does not. The implicit-abuse split rests on 11 items and supports nothing;
+- `other_cyberbullying` recall 0.710 with 109 errors to `not_cyberbullying`; `not_cyberbullying` recall
+  0.648 with 126 the other way (0.786 / 77 and 0.681 / 133).
+
+Results 5.6 now uses the Kaggle numbers, and 5.8 drops the tweet-Wikipedia transfer until the Wikipedia
+grid runs. The laptop AUC stays in 5.10, where the laptop is the subject: a 0.0386 gap in macro-F1 is a
+0.003 gap in discrimination.
+
+### F27. Of 51 paired comparisons in the grid, one interval excludes zero: removing pre-training
+`python -m dmthd.significance` recomputes every comparison the paper states from the saved test
+predictions, with the test `aggregate --compare` uses (deterministic, so it reproduces the Kaggle
+console exactly). The draft had copied intervals from that console, whose log capture prints each
+comparison's output under the next command's line; the copied ones turn out to be correct, but the
+table is now generated rather than transcribed.
+
+Of the 51 comparisons, only the randomly initialised student against fine-tune-only excludes zero:
+-0.0488 [-0.0603, -0.0376]. **None of the 27 comparisons of a distilled student against fine-tuning
+does**, on any of the five students, including the best configuration per student: BERT-mini +0.0012
+[-0.0057, +0.0079], BERT-small +0.0040 [-0.0058, +0.0126], DistilBERT +0.0068 [-0.0013, +0.0139],
+DeBERTa-v3-xsmall +0.0040 [-0.0024, +0.0109], BiLSTM +0.0071 [-0.0039, +0.0195]. F3's "distillation
+helps every student" was a statement about point estimates. Five of five positive is still worth
+reporting, as consistency of direction, but a 4,326-post test set cannot resolve differences this size.
+
 ---
 
 ## 5. What the paper may and may not claim
@@ -541,39 +677,53 @@ worth stating in the paper, because every cross-task committee will meet it.
 - A 67M student distilled from a single large teacher reaches 0.8963 against that teacher's 0.8973,
   and 0.8975 with a uniform committee, at a fifth of the parameters and a fifth of the latency (F4,
   F11).
-- Distillation helps all five students, from +0.0012 to +0.0071, and pre-training matters forty times
-  more than any component of the method (F3).
+- Distillation raises the score of all five students, from +0.0012 to +0.0071, but no paired interval
+  excludes zero (F3, F27). Pre-training matters forty times more than any component of the method,
+  and removing it is the only difference in the grid whose interval excludes zero (F27).
 - **Per-instance dynamic weighting does not beat uniform averaging on any of five students at any tau
-  tested so far** (F6), and we can say why: the committee members agree at kappa 0.889 to 0.922 and
-  disagree on at most one instance in eleven, so there is almost nothing for a weighting to express,
-  while an oracle over the same teachers would gain five points (F20). The signal used to select
-  experts is the wrong signal, which is a more useful negative result than "it did not help".
-- Indirect-abuse detection fails through discrimination, not lexical blindness, and the right metric
-  is threshold-free (F10). Across 114 models in the finished grid, false-positive rate and recall on
-  the sarcasm probes correlate at +0.673 while their difference has a standard deviation of 0.053:
-  no method discriminates better, they differ only in how readily they fire (F19).
+  from 0.05 to 5** (F6, F22), and we can say why: the committee members agree at kappa 0.889 to 0.922
+  and disagree on at most one instance in eleven, so there is almost nothing for a weighting to
+  express, while an oracle over the same teachers would gain five points (F20). The signal used to
+  select experts is the wrong signal, which is a more useful negative result than "it did not help".
+- A specialist teacher that learned implication from labelled data adds nothing on the tweet corpus,
+  whether in a committee, alone, or replaced by pre-training on its data, and the reason is measurable:
+  task adaptation turns it into a near-copy of its base model, kappa 0.962 (F23). The weights shift
+  towards it by class, but by a twentieth of the uniform weight and no more than towards that base
+  model (F24).
+- Indirect-abuse detection fails through discrimination, and the right metric is threshold-free (F10,
+  F26). The detector leans on profanity, 6 to 16 points of recall, without depending on it (F26).
+  Across 133 models, false-positive rate and recall on the sarcasm probes correlate at +0.712 while
+  their difference has a standard deviation of 0.051: no method discriminates better, they differ only
+  in how readily they fire (F19). Over 25 variants of the headline student the threshold-free AUC stays
+  between 0.756 and 0.777 (F23), and no threshold holds false positives on harmless sarcasm under 10
+  per cent on any model (F26).
 - On a corpus that labels implication, a lexical model ranks implied hate above ordinary text at an
-  AUC of 0.761, close to the 0.776 the tweet student reaches on ironic abuse against benign sarcasm:
-  the same difficulty, measured twice on different data (F10, F13).
+  AUC of 0.761, close to the 0.773 the tweet student reaches on ironic abuse against benign sarcasm:
+  the same difficulty, measured twice on different data (F13, F26). A tweet-trained student ranks that
+  corpus's implicit hate against not-hate at 0.600, against 0.820 for the same architecture trained on
+  it (F25).
 - Two expert corpora agree on 99.7 per cent of shared texts about whether they are hateful and on
   48.2 per cent about whether the hate is implied (F14), both carry schema traps that silently
   produce a wrong benchmark (F15), and pooling them creates a source shortcut that inflates the
   aggregate score while costing 0.075 F1 on implied hate (F16).
-- Two widely used corpora do not transfer to each other, and one of them is materially dirty (F1, F9).
+- One of the two widely used corpora is materially dirty (F1). That the two do not transfer to each
+  other (F9) is measured on the laptop only and waits for the Wikipedia grid (F26).
 - A deployment profile a practitioner can act on (F11).
 
 **May not claim:**
-- That D-MTHD beats uniform averaging. The grid says it does not, at every tau tried. The sharp tau
-  values may change this and have not run; nothing may be claimed in either direction until they do.
-- That the method beats the no-teacher control on the headline student. Four paired bootstrap
-  intervals, all containing zero (F3).
+- That D-MTHD beats uniform averaging. It does not, at any tau from 0.05 to 5 (F22).
+- That the method beats the no-teacher control on the headline student. Six paired bootstrap
+  intervals, all containing zero (F3, F23).
+- That distillation significantly improves any student. It raises every one, within test-set noise
+  (F27).
 - Anything about BERT-mini or BERT-small in absolute terms, until the environment discrepancy in F17
   is resolved. The *comparisons within* the Kaggle grid are valid because everything in it was
   trained the same way; the absolute numbers are not yet trustworthy.
-- Anything at all about the implicit specialist. The corpus, the scheme, the teacher and the
-  measurements exist and are smoke-tested; not one model has been trained on a GPU yet.
-- That the auxiliary irony head improves sarcasm discrimination. Measured only on the fine-tune-only
-  baseline so far.
+- That the implicit specialist helps, or that the weighting routes implication to it (F23, F24).
+  Nothing has yet been measured on the implicit benchmark's own student grid, which is the one place
+  that claim could still be earned.
+- That the auxiliary irony head improves sarcasm discrimination. Without it the AUC is 0.775, with it
+  0.773, one seed (F23).
 - That homogeneity causes anything. The hidden-term contribution on the headline student is 0.0009.
 - "Student exceeds teachers", except in the narrow sense of F4, where DistilBERT with a uniform
   heterogeneous committee reaches 0.8975 against BERT-large's 0.8973, a difference far inside noise.
@@ -585,7 +735,10 @@ worth stating in the paper, because every cross-task committee will meet it.
 1. Does D-MTHD beat uniform averaging once tau is chosen properly? If not, the paper's story becomes
    "a cross-task specialist committee and a sarcasm head work; the dynamic weighting adds nothing",
    which is still publishable but a smaller claim. The decision waits on the sweep, not on a guess.
+   **Answered 17 September: no, at any tau from 0.05 to 5 (F22).**
 2. Does the auxiliary irony head raise sarcasm-discrimination AUC above the 0.776 baseline?
+   **Answered 17 September: no.** Without it 0.775, with it 0.773, against a Kaggle baseline of 0.773
+   (F23, F26).
 3. Does the hidden-state term help BERT-lineage students more than DeBERTa or BiLSTM?
 4. **The question the paper now turns on.** Does the implicit specialist in the committee raise
    implicit-hate F1 above the fine-tune-only student, on the implicit benchmark and through transfer
@@ -593,9 +746,12 @@ worth stating in the paper, because every cross-task committee will meet it.
    sarcasm-discrimination AUC against the 0.776 baseline; focus-class transfer from tweets to the
    implicit test set; and whether the committee routes implicit-looking instances to the specialist
    rather than spreading weight evenly (which is F6's question asked where it should finally bite).
+   **The tweet half is answered, and the answer is no** (F23 to F25): no gain in F1 or AUC, near-chance
+   transfer, and routing too small to matter. The implicit benchmark half is now the whole question.
 5. Does distilling from the specialist beat simply fine-tuning the student on the implicit corpus?
    If it does not, the specialist is a data argument rather than a distillation one, and the paper
    must say so. This control has to be in the grid from the start, not added after a reviewer asks.
+   **On the tweet corpus neither helps** (F23); on the implicit benchmark it is still open.
 6. What is the human agreement on sarcastic abuse? The 300-item annotation answers this, and it also
    tells us how much of the benign-sarcasm probe is mislabelled. F14's 346 disagreements are the
    same question measured on a different corpus.
@@ -627,6 +783,16 @@ Worth keeping because the paper's framing came out of these turns, and because a
    the classical floor that splits 0.747 / 0.453 and shows the gap is real (F13). The paper's centre
    of gravity moves from "a small model can match a large one" to "a small model can be taught to
    read implication, and here is the mechanism that teaches it".
+8. **"The specialist does not teach it either."** 17 September. The committee with the specialist,
+   the specialist alone and pre-training on its data all land where the no-teacher student is, and the
+   reason is measurable: task adaptation made the specialist a near-copy of HateBERT (F23). Sharper
+   weighting changes nothing (F22), and no distilled student beats fine-tuning by more than the test
+   set can resolve (F27). With F19, the grid's clearest message is about what distillation does not
+   transfer: every objective, committee and temperature leaves the ability to tell implied abuse from
+   harmless sarcasm where pre-training put it. The centre of gravity moves again, from "here is the
+   mechanism that teaches implication" to "here is what distillation does and does not transfer about
+   implication, measured", with the implicit benchmark as the one place a constructive result could
+   still come from.
 
 ---
 
@@ -651,3 +817,6 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | Sarcasm and implicit-abuse measurements | `src/dmthd/implicit_analysis.py` |
 | Weighting temperature diagnostic | `src/dmthd/tune_tau.py` |
 | Driver smoke test, all four passes | `scripts/smoke_driver.py` |
+| Paired bootstrap for every comparison the paper states | `python -m dmthd.significance`, `paper/tables/significance.csv` |
+| Teacher agreement and oracle with the implicit specialist | `paper/complementarity_with_specialist.json` |
+| Per-model sarcasm analysis, first seed, Kaggle v4 | `paper/results_tweets_implicit_seed1.csv` |
