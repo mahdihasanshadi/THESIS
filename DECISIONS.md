@@ -50,10 +50,24 @@ commonly used loosely in the literature, the narrow sense we adopt is stated.
 
 ## 2. Where the project started
 
-The Phase-2 report claimed a working method. Inspecting its own outputs showed it did not work, and
-that is the fact everything since has been built to fix.
+*Corrected 21 September: the report's own numbers and the team's later tweet-corpus outputs were
+run together here; they are two different experiments.*
 
-| Phase-2 model | Macro-F1 |
+**The Phase-2 report** (February 2026; Wikipedia personal-attacks corpus, test set 22,303, one seed,
+per-batch weighting at tau = 1) reported, in its Table 4.2, the multi-teacher DistilBERT student at
+**0.8947** macro-F1 against its teachers BERT-large 0.8936 and RoBERTa-base 0.8904 and the
+single-teacher student 0.8896, and called "student exceeds teachers" its key empirical finding. The
+report itself limits that claim in two places. Its Section 4.6, "Statistical caveat", says the figures
+are single runs and that the margins, multi over single and student over teachers, are within typical
+seed-to-seed variation. And the comparison "with models without distillation" promised in Section 1.4
+does not appear in Chapter 4: the same student trained with no teacher was never measured, so
+whether distillation contributed anything was never tested. Section 4.6 also anticipates F20: the two
+teachers "are individually close and largely agree, so the ensemble adds limited diversity".
+
+**The team's follow-up on the tweet corpus** (Drive folder, inspected 10 September) had that control,
+and it showed the method did not work:
+
+| Team's tweet-corpus outputs, before Phase 3 | Macro-F1 |
 |---|---|
 | DistilBERT, **no distillation** | 0.859 |
 | Teacher: BERT-base general | 0.819 |
