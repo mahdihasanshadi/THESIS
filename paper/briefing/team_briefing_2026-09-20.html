@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<title>D-MTHD: Phase 2 থেকে আজ পর্যন্ত — team briefing</title>
+<style>
+@page { size: A4; margin: 17mm 16mm 19mm 16mm; }
+body { font-family: "Nirmala UI", "Segoe UI", sans-serif; font-size: 10.4pt; line-height: 1.5; color: #141414; }
+h1 { font-size: 19pt; line-height: 1.3; margin: 0 0 4pt; }
+h2 { font-size: 13.5pt; margin: 18pt 0 6pt; padding-top: 6pt; border-top: 1.5px solid #333; page-break-after: avoid; }
+h3 { font-size: 11.3pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+p { margin: 0 0 6pt; text-align: left; }
+ul, ol { margin: 0 0 6pt 18pt; padding: 0; }
+li { margin-bottom: 2.5pt; }
+table { border-collapse: collapse; width: 100%; font-size: 8.9pt; line-height: 1.35; margin: 4pt 0 8pt; page-break-inside: avoid; }
+th, td { border: 1px solid #9a9a9a; padding: 2.6pt 5pt; vertical-align: top; text-align: left; }
+th { background: #ececec; font-weight: 600; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+.box { border: 1.2px solid #444; background: #f7f7f7; padding: 7pt 10pt; margin: 6pt 0 9pt; }
+.box b { display: block; margin-bottom: 3pt; }
+.sub { color: #444; font-size: 10pt; margin-bottom: 10pt; }
+.small { font-size: 9pt; color: #333; }
+.toc li { margin-bottom: 1pt; }
+.k { font-family: Consolas, "Courier New", monospace; font-size: 9pt; }
+.pb { page-break-before: always; }
+.gl td:first-child { width: 26%; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>D-MTHD প্রকল্প: Phase 2 থেকে আজ পর্যন্ত</h1>
+<p class="sub">Team briefing · ২০ সেপ্টেম্বর ২০২৬ · BRAC University CSE thesis, “A Dynamic Multi-Teacher Homogeneous Knowledge Distillation Framework for Robust Cyberbullying Detection” থেকে Q1 journal paper-এর দিকে যাত্রা। প্রতিটি সংখ্যা repository-র <span class="k">DECISIONS.md</span>, <span class="k">LOG.md</span> আর Kaggle-এর run থেকে নেওয়া।</p>
+
+<div class="box"><b>সূচি</b>
+<ol class="toc">
+<li>এক নজরে, আর কয়েকটা শব্দের সহজ মানে</li>
+<li>Phase 2 পেপারে কী ছিল, কী সমস্যা পেয়েছিলাম</li>
+<li>Phase 2 বনাম এখন: কী কী বদলেছি</li>
+<li>যে dataset-গুলো ব্যবহার করেছি, আর কেন</li>
+<li>যে model-গুলো ব্যবহার করেছি, আর কেন</li>
+<li>পদ্ধতি (D-MTHD) সহজ ভাষায়, আর মাপকাঠি</li>
+<li>নেওয়া সিদ্ধান্তগুলো (D1–D19), প্রতিটার কারণ</li>
+<li>Kaggle-এ চালানোর ইতিহাস (V1–V4, সামনের V5)</li>
+<li>ফলাফল, সংখ্যাসহ</li>
+<li>কেন কাজ করেনি: মাপা কারণ (mechanism)</li>
+<li>সব finding এক নজরে (F1–F30)</li>
+<li>যা পারিনি (সৎ তালিকা)</li>
+<li>নতুন কী দিতে পারছি (novelty)</li>
+<li>পেপারের framing, আর এখন যে পথে হাঁটছি (transfer set)</li>
+<li>Q1 journal-এর জন্য কী লাগে, কোথায় আছি, ঝুঁকি</li>
+<li>সামনের কাজ, আর team-এর কাছে যা দরকার</li>
+<li>কোথায় কী আছে (repository)</li>
+</ol></div>
+
+<h2>১. এক নজরে</h2>
+<p><b>কোথা থেকে শুরু।</b> Phase 2-এর দাবি ছিল: কয়েকজন বড় teacher model-এর জ্ঞান “dynamic weighting” দিয়ে একটা ছোট student model-এ ঢালা যায়, আর তাতে cyberbullying detection ভালো হয়। কিন্তু Phase 2-এর নিজের সংখ্যাই উল্টো কথা বলছিল: teacher ছাড়া সাধারণভাবে train করা DistilBERT পেয়েছিল 0.859 macro-F1, আর D-MTHD student পেয়েছিল 0.830। অর্থাৎ distillation ক্ষতি করছিল, আর সেটা কেউ খেয়াল করেনি।</p>
+<p><b>কী করেছি।</b> ডেটা পরিষ্কার করেছি, একটা নতুন benchmark বানিয়েছি যেখানে “ইঙ্গিতে করা abuse” আলাদা label, ৫টা teacher আর ৫টা student নিয়ে ১৩১টা run চালিয়েছি (৩টা seed করে), আর প্রতিটা দাবি একটা control-এর বিপরীতে মেপেছি (teacher ছাড়া একই student)। মোট ৬৬টা পরিসংখ্যানগত তুলনা করেছি।</p>
+<div class="box"><b>মূল ফল, পাঁচ লাইনে</b>
+<ol>
+<li>Distillation পাঁচটা student-এরই score একটু বাড়ায় (+0.001 থেকে +0.007), কিন্তু কোনোটাই পরিসংখ্যানগতভাবে প্রমাণিত নয়। একমাত্র যে পার্থক্য প্রমাণিত, তা হলো pre-training সরালে −0.047।</li>
+<li>Dynamic weighting সাধারণ গড়ের (uniform averaging) চেয়ে ভালো নয়, temperature 0.05 থেকে 5 পর্যন্ত কোনো মানেই।</li>
+<li>ইঙ্গিতপূর্ণ abuse শেখা একটা specialist teacher যোগ করেও লাভ হয়নি; একা ব্যবহার করে বা pre-training করেও না।</li>
+<li>কেন হয়নি, তা মাপা গেছে: teacher-রা training data মুখস্থ করে ফেলে (loss 0.03–0.08), তাই reliability signal-এর কিছু মাপার থাকে না; task-এ মানিয়ে নেওয়ার পর teacher-রা প্রায় একই রকম হয়ে যায় (kappa 0.89–0.96); committee-র যে +0.5 থেকে +0.8 পয়েন্ট লাভ আছে, student তা পায়ই না।</li>
+<li>ইঙ্গিতপূর্ণ abuse আর নির্দোষ sarcasm আলাদা করার ক্ষমতা pre-training-এই বাঁধা: ২৫ রকম student-এর AUC 0.756–0.777-এর মধ্যে আটকে, শুধু pre-training সরালে নামে 0.613-এ।</li>
+</ol></div>
+<p><b>এখন কোথায়।</b> দুটো পথ পাশাপাশি চলছে। (ক) যা মাপা হয়ে গেছে তা দিয়ে একটা পূর্ণ পেপার তৈরি আছে git branch <span class="k">paper-b2-audit</span>-এ: “Distillation Does Not Teach Implication”, একটা negative result যার mechanism মাপা। (খ) Mahdi-র সিদ্ধান্ত অনুযায়ী positive result-এর জন্য একটা নতুন পরীক্ষা তৈরি: unlabelled tweet-এর একটা transfer set-এ distillation, যেখানে teacher-রা কিছু মুখস্থ করেনি। এটা Kaggle-এ পরের run (V5)-এ চলবে; কী হবে সেটার prediction আগেই লিখে রাখা আছে।</p>
+<p><b>Team-এর কাছে যা দরকার:</b> implicit benchmark-এর notebook চালানো, annotation sheet ফেরত, framing-এর সিদ্ধান্ত, আর venue ঠিক করা। বিস্তারিত ১৬ নম্বর অংশে।</p>
+
+<h3>১.১ কয়েকটা শব্দের সহজ মানে</h3>
+<table class="gl">
+<tr><td>Teacher</td><td>বড় model, যাকে task-এ fine-tune করে জমিয়ে (freeze) রাখি; তার output দিয়ে ছোট model শেখে।</td></tr>
+<tr><td>Student</td><td>ছোট model, যেটা আসলে ব্যবহার হবে (কম memory, কম সময়)।</td></tr>
+<tr><td>Knowledge distillation (KD)</td><td>Student-কে শুধু সঠিক label নয়, teacher-এর “soft” probability-ও নকল করতে শেখানো।</td></tr>
+<tr><td>Committee / multi-teacher</td><td>একাধিক teacher-এর output মিলিয়ে student-কে শেখানো। <b>Uniform</b> মানে সবাইকে সমান weight; <b>dynamic (per-instance)</b> মানে প্রতিটা উদাহরণে যে teacher বেশি নির্ভরযোগ্য তাকে বেশি weight। দ্বিতীয়টাই D-MTHD-র মূল দাবি ছিল।</td></tr>
+<tr><td>Fine-tune only (ft)</td><td>Teacher ছাড়া student-কে সরাসরি train করা। এটাই আমাদের control: distillation এর চেয়ে ভালো না করলে distillation-এর দাম নেই।</td></tr>
+<tr><td>Macro-F1</td><td>প্রতিটা class-এর F1-এর গড়। Class-এর আকার অসমান হলেও ন্যায্য।</td></tr>
+<tr><td>AUC (threshold-free)</td><td>কোনো cut-off ছাড়াই model positive-কে negative-এর ওপরে rank করতে পারে কি না। 0.5 মানে আন্দাজ, 1.0 মানে নিখুঁত।</td></tr>
+<tr><td>Seed</td><td>Random শুরু। একই setting ৩টা seed-এ চালিয়ে গড় নিই, যাতে ফল কাকতালীয় না হয়।</td></tr>
+<tr><td>Paired bootstrap, 95% CI</td><td>Test set-কে ১,০০০ বার resample করে দুই model-এর পার্থক্যের interval। Interval-এ 0 থাকলে পার্থক্য প্রমাণিত নয়।</td></tr>
+<tr><td>Ablation</td><td>Method-এর একটা অংশ সরিয়ে দেখা সেটা কতটা কাজ করছিল।</td></tr>
+<tr><td>Probe set</td><td>শুধু test-এর জন্য আলাদা ছোট set (যেমন নির্দোষ sarcasm)। কখনো train-এ যায় না।</td></tr>
+<tr><td>Implicit / indirect abuse</td><td>গালি ছাড়া, ইঙ্গিতে, বিদ্রূপে বা stereotype দিয়ে করা আক্রমণ। পেপারের মূল লক্ষ্য।</td></tr>
+</table>
+
+<h2>২. Phase 2 পেপারে কী ছিল, কী সমস্যা পেয়েছিলাম</h2>
+<p><b>Phase 2 report (ফেব্রুয়ারি ২০২৬):</b> Wikipedia Talk personal-attacks corpus; teacher BERT-large আর RoBERTa-base; student DistilBERT; একটা seed; একটা dataset; বাইরের কোনো baseline নেই; efficiency-র সংখ্যা নেই। শিরোনামে “dynamic”, “homogeneous” আর “robust” তিনটাই দাবি, কিন্তু কোনোটা মাপা নয়।</p>
+<p><b>Phase 3-এর শুরুতে (সেপ্টেম্বর, Drive folder-এর কাজ):</b> team tweet corpus-এ (Wang et al. 2020, ৬ class) সরে এসেছিল। সেখানে তিনটা teacher (BERT-base general, BERT-base “implicit”, RoBERTa-base) পেয়েছিল 0.819–0.828। Teacher ছাড়া DistilBERT পেয়েছিল <b>0.859</b>, আর D-MTHD student <b>0.830</b>। এর মানে: teacher-রা student-এর চেয়ে দুর্বল ছিল, আর distillation তিন পয়েন্ট ক্ষতি করেছিল।</p>
+<p><b>আরও যে সমস্যা পেয়েছিলাম (১০–১১ সেপ্টেম্বর):</b></p>
+<ul>
+<li>Validation accuracy 0.94 কিন্তু test 0.86: এই ফারাকের কারণ duplicate tweet, যা train আর validation দুই জায়গাতেই ছিল (leakage)। Test set-এ ৮৪টা হুবহু duplicate, তার ৫৭টার label-ও পরস্পরবিরোধী।</li>
+<li>Dynamic weight আটকে ছিল [0.08, 0.64, 0.28]-এ। মানে committee কার্যত একজন teacher।</li>
+<li>Latency-র সংখ্যা ব্যবহারযোগ্য ছিল না: দুটো একই আকারের BERT-base teacher-এর latency 2.5 গুণ আলাদা এসেছিল।</li>
+<li>Method-টা MT-BERT (Wu et al. 2021)-এর প্রায় অনুরূপ: error-weighted soft label + projected hidden-state alignment। Reviewer-এর কাছে এটাই সবচেয়ে বড় ঝুঁকি।</li>
+<li>Reference list-এ duplicate entry, একটা ভুল citation (“Luo et al.”), URL আর venue-র অমিল।</li>
+</ul>
+<div class="box"><b>সবচেয়ে গুরুত্বপূর্ণ পরিণতি</b>এরপর থেকে প্রকল্পের প্রতিটা দাবি একটা control-এর বিপরীতে মাপা হয়: teacher ছাড়া একই student। Phase 2-তে এই control না থাকাতেই “কাজ করে” মনে হয়েছিল।</div>
+
+<h2>৩. Phase 2 বনাম এখন: কী কী বদলেছি</h2>
+<table>
+<tr><th style="width:19%">বিষয়</th><th style="width:33%">Phase 2 (ফেব্রুয়ারি) / Phase 3-এর শুরু</th><th>এখন (২০ সেপ্টেম্বর)</th></tr>
+<tr><td>Corpus</td><td>একটা (Wikipedia); পরে tweets, না পরিষ্কার করে</td><td>Tweets পরিষ্কার করে; Wikipedia প্রস্তুত; নিজেদের বানানো implicit benchmark; ISHate out-of-domain test; ৩টা probe set; transfer set</td></tr>
+<tr><td>Teacher</td><td>২টা (BERT-large, RoBERTa-base) / ৩টা BERT-base</td><td>৫টা task-adapted: BERT-large, HateBERT, RoBERTa-irony, DeBERTa-v3-base, implicit specialist</td></tr>
+<tr><td>Student</td><td>শুধু DistilBERT</td><td>৫টা, 10M থেকে 71M: BERT-mini (headline), BERT-small, DistilBERT, DeBERTa-v3-xsmall, BiLSTM</td></tr>
+<tr><td>Control</td><td>নেই</td><td>প্রতিটা student-এ fine-tune-only; TF-IDF classical floor; পরে ২টা specialist control</td></tr>
+<tr><td>Seed</td><td>১</td><td>৩ (ablation-এ ১)</td></tr>
+<tr><td>Statistics</td><td>নেই</td><td>Paired bootstrap 95% CI, ৬৬টা তুলনা, generated table</td></tr>
+<tr><td>Implication-এর মাপকাঠি</td><td>নেই / recall@0.5</td><td>Threshold-free sarcasm-discrimination AUC আর implicit-discrimination AUC</td></tr>
+<tr><td>Committee</td><td>১</td><td>৩ (homogeneous, + specialist, + DeBERTa)</td></tr>
+<tr><td>Ablation / sweep</td><td>নেই</td><td>৭টা ablation; τ (৭ মান), T, α, δ sweep</td></tr>
+<tr><td>Efficiency</td><td>ব্যবহারযোগ্য নয়</td><td>Latency (batch 1/32), FLOPs, INT8 quantisation, size</td></tr>
+<tr><td>Robustness</td><td>দাবি</td><td>Obfuscation ৪ রকম, cross-corpus transfer, মাপা</td></tr>
+<tr><td>Reproducibility</td><td>নেই</td><td>Public repo, fixed seed, per-row manifest, lab notebook, সব table কোড থেকে</td></tr>
+<tr><td>দাবির ধরন</td><td>“কাজ করে”</td><td>যা মাপা গেছে তাই; negative হলে negative, mechanism সহ</td></tr>
+</table>
+
+<h2>৪. যে dataset-গুলো ব্যবহার করেছি, আর কেন</h2>
+<table>
+<tr><th style="width:21%">Dataset</th><th style="width:20%">Size (train / val / test)</th><th>কেন, আর অবস্থা</th></tr>
+<tr><td>Cyberbullying tweets (Wang et al. 2020)</td><td class="n">34,607 / 4,326 / 4,326</td><td>Primary benchmark। ৬ class: age, ethnicity, gender, religion, other_cyberbullying, not_cyberbullying। ইঙ্গিতপূর্ণ abuse বেশিরভাগ “other” class-এ লুকিয়ে থাকে। <b>অবস্থা: Kaggle-এ পূর্ণ grid শেষ (১৩১ run)।</b></td></tr>
+<tr><td>Wikipedia Talk personal attacks (Wulczyn et al. 2017)</td><td class="n">68,750 / 22,782 / 22,721</td><td>দ্বিতীয় corpus; প্রতিটা comment-এ ~১০ জন annotator-এর vote আছে, তাই “annotator-রা দ্বিমত করলে student কাকে বিশ্বাস করবে” সেই variant এখানেই মাপা যায়। Attack 11.7%; 24.6% comment-এ annotator-রা দ্বিধায়। <b>অবস্থা: শুধু laptop-এ চলেছে; Kaggle grid বাকি।</b></td></tr>
+<tr><td>Implicit benchmark (Implicit Hate Corpus stage 1, ElSherief et al. 2021)</td><td class="n">16,509 / 2,064 / 2,064</td><td>আমরা নিজেরা বানিয়েছি। তিনটার মধ্যে একমাত্র corpus যেখানে “ইঙ্গিতে abuse” একটা label, লুকানো subset নয়। Class: not_hate 10,616, implicit_hate 5,029, explicit_hate 864 (train)। <b>অবস্থা: specialist, একটা student আর floor চলেছে; পূর্ণ student grid বাকি।</b></td></tr>
+<tr><td>ISHate (Ocampo et al. 2023)</td><td class="n">27,096 (test only)</td><td>Out-of-domain test set, পুরোটাই training-এর বাইরে। Implicit benchmark-এ train করা model অন্য domain-এ কেমন করে, সেটা মাপার জন্য। <b>অবস্থা: এখনো evaluate হয়নি।</b></td></tr>
+<tr><td>Probe: benign sarcasm (iSarcasmEval)</td><td class="n">1,064 (screening-এর পর 883)</td><td>Sarcasm যা কাউকে আক্রমণ করে না। মাপি: model এগুলোকে ভুল করে abuse বলে কি না (false-positive rate)।</td></tr>
+<tr><td>Probe: ironic abuse</td><td class="n">1,560</td><td>বিদ্রূপ দিয়ে করা abuse (IHC-র 797 irony post + ISHate-এর 763 implicit row)। মাপি: recall, আর ওপরের set-এর সঙ্গে মিলিয়ে AUC।</td></tr>
+<tr><td>Probe: implicit abuse</td><td class="n">763</td><td>ISHate-এর implicit row-গুলো একা। Recall।</td></tr>
+<tr><td>Transfer set (নতুন, V5-এর জন্য)</td><td class="n">42,013 (unlabelled)</td><td>OLID, HatEval, Davidson corpus-এর tweet শুধু text হিসেবে (label ফেলে দিয়ে), আর আমাদের বাদ দেওয়া 1,563টা পরস্পরবিরোধী-label tweet। সব split, probe আর implicit benchmark-এর সঙ্গে dedupe করা। ১৪ নম্বর অংশে কেন।</td></tr>
+</table>
+<p><b>Tweet corpus পরিষ্কার করা (D1)।</b> মূল corpus-এ 47,692 tweet। ৭৫৮টা দুই token-এর ছোট, 1,563টা text একাধিক label নিয়ে এসেছে (মোট 3,168 row), আর ৫০৭টা হুবহু duplicate। এগুলো সরিয়ে 43,259 tweet 80/10/10-এ ভাগ (seed 42), আর নিশ্চিত করা হয়েছে তিন split-এ কোনো text মেলে না। এরপর validation আর test-এর ফারাক (0.94 বনাম 0.86) মিলিয়ে গেছে। যে দুটো class সবচেয়ে বেশি row হারিয়েছে (other_cyberbullying আর not_cyberbullying), সেগুলোই literature-এ “গুলিয়ে যাওয়া” class।</p>
+<p><b>Implicit benchmark কেন একটা corpus থেকে (D17)।</b> দুটো corpus implication label করে: IHC আর ISHate। দুটো মেশালে একটা ফাঁদ তৈরি হয়: ৯৫% implicit উদাহরণ আসে IHC থেকে আর ৮৯% explicit আসে ISHate থেকে, আর একটা সাধারণ TF-IDF classifier কোন text কোন corpus-এর তা 0.91 macro-F1-এ চিনে ফেলে। ফলে model implication না পড়েও উৎস চিনে নম্বর পেতে পারে। প্রমাণ: একই IHC test row-এ, মেশানো ডেটায় train করা model implicit hate-এ পায় 0.473 F1, একা IHC-তে train করা model পায় 0.548; অথচ মেশানো ডেটার সামগ্রিক নম্বর বেশি (0.681 বনাম 0.562)। এটাই ফাঁদ। তাই IHC একা, ISHate পুরোটা বাইরে।</p>
+<p><b>Label নিজেই বিতর্কিত (F14)।</b> দুই corpus-এর ৬২৯টা text এক। কোনটা hateful, তাতে দুই দল একমত 99.7%। কিন্তু hate-টা সরাসরি না ইঙ্গিতে, তাতে একমত মাত্র 48.2%। এই সংখ্যা আমাদের সব implicit ফলের সীমা টেনে দেয়, আর এজন্যই headline metric একটা threshold-free ranking, একটা decision নয়।</p>
+<p><b>Probe-গুলো বাদ দেওয়া (D16)।</b> Probe-এর প্রতিটা text implicit benchmark-এর তিন split থেকেই মুছে ফেলা হয়েছে (1,581 row), যাতে কোনো model কখনো probe-এর text-এ train না করে।</p>
+
+<h2>৫. যে model-গুলো ব্যবহার করেছি, আর কেন</h2>
+<table>
+<tr><th style="width:11%">ভূমিকা</th><th style="width:26%">Model</th><th class="n" style="width:9%">Params</th><th class="n" style="width:11%">Tweets macro-F1</th><th>কেন</th></tr>
+<tr><td>Teacher</td><td>BERT-large-uncased</td><td class="n">335M</td><td class="n">0.8973</td><td>সাধারণ, শক্তিশালী encoder; committee-র “general” সদস্য।</td></tr>
+<tr><td>Teacher</td><td>HateBERT (Reddit-এর abusive text-এ pre-trained)</td><td class="n">~110M</td><td class="n">0.8887</td><td>সরাসরি গালি/abuse-এর specialist।</td></tr>
+<tr><td>Teacher</td><td>Twitter-RoBERTa-irony (Cardiff)</td><td class="n">~125M</td><td class="n">0.8926</td><td>Irony/sarcasm-এর specialist। এর নিজের label (irony/না) আলাদা, তাই student-এ একটা আলাদা “irony head”-ও দেওয়া হয় (D4)।</td></tr>
+<tr><td>Teacher (hetero)</td><td>DeBERTa-v3-base</td><td class="n">~184M</td><td class="n">0.8720</td><td>অন্য architecture family; “homogeneous” ব্যাপারটা আদৌ কিছু বদলায় কি না মাপার জন্য (D7)।</td></tr>
+<tr><td>Teacher (specialist)</td><td>Implicit specialist = HateBERT, আগে implicit benchmark-এ train, তারপর tweets-এ adapt</td><td class="n">~110M</td><td class="n">0.8931</td><td>Committee-র একমাত্র সদস্য যে “ইঙ্গিতে abuse” label করা দেখেছে (D14)।</td></tr>
+<tr><td>Student (headline)</td><td>BERT-mini</td><td class="n">11.2M</td><td class="n">0.8393</td><td>সত্যিই ছোট; deploy করার মতো। মূল দাবি এটার ওপর।</td></tr>
+<tr><td>Student</td><td>BERT-small</td><td class="n">28.8M</td><td class="n">0.8469</td><td>আকারের curve-এর মাঝের বিন্দু।</td></tr>
+<tr><td>Student</td><td>DistilBERT</td><td class="n">67.0M</td><td class="n">0.8907</td><td>Phase 2-এর student; efficiency দাবি এটাতে।</td></tr>
+<tr><td>Student (hetero)</td><td>DeBERTa-v3-xsmall</td><td class="n">70.8M</td><td class="n">0.8825</td><td>অন্য transformer family।</td></tr>
+<tr><td>Student (hetero)</td><td>BiLSTM (২ layer, WordPiece vocab)</td><td class="n">10.4M</td><td class="n">0.8693</td><td>Transformer-ই নয়; homogeneity-র সবচেয়ে কড়া পরীক্ষা।</td></tr>
+<tr><td>Floor</td><td>TF-IDF (word 1–2 gram + char 3–5 gram) + logistic regression</td><td class="n">—</td><td class="n">0.8798</td><td>Classical baseline। এটাকে না হারালে GPU-র দাম নেই।</td></tr>
+</table>
+<p class="small">Student-এর কলামে teacher ছাড়া fine-tune করা model-এর ৩ seed-এর গড়। প্রতিটা teacher একবার train (৫ epoch, lr 2e-5), তারপর freeze; output একবার cache করে student-রা ব্যবহার করে।</p>
+<p><b>বড় teacher, ছোট student কেন (D2)।</b> Phase 2-তে teacher আর student প্রায় একই আকারের ছিল, তাই শেখানোর কিছু ছিল না। এখন 335M teacher বনাম 11M student: শেখার জায়গা আছে, আর ফলটা বাস্তব প্রশ্নের উত্তর দেয় (“phone-এ চলার মতো model কি বড় model-এর কাছাকাছি যেতে পারে?”)।</p>
+<p><b>Cross-task specialist কেন (D3)।</b> তিনটা একই রকম teacher-এর বদলে তিন রকম দক্ষতা: general, abuse, irony। ধারণা ছিল, যার যে দক্ষতা, weighting তাকে সেখানে বেশি ভরসা করবে। এই ধারণাটাই পরে মাপা হয়ে ভুল প্রমাণিত হয়েছে (১০ নম্বর অংশ)।</p>
+
+<h2>৬. পদ্ধতি (D-MTHD) সহজ ভাষায়, আর মাপকাঠি</h2>
+<p><b>ধাপ ১, task adaptation:</b> প্রতিটা teacher-কে tweet corpus-এ fine-tune করা হয়, যাতে সবার output একই ৬টা class-এ আসে। (Irony model-এর label irony/না, HateBERT-এর label নেই; adapt না করলে এদের output মেলানোই যায় না।) তারপর teacher freeze, আর training split-এর প্রতিটা tweet-এ তার logits আর hidden state একবার cache করা হয়।</p>
+<p><b>ধাপ ২, student-এর loss:</b> চারটা অংশের যোগ।</p>
+<ul>
+<li><b>CE:</b> সঠিক label শেখা (সাধারণ training)।</li>
+<li><b>KL:</b> committee-র soft probability নকল করা। Committee-র output = প্রতিটা teacher-এর softmax-এর weighted গড়।</li>
+<li><b>Hidden:</b> student-এর hidden state-কে projection দিয়ে প্রতিটা teacher-এর hidden state-এর কাছে আনা।</li>
+<li><b>Irony head:</b> student-এর একটা extra head, যা frozen irony teacher-এর output নকল করে; inference-এ ফেলে দেওয়া হয়।</li>
+</ul>
+<p><b>Dynamic weight:</b> প্রতিটা উদাহরণ i-তে teacher k-এর weight w<sub>k</sub>(i) = softmax(−CE<sub>k</sub>(i)/τ)। মানে যে teacher ওই উদাহরণে সঠিক label-কে বেশি probability দেয়, সে বেশি weight পায়; τ ছোট হলে weight তীক্ষ্ণ (প্রায় একজনকে বাছা), বড় হলে সমান। Teacher frozen বলে এই weight ডেটার একটা fixed function: epoch বা seed বদলালে বদলায় না। Wikipedia-র জন্য একটা variant আছে যেখানে annotator-রা দ্বিমত করলে student label-এর চেয়ে committee-কে বেশি বিশ্বাস করে (এখনো চলেনি)।</p>
+<p><b>মাপকাঠি বদলানো (D13)।</b> প্রথমে আমরা “ironic abuse-এ recall” মাপতাম। কিন্তু একটা model recall বাড়াতে পারে শুধু বেশি বেশি “abuse” বলে দিয়ে, তখন নির্দোষ sarcasm-ও abuse হয়ে যায়। তাই headline metric এখন <b>sarcasm-discrimination AUC</b>: ironic abuse-কে positive আর benign sarcasm-কে negative ধরে model-এর p(abusive) দিয়ে rank করলে AUC কত। এটা threshold-free, তাই “দেখতে পায় না” আর “দেখে কিন্তু আলাদা করতে পারে না” এই দুইকে আলাদা করে। Implicit benchmark-এ একই ধারণা: implicit-discrimination AUC (implicit hate বনাম not hate)।</p>
+
+<h2>৭. নেওয়া সিদ্ধান্তগুলো (D1–D19), প্রতিটার কারণ</h2>
+<table>
+<tr><th style="width:5%">#</th><th style="width:33%">সিদ্ধান্ত</th><th>কেন</th></tr>
+<tr><td>D1</td><td>আগে ডেটা পরিষ্কার, তারপর সব</td><td>Duplicate আর পরস্পরবিরোধী label-ই Phase 2-এর ফল বিকৃত করেছিল।</td></tr>
+<tr><td>D2</td><td>বড় teacher, ছোট student</td><td>একই আকারে distillation-এর শেখানোর কিছু থাকে না; ছোট student-ই বাস্তব প্রশ্ন।</td></tr>
+<tr><td>D3</td><td>Cross-task specialist committee</td><td>ভিন্ন দক্ষতার teacher থাকলে weighting-এর বাছার কিছু থাকে (ধারণা; পরে ভুল প্রমাণিত)।</td></tr>
+<tr><td>D4</td><td>Irony teacher committee-তে নয়, আলাদা auxiliary head</td><td>তার label space আলাদা; KL term-এ ঢোকানো যায় না।</td></tr>
+<tr><td>D5</td><td>Per-instance weight, standard KL, T² scaling</td><td>Literature-এর প্রচলিত ও তুলনাযোগ্য রূপ।</td></tr>
+<tr><td>D6</td><td>৩ seed; ablation-এ ১</td><td>GPU budget-এর ভেতরে যতটা নির্ভরযোগ্য হওয়া যায়।</td></tr>
+<tr><td>D7</td><td>“Homogeneous” novelty নয়, মাপার বিষয়</td><td>এটা distillation-এর সাধারণ setting; দাবি করলে reviewer ধরবে। তাই DeBERTa teacher, DeBERTa/BiLSTM student আর hidden-term ablation দিয়ে মাপা।</td></tr>
+<tr><td>D8</td><td>বাংলা thesis-এ, Q1 পেপারে নয়</td><td>বাংলা sarcasm teacher নেই; scope আলাদা রাখা।</td></tr>
+<tr><td>D9</td><td>“Robust” শিরোনামে থাকবে না, যদি না মাপা হয়</td><td>মাপা হয়েছে: obfuscation-এ ১২–১৩ পয়েন্ট পড়ে; দাবি টেকে না।</td></tr>
+<tr><td>D10</td><td>ব্যর্থতা লুকানো নয়, report করা</td><td>Control-এর কাছে হারলে সেটাই ফল; reviewer লুকানো জিনিস ধরলে সব দাবি অবিশ্বাস্য হয়।</td></tr>
+<tr><td>D11</td><td>Single-teacher KD committee-প্রতি একবারই</td><td>একই কাজ বারবার করে GPU নষ্ট নয়।</td></tr>
+<tr><td>D12</td><td>সতর্ক থাকার বদলে কোডে guard</td><td>Cache/split mismatch, collapsed teacher, resume—সব automatic check।</td></tr>
+<tr><td>D13</td><td>Headline metric: discrimination AUC, recall@0.5 নয়</td><td>Recall শুধু “কত সহজে abuse বলে” মাপে (F19 প্রমাণ)।</td></tr>
+<tr><td>D14</td><td>Implication-এ শুধু test নয়, train-ও</td><td>কোনো corpus বা teacher implication label করা দেখেনি; তাই তৃতীয় benchmark আর specialist।</td></tr>
+<tr><td>D15</td><td>Specialist আলাদা committee (spec), homo-তে ঢোকানো নয়</td><td>আগের ১০ GPU-ঘণ্টার run বৈধ থাকে; তুলনাটা ৩ seed-এর হয়।</td></tr>
+<tr><td>D16</td><td>Probe text implicit benchmark থেকে মুছে ফেলা</td><td>Probe-এর ফল যেন কখনো train-এ দেখা text-এ না হয়।</td></tr>
+<tr><td>D17</td><td>Implicit benchmark এক corpus থেকে</td><td>মেশালে model উৎস চিনে নম্বর পায় (0.91 separability)।</td></tr>
+<tr><td>D18</td><td>Multi-source benchmark-এ প্রতিটা source-এর ভেতরেও score</td><td>উৎস চেনার শর্টকাট ধরা পড়ে।</td></tr>
+<tr><td>D19</td><td>Out-of-sample distillation: transfer set + committee as labeller + মুখস্থ-না-করা reliability</td><td>F28/F29 যে mechanism দেখিয়েছে, তার সরাসরি প্রতিকার। ১৪ নম্বর অংশ।</td></tr>
+</table>
+
+<h2>৮. Kaggle-এ চালানোর ইতিহাস</h2>
+<table>
+<tr><th style="width:12%">Version</th><th style="width:12%">তারিখ</th><th>কী হয়েছিল</th><th style="width:14%">GPU সময়</th></tr>
+<tr><td>notebook58ee…, v3</td><td>১১ সেপ্টেম্বর</td><td>Teacher train: BERT-large 0.8973, irony 0.8926, HateBERT 0.8887 (stop rule পাস)। DeBERTa-v3-base NaN-এ collapse করে; fp32 loading আর NaN guard দিয়ে ঠিক। Driver students stage-এ crash (attribute clash); smoke test যোগ।</td><td>~৩ ঘণ্টা</td></tr>
+<tr><td>d738 V1</td><td>১৩ সেপ্টেম্বর</td><td>পূর্ণ grid: ১২০ run (৫ student × ৪ mode × ৩ seed + hetero committee + ablation + sweep)। এর output-এই সব weight আছে; পরের version-গুলো এখান থেকে resume করে।</td><td>8.24 ঘণ্টা</td></tr>
+<tr><td>d738 V2</td><td>১২ সেপ্টেম্বর</td><td>fp16 control চলেছে (mixed precision-এর দাম: BERT-mini 0.0014, BERT-small 0.0011)। তারপর cache stage-এ ৮৭ মিনিটে মারা যায়: resume teacher-দের weight ফেলে দিয়েছিল। ঠিক করা হয়েছে।</td><td>~১.৫ ঘণ্টা নষ্ট</td></tr>
+<tr><td>d738 V3</td><td>১৬ সেপ্টেম্বর</td><td>৩৪ মিনিটে একটা extra fp16-check cell-এ log আটকে যায় (progress bar-এর pipe block), session ১২ ঘণ্টা idle থেকে kill হয়। কিছুই তৈরি হয়নি। <b>শিক্ষা:</b> log প্রত্যাশিত সময়ের অনেক পরেও না এগোলে cancel। প্রতিকার: driver এখন output ফাইলে লেখে, ২ ঘণ্টা চুপ থাকলে নিজেই kill করে।</td><td>১২ ঘণ্টা নষ্ট</td></tr>
+<tr><td>d738 V4</td><td>১৭ সেপ্টেম্বর</td><td>Specialist train (implicit benchmark-এ 0.6029, tweets-এ adapt করে 0.8931), spec committee ৩ seed, ২টা control, τ 0.05/0.1/0.2, ২৬টা model-এ implicit analysis, tweets→implicit transfer, weight routing। ১৩১ run।</td><td>1.41 ঘণ্টা</td></tr>
+<tr><td>d738 V5 (সামনে)</td><td>—</td><td>Transfer set (out-of-sample distillation), ৫ arm × ৩ seed; per-committee routing; ছোট τ run-গুলোর AUC।</td><td>~২.৫ ঘণ্টা (আনুমানিক)</td></tr>
+</table>
+<p class="small">Laptop-এ (CPU) আলাদা কিছু run হয়েছে (BERT-mini fine-tune-only, Wikipedia)। কিন্তু একই code, data আর seed-এ laptop আর Kaggle-এর ফল 0.0386 আলাদা আসে (৯.১০ দেখুন), তাই পেপারের প্রতিটা সংখ্যা শুধু Kaggle থেকে; laptop-এর সংখ্যা কখনো মেশানো হয় না।</p>
+
+<h2 class="pb">৯. ফলাফল, সংখ্যাসহ</h2>
+<h3>৯.১ Teacher-রা bar পার করেছে</h3>
+<table>
+<tr><th>Teacher</th><th class="n">Macro-F1</th><th class="n">Accuracy</th><th class="n">Benign-sarcasm FPR</th><th class="n">Ironic-abuse recall</th></tr>
+<tr><td>BERT-large</td><td class="n">0.8973</td><td class="n">0.9075</td><td class="n">0.224</td><td class="n">0.585</td></tr>
+<tr><td>Implicit specialist (adapted)</td><td class="n">0.8931</td><td class="n">0.9043</td><td class="n">0.263</td><td class="n">0.678</td></tr>
+<tr><td>RoBERTa-irony (adapted)</td><td class="n">0.8926</td><td class="n">0.9050</td><td class="n">0.294</td><td class="n">0.718</td></tr>
+<tr><td>HateBERT (adapted)</td><td class="n">0.8887</td><td class="n">0.9011</td><td class="n">0.317</td><td class="n">0.696</td></tr>
+<tr><td>DeBERTa-v3-base</td><td class="n">0.8720</td><td class="n">0.8867</td><td class="n">0.409</td><td class="n">0.773</td></tr>
+<tr><td>TF-IDF + logistic regression (floor)</td><td class="n">0.8798</td><td class="n">0.8930</td><td class="n">—</td><td class="n">—</td></tr>
+</table>
+<p>আগে থেকে ঠিক করা stop rule ছিল: অন্তত একজন adapted teacher fine-tune-only student-কে হারাতে হবে, নইলে distillation-এর দেওয়ার কিছু নেই। চারজনের তিনজন হারায়, তিনজন floor-ও পার করে। DeBERTa floor-এর নিচে; শুধু heterogeneous পরীক্ষার জন্য রাখা। লক্ষ করুন: যে teacher-এর FPR বেশি, তার recall-ও বেশি; মানে তারা বেশি “fire” করে, বেশি বোঝে না (৯.৬)।</p>
+
+<h3>৯.২ Distillation সবাইকে একটু বাড়ায়, কিন্তু প্রমাণের চেয়ে কম</h3>
+<table>
+<tr><th>Student</th><th class="n">Params</th><th class="n">Fine-tune only</th><th class="n">Single-teacher</th><th class="n">Uniform</th><th class="n">D-MTHD</th><th class="n">Uniform + DeBERTa</th><th class="n">D-MTHD + DeBERTa</th></tr>
+<tr><td>BERT-mini</td><td class="n">11.2M</td><td class="n">0.8393</td><td class="n">0.8405</td><td class="n">0.8385</td><td class="n">0.8378</td><td class="n">0.8378</td><td class="n">0.8373</td></tr>
+<tr><td>BERT-small</td><td class="n">28.8M</td><td class="n">0.8469</td><td class="n">0.8488</td><td class="n">0.8505</td><td class="n">0.8471</td><td class="n">0.8509</td><td class="n">0.8477</td></tr>
+<tr><td>DistilBERT</td><td class="n">67.0M</td><td class="n">0.8907</td><td class="n">0.8963</td><td class="n">0.8960</td><td class="n">0.8960</td><td class="n">0.8975</td><td class="n">0.8966</td></tr>
+<tr><td>DeBERTa-v3-xsmall</td><td class="n">70.8M</td><td class="n">0.8825</td><td class="n">0.8865</td><td class="n">0.8862</td><td class="n">0.8833</td><td class="n">0.8847</td><td class="n">0.8828</td></tr>
+<tr><td>BiLSTM</td><td class="n">10.4M</td><td class="n">0.8693</td><td class="n">0.8748</td><td class="n">0.8761</td><td class="n">0.8732</td><td class="n">0.8760</td><td class="n">0.8764</td></tr>
+</table>
+<table>
+<tr><th>Student</th><th>Best configuration</th><th class="n">Gain over fine-tune only</th><th class="n">95% CI</th></tr>
+<tr><td>BERT-mini</td><td>Single-teacher</td><td class="n">+0.0012</td><td class="n">[−0.0057, +0.0079]</td></tr>
+<tr><td>BERT-small</td><td>Uniform + DeBERTa</td><td class="n">+0.0040</td><td class="n">[−0.0058, +0.0126]</td></tr>
+<tr><td>DistilBERT</td><td>Uniform + DeBERTa</td><td class="n">+0.0068</td><td class="n">[−0.0013, +0.0139]</td></tr>
+<tr><td>DeBERTa-v3-xsmall</td><td>Single-teacher</td><td class="n">+0.0040</td><td class="n">[−0.0024, +0.0109]</td></tr>
+<tr><td>BiLSTM</td><td>D-MTHD + DeBERTa</td><td class="n">+0.0071</td><td class="n">[−0.0039, +0.0195]</td></tr>
+</table>
+<p>পাঁচটাই positive, যা Phase 2 পারেনি। কিন্তু <b>পাঁচটা interval-ই 0 ধরে</b>, আর distillation বনাম fine-tuning-এর ২৭টা তুলনার একটাও শূন্য বাদ দেয় না। 4,326টা test tweet-এ এত ছোট ফারাক প্রমাণ করা যায় না। লক্ষণীয়: সবচেয়ে ভিন্ন student (BiLSTM, transformer-ই নয়) সবচেয়ে বেশি পায়, আর teacher-দের সবচেয়ে কাছের student (BERT-mini) সবচেয়ে কম। <b>Homogeneity-র পক্ষে কোনো প্রমাণ নেই।</b> Efficiency-র দাবি এখানে: DistilBERT (67M) 0.8975 বনাম BERT-large (335M) 0.8973, পাঁচ ভাগের এক ভাগ parameter আর latency-তে।</p>
+
+<h3>৯.৩ Dynamic weighting সাধারণ গড়ের চেয়ে ভালো নয়, কোনো temperature-এই</h3>
+<table>
+<tr><th>Student</th><th class="n">D-MTHD − uniform</th><th class="n">95% CI</th><th class="n">একই, DeBERTa সহ</th><th class="n">95% CI</th></tr>
+<tr><td>BERT-mini</td><td class="n">−0.0007</td><td class="n">[−0.0074, +0.0061]</td><td class="n">−0.0005</td><td class="n">[−0.0067, +0.0054]</td></tr>
+<tr><td>BERT-small</td><td class="n">−0.0034</td><td class="n">[−0.0106, +0.0036]</td><td class="n">−0.0032</td><td class="n">[−0.0100, +0.0033]</td></tr>
+<tr><td>DistilBERT</td><td class="n">+0.0000</td><td class="n">[−0.0079, +0.0082]</td><td class="n">−0.0010</td><td class="n">[−0.0087, +0.0069]</td></tr>
+<tr><td>DeBERTa-v3-xsmall</td><td class="n">−0.0029</td><td class="n">[−0.0086, +0.0029]</td><td class="n">−0.0019</td><td class="n">[−0.0108, +0.0108]</td></tr>
+<tr><td>BiLSTM</td><td class="n">−0.0029</td><td class="n">[−0.0116, +0.0056]</td><td class="n">+0.0004</td><td class="n">[−0.0072, +0.0081]</td></tr>
+</table>
+<p>স্বাভাবিক আপত্তি ছিল: τ = 1-এ weight প্রায় সমান (0.332 / 0.337 / 0.331), তাই দুটো objective এক হওয়া অঙ্কের ব্যাপার। তাই V4-এ τ 0.05 পর্যন্ত নামানো হয়েছে (BERT-mini, seed 1):</p>
+<table>
+<tr><th class="n">τ</th><th>Mean weight (BERT-large / HateBERT / irony)</th><th class="n">Test macro-F1</th></tr>
+<tr><td class="n">0.05</td><td>0.318 / 0.356 / 0.326</td><td class="n">0.8392</td></tr>
+<tr><td class="n">0.1</td><td>0.323 / 0.349 / 0.328</td><td class="n">0.8388</td></tr>
+<tr><td class="n">0.2</td><td>0.327 / 0.344 / 0.329</td><td class="n">0.8385</td></tr>
+<tr><td class="n">0.5</td><td>0.330 / 0.340 / 0.330</td><td class="n">0.8390</td></tr>
+<tr><td class="n">1 (default)</td><td>0.332 / 0.337 / 0.331</td><td class="n">0.8385</td></tr>
+<tr><td class="n">2</td><td>0.332 / 0.336 / 0.332</td><td class="n">0.8390</td></tr>
+<tr><td class="n">5</td><td>0.333 / 0.334 / 0.333</td><td class="n">0.8389</td></tr>
+<tr><td>Uniform averaging</td><td>0.333 each</td><td class="n">0.8372</td></tr>
+<tr><td>Fine-tune only</td><td>—</td><td class="n">0.8394</td></tr>
+</table>
+<p>একশ গুণ temperature বদলেও score 0.0007-এর মধ্যে, আর প্রতিটা মানেই fine-tune-only-র নিচে। τ = 0.05-এও সবচেয়ে ভারী teacher গড়ে 0.356 weight পায়। Weight তীক্ষ্ণ হয় না কেন, তা ১০ নম্বর অংশে।</p>
+
+<h3>৯.৪ Implicit specialist আর দুটো control</h3>
+<table>
+<tr><th>Configuration (BERT-mini)</th><th class="n">Seeds</th><th class="n">Macro-F1</th><th class="n">F1 on other_cyberbullying</th><th class="n">Sarcasm AUC (seed 1)</th></tr>
+<tr><td>Fine-tune only</td><td class="n">3</td><td class="n">0.8393 ± 0.0003</td><td class="n">0.707</td><td class="n">0.773</td></tr>
+<tr><td>Uniform, homogeneous committee</td><td class="n">3</td><td class="n">0.8385 ± 0.0018</td><td class="n">0.700</td><td class="n">0.774</td></tr>
+<tr><td>Uniform + implicit specialist</td><td class="n">3</td><td class="n">0.8390 ± 0.0035</td><td class="n">0.699</td><td class="n">0.768</td></tr>
+<tr><td>D-MTHD, homogeneous committee</td><td class="n">3</td><td class="n">0.8378 ± 0.0011</td><td class="n">0.705</td><td class="n">0.773</td></tr>
+<tr><td>D-MTHD + implicit specialist</td><td class="n">3</td><td class="n">0.8373 ± 0.0025</td><td class="n">0.697</td><td class="n">0.768</td></tr>
+<tr><td>Control: specialist alone, no committee</td><td class="n">1</td><td class="n">0.8392</td><td class="n">0.709</td><td class="n">0.767</td></tr>
+<tr><td>Control: pre-trained on the implicit corpus, no teacher</td><td class="n">1</td><td class="n">0.8377</td><td class="n">0.705</td><td class="n">0.756</td></tr>
+</table>
+<p>Specialist যোগ করলে macro-F1 বদলায় +0.0005 [−0.0059, +0.0064] (uniform) আর −0.0005 [−0.0069, +0.0055] (D-MTHD)। Indirect abuse-এর class-এ F1 আর sarcasm AUC দুটোই সামান্য কমে। Control দুটোও ভালো করেনি: specialist একা fine-tune-only-র 0.0002-এর মধ্যে, আর implicit corpus-এ pre-train করা student ২৫টা model-এর মধ্যে সবচেয়ে কম AUC পায়। Weight routing দেখায় specialist-এর দিকে weight সামান্য ঝোঁকে (uniform 0.20-এর জায়গায় τ = 1-এ +0.009), কিন্তু HateBERT-এর দিকেও ততটাই (+0.011); অর্থাৎ এটা “implication চেনা” নয়, একটা class-এ ভালো fit করা।</p>
+
+<h3>৯.৫ Ablation আর sweep: শুধু pre-training-ই গুরুত্বপূর্ণ</h3>
+<p>BERT-mini, seed 1, পূর্ণ D-MTHD 0.8378-এর বিপরীতে: random initialised student 0.7905 (<b>−0.0473</b>); irony head ছাড়া 0.8364 (−0.0014); hidden term ছাড়া 0.8369 (−0.0009); uniform weight 0.8386 (+0.0008); per-batch weight 0.8389 (+0.0011)। Method-এর অংশ সরালে বড়জোর 0.0014 হারায়, দুটো ক্ষেত্রে বরং বাড়ে; pre-training সরালে 0.047 হারায়, বাকি সবের চল্লিশ গুণ। পুরো grid-এর ৫১টা (এখন ৬৬টা) তুলনার মধ্যে <b>একমাত্র এই পার্থক্যটাই</b> পরিসংখ্যানগতভাবে প্রমাণিত: −0.0488 [−0.0603, −0.0376]। Hyper-parameter-ও সমতল: T ∈ {1, 2, 8} → 0.8386 / 0.8402 / 0.8391; α ∈ {0.2, 0.6} → 0.8386 / 0.8394; δ ∈ {0.1, 0.5} → 0.8389 / 0.8399। DeBERTa teacher যোগ করলে পাঁচ student বদলায় −0.0005, +0.0006, +0.0032, −0.0005, +0.0006।</p>
+
+<h3>৯.৬ Discrimination pre-training-এ বাঁধা; recall শুধু “কত সহজে fire করে” মাপে</h3>
+<p><b>BERT-mini fine-tune-only, seed 1:</b> ironic abuse-এ recall 0.91 যখন গালি আছে (৪৩টা item), 0.76 যখন নেই (1,517টা)। মানে model গালির ওপর কিছুটা ভর করে, কিন্তু গালি ছাড়া text-ও চারটার তিনটা ধরে; গালি-detector নয়। আসল সমস্যা discrimination: ironic abuse-এ গড় p(abusive) 0.748, নির্দোষ sarcasm-এ 0.449; দুটো distribution বড় করে overlap করে; AUC 0.773। 0.5 threshold-এ recall 0.792 আসে 39.5% false-positive-এর দামে, আর <b>0.90 পর্যন্ত কোনো threshold-ই benign sarcasm-এর false positive 10%-এর নিচে নামাতে পারে না</b>, ২৬টা model-এর একটাও।</p>
+<p><b>২৫টা pre-trained BERT-mini variant</b> (সব objective, committee, ৭টা τ, T/α/δ sweep, সব ablation, দুটো control): sarcasm-discrimination AUC-এর গড় 0.771, standard deviation 0.005, range 0.756–0.777। Random init-এ 0.613। Irony head, যেটা এই মাপের জন্যই বানানো, band-এর ভেতরেই: ছাড়া 0.775, সহ 0.773। অথচ একই model-গুলোর 0.5 threshold-এর operating point অনেক নড়ে: recall 0.758–0.821, FPR 0.343–0.448, correlation +0.87।</p>
+<p><b>Grid-এর ১৩৩টা model</b> (teacher আর student, সব mode, সব seed): benign-sarcasm FPR আর ironic-abuse recall-এর correlation <b>+0.712</b>। Recall − FPR-এর গড় 0.357, sd মাত্র 0.051, অথচ আলাদা আলাদা করে দুটো 0.14–0.59 আর 0.54–0.81 range-এ ঘোরে। Architecture-এ পার্থক্য আসে (DistilBERT-এর FPR আর recall দুটোই সবচেয়ে কম, BERT-mini-র দুটোই সবচেয়ে বেশি), distillation mode-এ আসে না। সবচেয়ে খারাপ margin (0.082) random-init student-এর। <b>এজন্যই পেপার recall নয়, threshold-free AUC report করে।</b></p>
+
+<h3>৯.৭ Implicit benchmark, আর tweets থেকে transfer</h3>
+<table>
+<tr><th>Model (implicit benchmark)</th><th class="n">Macro-F1</th><th class="n">not_hate F1</th><th class="n">explicit_hate F1</th><th class="n">implicit_hate F1</th><th class="n">Implicit-discrimination AUC</th></tr>
+<tr><td>Classical floor (TF-IDF)</td><td class="n">0.5620</td><td class="n">—</td><td class="n">—</td><td class="n">0.5562</td><td class="n">0.7610</td></tr>
+<tr><td>BERT-mini, fine-tune only</td><td class="n">0.5549</td><td class="n">0.8347</td><td class="n">0.2857</td><td class="n">0.5443</td><td class="n">0.8196</td></tr>
+<tr><td>HateBERT specialist</td><td class="n">0.6029</td><td class="n">0.8352</td><td class="n">0.3662</td><td class="n">0.6072</td><td class="n">0.8247</td></tr>
+</table>
+<p>ছোট student F1-এ n-gram-এর কাছে হারে (0.5549 বনাম 0.5620) কিন্তু ranking-এ অনেক এগিয়ে (AUC 0.8196 বনাম 0.7610)। দুটো মাপ উল্টো দিকে: model implication শিখেছে, কিন্তু সেটাকে decision-এ বদলাতে পারছে না। এটাই ৯.৬-এর যুক্তি, অন্য লোকের label-এ। explicit_hate class-এ মাত্র 864 training row, তাই macro-F1 এখানে headline নয়।</p>
+<p><b>Transfer:</b> tweets-এ train করা BERT-mini-কে কোনো training ছাড়া implicit benchmark-এর 2,064 test post-এ চালালে সে 81.0%-কে abusive বলে (আসল 35.7%); implicit hate বনাম not hate rank করে AUC <b>0.600</b>-এ, প্রায় আন্দাজ, অথচ একই architecture ওই corpus-এ train করলে 0.820। D-MTHD-ও একই (0.600)। Tweet student-রা abuse সম্পর্কে যা শিখেছে, তাতে “ইঙ্গিত কেন hateful” সেটা নেই।</p>
+
+<h3>৯.৮ Robustness (obfuscation)</h3>
+<table>
+<tr><th>BERT-mini, seed 1</th><th class="n">Clean</th><th class="n">Leetspeak</th><th class="n">Character swap</th><th class="n">Inserted spaces</th><th class="n">Mixed</th></tr>
+<tr><td>Fine-tune only</td><td class="n">0.8394</td><td class="n">0.7475</td><td class="n">0.7417</td><td class="n">0.7275</td><td class="n">0.7116</td></tr>
+<tr><td>D-MTHD</td><td class="n">0.8385</td><td class="n">0.7460</td><td class="n">0.7361</td><td class="n">0.7250</td><td class="n">0.7077</td></tr>
+</table>
+<p>বানানে কৌশল করলে ১২–১৩ পয়েন্ট পড়ে, distillation বাঁচায় না। এগুলো কৃত্রিম edit, মানুষের আসল evasion নয়; তাই “robust” শব্দটা শিরোনামে রাখা যাবে না (D9)।</p>
+
+<h3>৯.৯ Efficiency</h3>
+<table>
+<tr><th>Student</th><th class="n">Params</th><th class="n">Latency b1</th><th class="n">Latency b32</th><th class="n">GFLOPs/seq</th><th class="n">fp32 size</th><th class="n">INT8 size</th><th class="n">INT8 macro-F1</th></tr>
+<tr><td>BiLSTM</td><td class="n">10.4M</td><td class="n">2.57 ms</td><td class="n">0.18 ms</td><td class="n">~0</td><td class="n">40 MB</td><td class="n">32 MB</td><td class="n">0.8736</td></tr>
+<tr><td>BERT-mini</td><td class="n">11.2M</td><td class="n">3.47 ms</td><td class="n">0.37 ms</td><td class="n">0.87</td><td class="n">43 MB</td><td class="n">33 MB</td><td class="n">0.8319</td></tr>
+<tr><td>BERT-small</td><td class="n">28.8M</td><td class="n">3.74 ms</td><td class="n">1.25 ms</td><td class="n">3.36</td><td class="n">110 MB</td><td class="n">73 MB</td><td class="n">0.8448</td></tr>
+<tr><td>DistilBERT</td><td class="n">67.0M</td><td class="n">5.22 ms</td><td class="n">3.72 ms</td><td class="n">11.17</td><td class="n">255 MB</td><td class="n">132 MB</td><td class="n">0.8931</td></tr>
+<tr><td>DeBERTa-v3-xsmall</td><td class="n">70.8M</td><td class="n">23.49 ms</td><td class="n">3.25 ms</td><td class="n">10.57</td><td class="n">270 MB</td><td class="n">209 MB</td><td class="n">0.8765</td></tr>
+<tr><td>BERT-large (teacher)</td><td class="n">335.1M</td><td class="n">26.56 ms</td><td class="n">21.65 ms</td><td class="n">78.92</td><td class="n">1,279 MB</td><td class="n">—</td><td class="n">—</td></tr>
+</table>
+<p>DistilBERT BERT-large-এর সমান accuracy দেয় 5.1 গুণ কম parameter আর batch-32-এ 5.8 গুণ কম latency-তে; INT8 quantisation আকার অর্ধেক করে মাত্র 0.003-এর দামে। BERT-mini-র আকার 43 থেকে 33 MB-ই হয়, কারণ 11.2M-এর 7.8M parameter embedding table, যা dynamic quantisation ছোঁয় না।</p>
+
+<h3>৯.১০ দুই মেশিনে দুই ফল</h3>
+<p>একই code, data, seed আর hyper-parameter-এ BERT-mini fine-tune-only laptop CPU-তে 0.8779, Kaggle T4-তে 0.8393। যাচাই: mixed precision-এর দাম মাত্র 0.0014 (Kaggle fp32 0.8407); test label row-by-row এক; laptop-এ আবার চালালে ষোলো decimal পর্যন্ত একই ফল। Kaggle-এ model প্রথম epoch থেকেই ধীরে শেখে (loss 1.02 বনাম 0.87; validation 0.80 বনাম 0.84), তাই সন্দেহ library-র version (laptop-এ torch 2.14 / transformers 5.17, Kaggle-এ পুরোনো)। যাচাইয়ের উপায়: laptop-এ transformers 4.4x pin করে ৩০ মিনিটের একটা run। যতক্ষণ না হয়, Kaggle-এর BERT-mini/BERT-small-এর absolute সংখ্যা ৪ পয়েন্ট কম হতে পারে (এজন্যই দুটো floor-এর নিচে); grid-এর ভেতরের তুলনা বৈধ, কারণ সব run একই শর্তে।</p>
+
+<h2>১০. কেন কাজ করেনি: মাপা কারণ</h2>
+<h3>১০.১ Teacher-রা task-এ মানিয়ে নেওয়ার পর প্রায় এক হয়ে যায় (F20, F23)</h3>
+<table>
+<tr><th>Teacher pair</th><th class="n">Cohen's kappa</th><th class="n">Disagreement</th><th class="n">Error overlap</th></tr>
+<tr><td>BERT-large, HateBERT</td><td class="n">0.920</td><td class="n">6.7%</td><td class="n">0.710</td></tr>
+<tr><td>BERT-large, irony</td><td class="n">0.922</td><td class="n">6.4%</td><td class="n">0.712</td></tr>
+<tr><td>HateBERT, irony</td><td class="n">0.916</td><td class="n">7.0%</td><td class="n">0.673</td></tr>
+<tr><td>BERT-large, DeBERTa-v3</td><td class="n">0.893</td><td class="n">8.9%</td><td class="n">0.712</td></tr>
+<tr><td>HateBERT, DeBERTa-v3</td><td class="n">0.889</td><td class="n">9.2%</td><td class="n">0.673</td></tr>
+<tr><td>irony, DeBERTa-v3</td><td class="n">0.900</td><td class="n">8.3%</td><td class="n">0.730</td></tr>
+<tr><td><b>HateBERT, implicit specialist</b></td><td class="n"><b>0.962</b></td><td class="n"><b>3.1%</b></td><td class="n"><b>0.843</b></td></tr>
+</table>
+<p>চার teacher একসঙ্গে ঠিক হয় test set-এর 83.2%-এ, একসঙ্গে ভুল করে 4.7%-এ। Weighting শুধু সেখানেই কিছু করতে পারে যেখানে teacher-রা দ্বিমত করে, মানে এগারোটায় একটা উদাহরণে; আর ভুলের দুই-তৃতীয়াংশে কোনো teacher-ই ঠিক নয়। Oracle (প্রতিটা উদাহরণে সঠিক teacher বাছতে পারলে) পৌঁছাত 0.9526 accuracy / 0.9469 macro-F1-এ; মানে ৫ পয়েন্ট headroom ছিল, কিন্তু আমাদের reliability signal তার কিছুই ধরতে পারে না। Specialist সবচেয়ে স্পষ্ট উদাহরণ: অন্য corpus-এ অন্য label-এ শিখে এসেও tweets-এ adapt করার পর সে HateBERT-এর প্রায় কপি (kappa 0.962)। <b>সারকথা: task adaptation তুলনাযোগ্যতা দেয়, কিন্তু diversity কেড়ে নেয়।</b> Cross-task যেকোনো committee এই দামে পড়বে।</p>
+<h3>১০.২ Reliability মাপা হচ্ছে এমন ডেটায়, যা teacher-রা মুখস্থ করে ফেলেছে (F28)</h3>
+<p>Weight হিসাব হয় training split-এ, আর teacher-দের fine-tune-ও হয়েছে ওই একই split-এ। শেষ epoch-এ তাদের training loss: BERT-large 0.033, HateBERT 0.059, irony 0.077, specialist 0.061, DeBERTa 0.227। অর্থাৎ যে ডেটায় weight পড়া হচ্ছে, সেখানে প্রতিটা teacher সঠিক label-কে প্রায় 1 probability দেয়; তাদের CE-র পার্থক্য কয়েক শতাংশ; তাই τ যত ছোটই হোক weight প্রায় সমান থাকে। যে teacher মুখস্থ করেনি (DeBERTa), শুধু তারই weight নড়ে। <b>Formula reliability মাপছে না, memorisation মাপছে।</b> এটা MT-BERT-সহ পুরো error-weighted multi-teacher family-র সমস্যা। আর এর দ্বিতীয় ফল আরও বড়: training split-এ teacher-দের soft label প্রায় one-hot gold label, তাই সেখানে distillation কার্যত সাধারণ fine-tuning-ই (Stanton et al. 2021, Beyer et al. 2022-এর জানা বিপদ)।</p>
+<h3>১০.৩ Committee-র দাম আছে, student পায় না (F29)</h3>
+<table>
+<tr><th>Committee</th><th class="n">Best single teacher</th><th class="n">Uniform mean</th><th class="n">Best gold-free weighting</th><th class="n">Stacked gate (5-fold CV)</th><th class="n">Oracle accuracy</th></tr>
+<tr><td>Homogeneous (3)</td><td class="n">0.8973</td><td class="n">0.9026</td><td class="n">0.9023</td><td class="n">0.9046</td><td class="n">0.945</td></tr>
+<tr><td>+ implicit specialist (4)</td><td class="n">0.8973</td><td class="n">0.9000</td><td class="n">0.9011</td><td class="n">0.9043</td><td class="n">0.949</td></tr>
+<tr><td>+ DeBERTa (4)</td><td class="n">0.8973</td><td class="n">0.9051</td><td class="n">0.9055</td><td class="n">0.9055</td><td class="n">0.953</td></tr>
+<tr><td>All five</td><td class="n">0.8973</td><td class="n">0.9036</td><td class="n">0.9046</td><td class="n">0.9041</td><td class="n">0.955</td></tr>
+</table>
+<p>Teacher-দের test probability থেকে সরাসরি হিসাব: committee-র সাধারণ গড় best teacher-কে +0.3 থেকে +0.8 macro-F1-এ হারায়। কিন্তু কোনো weighting, এমনকি teacher-দের output-এ train করা learned gate-ও, uniform-এর চেয়ে 0.003-এর বেশি পায় না: teacher-রা যেখানে দ্বিমত করে (10–14% item), তাদের probability বলে না কে ঠিক। তাই <b>learned routing / stacking পথটা বন্ধ; ঠিক করা reliability-র ceiling-ও +0.3</b>। আর student committee-র এই +0.5–0.8-এর কিছুই পায় না: committee বনাম single-teacher distillation পাঁচ student-এ −0.0019, +0.0017, −0.0003, −0.0003, +0.0014। একই 34,607টা text-এ ভালো label দিলে ভালো student হয় না। Student-এর দরকার <b>বেশি text</b>, যেখানে teacher-রা অনিশ্চিত; আর সেখানেই committee-র আসল কাজ: সে ভালো labeller। এই দুটো finding থেকেই ১৪ নম্বর অংশের পথ।</p>
+
+<h2 class="pb">১১. সব finding এক নজরে (F1–F30)</h2>
+<table>
+<tr><th style="width:6%">#</th><th>এক লাইনে</th></tr>
+<tr><td>F1</td><td>Tweet corpus যতটা ভাবা হয়, তার চেয়ে নোংরা: 1,563 text-এ একাধিক label, 507 duplicate; পরিষ্কার করলে val/test-এর ফারাক মিলিয়ে যায়।</td></tr>
+<tr><td>F2</td><td>Teacher-রা floor পার করে; stop rule পাস।</td></tr>
+<tr><td>F3</td><td>Distillation পাঁচ student-এরই score বাড়ায় (+0.0012 থেকে +0.0071), আর pre-training সবের চল্লিশ গুণ গুরুত্বপূর্ণ। (F27-এ সংশোধন: লাভ significant নয়।)</td></tr>
+<tr><td>F4</td><td>67M student 335M teacher-এর 0.001-এর মধ্যে; efficiency-র দাবি এটাই।</td></tr>
+<tr><td>F5</td><td>Wikipedia-তে ছোট student আগে থেকেই teacher-এর কাছে; distillation-এর জায়গা কম (laptop)।</td></tr>
+<tr><td>F6</td><td>Dynamic weighting কোনো student-এ uniform-কে হারায় না।</td></tr>
+<tr><td>F7</td><td>Heterogeneous student (DeBERTa-xsmall) দুর্বল আর ধীর।</td></tr>
+<tr><td>F8</td><td>Obfuscation ছোট text-কে অনেক বেশি ক্ষতি করে (laptop)।</td></tr>
+<tr><td>F9</td><td>Tweets আর Wikipedia একে অন্যে transfer হয় না (laptop; Kaggle-এ মাপা বাকি)।</td></tr>
+<tr><td>F10</td><td>Indirect abuse miss হয় discrimination-এর জন্য, অন্ধত্বের জন্য নয়।</td></tr>
+<tr><td>F11</td><td>INT8-এর লাভ model-এর আকারে নয়, গঠনে (embedding table)।</td></tr>
+<tr><td>F12</td><td>Probe metric শুধু probe-এর domain-এই অর্থবহ।</td></tr>
+<tr><td>F13</td><td>Implication label করা corpus-এ method-এর জায়গা আছে: floor AUC 0.761।</td></tr>
+<tr><td>F14</td><td>দুই corpus hate নিয়ে একমত 99.7%, implication নিয়ে 48.2%।</td></tr>
+<tr><td>F14b</td><td>ISHate-এর “subtlety” layer ব্যবহারযোগ্য নয়।</td></tr>
+<tr><td>F15</td><td>দুই corpus-এর schema-য় দুটো ফাঁদ, যেকোনোটা চুপচাপ ভুল benchmark দেয়।</td></tr>
+<tr><td>F16</td><td>দুই corpus মেশালে aggregate score বাড়ে, implicit hate-এর F1 কমে (উৎস-চেনার শর্টকাট)।</td></tr>
+<tr><td>F17</td><td>একই code আর data দুই মেশিনে দুই ফল; পেপারের সব সংখ্যা এক মেশিন থেকে।</td></tr>
+<tr><td>F18</td><td>Aggregation চুপচাপ দুটো আলাদা experiment গড় করছিল; ধরা পড়ে ঠিক হয়েছে।</td></tr>
+<tr><td>F19</td><td>১৩৩ model-এর কেউ ভালো discriminate করে না; শুধু কত সহজে fire করে তাতে ফারাক।</td></tr>
+<tr><td>F20</td><td>Committee যথেষ্ট diverse নয়; weighting-এর করার কিছু নেই।</td></tr>
+<tr><td>F21</td><td>Specialist তৈরি; implicit-এর প্রথম সংখ্যা বলে metric-টা ঠিক বাছা হয়েছে।</td></tr>
+<tr><td>F22</td><td>তীক্ষ্ণ weighting (τ 0.05–5) কিছু বদলায় না।</td></tr>
+<tr><td>F23</td><td>Specialist tweets-এ সাহায্য করে না, control-ও না; কারণ kappa 0.962।</td></tr>
+<tr><td>F24</td><td>Weight specialist-এর দিকে সামান্য ঝোঁকে, HateBERT-এর দিকেও ততটাই।</td></tr>
+<tr><td>F25</td><td>Tweet student implication চেনে না: transfer AUC 0.600 বনাম 0.820।</td></tr>
+<tr><td>F26</td><td>Results draft-এর দুটো অংশ laptop-এর সংখ্যা quote করছিল; Kaggle-এর সংখ্যায় একটা সিদ্ধান্ত বদলায় (model গালির ওপর কিছুটা ভর করে)।</td></tr>
+<tr><td>F27</td><td>৫১টা তুলনার মধ্যে একটাই interval শূন্য বাদ দেয়: pre-training সরানো।</td></tr>
+<tr><td>F28</td><td>Reliability মাপা হচ্ছে যেখানে teacher-রা label মুখস্থ করেছে; তাই signal saturated, আর KD ≈ fine-tuning।</td></tr>
+<tr><td>F29</td><td>Committee best teacher-এর চেয়ে +0.5–0.8 ভালো, কোনো weighting তার ওপরে +0.003-এর বেশি নয়, student কিছুই পায় না।</td></tr>
+<tr><td>F30</td><td>Kaggle-এর student প্রথম epoch থেকেই ধীরে শেখে; সন্দেহ library version।</td></tr>
+</table>
+
+<h2>১২. যা পারিনি (সৎ তালিকা)</h2>
+<ul>
+<li><b>Dynamic weighting:</b> কোনো τ-তেই uniform-এর চেয়ে ভালো নয়। Method-এর মূল দাবি টেকেনি।</li>
+<li><b>Distillation-এর প্রমাণিত লাভ:</b> সব student-এ point estimate positive, কিন্তু কোনো CI শূন্য বাদ দেয় না।</li>
+<li><b>Implicit specialist:</b> committee-তে, একা, বা pre-training হিসেবে কোনোভাবেই লাভ নেই।</li>
+<li><b>Implication-এর discrimination বাড়ানো:</b> কোনো objective, committee, teacher বা head AUC নড়ায়নি।</li>
+<li><b>Transfer:</b> tweets-এ শেখা model implicit hate প্রায় আন্দাজে চেনে।</li>
+<li><b>Robustness:</b> obfuscation-এ ১২–১৩ পয়েন্ট পড়ে; distillation বাঁচায় না।</li>
+<li><b>Homogeneity:</b> পক্ষে কোনো প্রমাণ নেই; বরং উল্টো ইঙ্গিত।</li>
+<li><b>দুই মেশিনের ফারাক:</b> 0.0372-এর কারণ এখনো অজানা (সন্দেহ library version)।</li>
+<li><b>এখনো বাকি:</b> Wikipedia-র Kaggle grid, implicit benchmark-এর student grid, ISHate out-of-domain মূল্যায়ন, human annotation (sheet ১১ সেপ্টেম্বর পাঠানো, ফেরত আসেনি), LLM baseline।</li>
+</ul>
+
+<h2>১৩. নতুন কী দিতে পারছি (novelty)</h2>
+<p><b>যা দাবি করা যায়:</b></p>
+<ul>
+<li><b>Threshold-free audit:</b> ১৩৩ model-এ প্রমাণ যে recall@threshold “কত সহজে fire করে” মাপে; আর ২৫ variant-এ প্রমাণ যে distillation-এর কোনো রূপ (weighting, committee, specialist, pre-training) implication-এর discrimination বাড়ায় না, শুধু pre-training-ই দেয়।</li>
+<li><b>Mechanism, মাপা:</b> “task adaptation comparability দেয়, diversity কেড়ে নেয়” (kappa 0.89–0.96); reliability signal training data-য় saturated (F28); committee-র +0.5–0.8 student পায় না (F29)। এগুলো পুরো error-weighted multi-teacher family-র ওপর খাটে, শুধু আমাদের ওপর নয়।</li>
+<li><b>Data contribution:</b> এক উৎসের implicit benchmark, উৎস-চেনার ফাঁদের প্রমাণ (0.91 separability, 0.473 বনাম 0.548), দুই corpus-এর 48.2% একমত, per-row manifest দিয়ে text redistribute না করেই যাচাইযোগ্য rebuild।</li>
+<li><b>Practice:</b> 67M student 335M teacher-এর সমান, INT8-এ আকার অর্ধেক।</li>
+</ul>
+<p><b>যা নতুন নয়, দাবি করা যাবে না:</b> D-MTHD method নিজে (MT-BERT-এর কাছাকাছি); “homogeneous” শব্দটা; efficiency-র ফল (কাজের, কিন্তু নতুন নয়)।</p>
+
+<h2>১৪. পেপারের framing, আর এখন যে পথে হাঁটছি</h2>
+<p><b>তিনটা option ছিল</b> (<span class="k">paper/OPEN_DECISIONS.md</span>, Decision 1)। <b>A:</b> মূল শিরোনাম রাখা, D-MTHD-ই contribution। বন্ধ, কারণ weighting কোনো τ-তেই কাজ করে না। <b>B:</b> implication ঘিরে method paper (“Teaching a small model to read implication”)। বাজি ছিল specialist কাজ করবে; tweets-এ করেনি। <b>B2:</b> একই বিষয়, কিন্তু measurement হিসেবে: “Distillation Does Not Teach Implication: A Threshold-Free Audit of Multi-Teacher Knowledge Distillation for Abusive Language Detection”। এর প্রতিটা দাবি মাপা হয়ে গেছে, MT-BERT-এর ঝুঁকি নেই, আর implicit grid-এর ফল যা-ই আসুক টেকে। এই পেপারটা পুরো লেখা আছে branch <span class="k">paper-b2-audit</span>-এ (<span class="k">paper/PAPER.md</span>, ৯,০০০+ শব্দ, ৬৩টা যাচাই করা reference)। দুর্বলতা: method-চাওয়া journal (ESWA, KBS) negative result কম নেয়; IPM বা ACL/EMNLP Findings বেশি মানানসই।</p>
+<p><b>Mahdi-র সিদ্ধান্ত (১৭ সেপ্টেম্বর):</b> শুধু negative result নয়, KD-র ভেতরে থেকেই positive result চাই। B2 branch-এ থাকল, আর সবচেয়ে সম্ভাবনাময় পথে কাজ শুরু।</p>
+<div class="box"><b>যে পথ বেছেছি: out-of-sample distillation (D19)</b>
+<p>F28 আর F29 একটা lever দেখায়, যা এই grid-এ কখনো ছিল না: <b>student কোন ডেটায় committee-কে নকল করে।</b> Training split-এ teacher-রা সব জানে, তাই শেখানোর কিছু নেই। Teacher-রা যে text দেখেনি, সেখানে তাদের soft label তথ্যবহুল, তাদের দ্বিমত সত্যি, আর committee একা teacher-এর চেয়ে ভালো labeller। ছোট student-এর বড় লাভ literature-এ (TinyBERT, Tang et al. 2019, Turc et al. 2019) এখান থেকেই আসে।</p>
+<ul>
+<li><b>Transfer set:</b> 42,013টা unlabelled in-domain tweet (OLID, HatEval, Davidson corpus-এর text, label ছাড়া; আর আমাদের বাদ দেওয়া conflicting-label tweet)। Irony teacher-এর নিজের training data (SemEval-2018) আর Founta (provenance rule) বাদ। সব split, probe আর implicit benchmark-এর সঙ্গে dedupe (ISHate HatEval ধারণ করে, তাই ~10,000 বাদ পড়েছে)।</li>
+<li><b>Training:</b> transfer row-এ gold label নেই, তাই CE বাদ; student শুধু committee-র soft label (KL) আর hidden state থেকে শেখে।</li>
+<li><b>ঠিক করা reliability (kNN):</b> প্রতিটা teacher-এর reliability = validation set-এর (যেখানে সে train করেনি) ২০টা নিকটতম text-এ তার accuracy, তার নিজের representation space-এ। Gold label লাগে না, মুখস্থ করা সম্ভব নয়। এটাই F28-এর সরাসরি সমাধান।</li>
+<li><b>৫টা arm, BERT-mini, ৩ seed:</b> skd_transfer (এক teacher), uniform_transfer (committee, মূল বাজি), uniform_hetero_transfer (DeBERTa সহ, সেরা labeller), dmthd_knn_transfer (ঠিক করা weighting), pseudo_transfer (committee-র hard label দিয়ে শুধু CE: “soft label-এর জ্ঞান” না “শুধু বেশি ডেটা”, সেটা আলাদা করার control)।</li>
+</ul>
+<p><b>আগেই লেখা prediction:</b> (১) uniform_transfer fine-tune-only-কে ≥ 0.010-এ হারাবে, CI শূন্য বাদ দেবে — <b>এটাতেই পথ টেকে বা পড়ে</b>; (২) committee একা teacher-এর চেয়ে ভালো labeller; (৩) kNN weighting uniform-এর ওপরে ≤ +0.003 (F29-এর ceiling); (৪) hard pseudo-label soft-এর চেয়ে কম পায়; (৫) sarcasm AUC 0.756–0.777-এই থাকে। <b>খরচ:</b> ~২.৫ GPU-ঘণ্টা, tweets notebook-এর একটা resumed session (V5)। <b>মানে:</b> (১) টিকলে পেপারের positive result আছে, আর audit ব্যাখ্যা করে কেন in-sample grid কিছু পায়নি: দুটো মিলে আলাদা আলাদার চেয়ে শক্ত পেপার। না টিকলে audit-এ একটা মাপা negative যোগ হয়, B2 branch-ই পেপার।</p>
+</div>
+
+<h2>১৫. Q1 journal-এর জন্য কী লাগে, কোথায় আছি, ঝুঁকি</h2>
+<table>
+<tr><th style="width:44%">Q1 requirement</th><th>অবস্থা</th></tr>
+<tr><td>স্পষ্ট, defensible contribution</td><td>Framing-এর সিদ্ধান্তের ওপর নির্ভর করে; B2 তৈরি, V5-এর ফলে B-এর দিকে যেতে পারে</td></tr>
+<tr><td>২–৩টা dataset-এ পূর্ণ experiment</td><td>শুধু tweets পূর্ণ; implicit grid আর Wikipedia বাকি</td></tr>
+<tr><td>Control, ablation, multi-seed, significance test</td><td>সম্পন্ন</td></tr>
+<tr><td>ফলের ব্যাখ্যা (mechanism)</td><td>সম্পন্ন (F19, F20, F23, F28, F29)</td></tr>
+<tr><td>সাম্প্রতিক শক্ত baseline, zero-shot LLM সহ</td><td>হয়নি; reviewer প্রায় নিশ্চিত জিজ্ঞেস করবে</td></tr>
+<tr><td>Human-verified test set, inter-annotator agreement</td><td>Annotator-দের কাছে আটকে (sheet ১১ সেপ্টেম্বর থেকে)</td></tr>
+<tr><td>Thematic, সাম্প্রতিক related work</td><td>Skeleton আছে, prose বাকি</td></tr>
+<tr><td>Reproducibility: code, manifest, checkpoint</td><td>Code public, manifest তৈরি; checkpoint release বাকি</td></tr>
+<tr><td>Ethics, data, limitations statement</td><td>Draft আছে</td></tr>
+<tr><td>দাবির সঙ্গে মিল রাখা introduction আর abstract</td><td>Framing-এর অপেক্ষায় (তিনটা abstract লেখা আছে)</td></tr>
+<tr><td>Overclaim না করা</td><td>পুরো কাজে মানা হয়েছে</td></tr>
+</table>
+<p><b>ঝুঁকি:</b> (১) negative result-এর গ্রহণযোগ্যতা: method-চাওয়া journal-এ কঠিন, IPM/Findings-এ সম্ভব; (২) GPU সময়: implicit grid ৮–১০ ঘণ্টা, Wikipedia আরও; Kaggle-এ account-প্রতি সপ্তাহে ৩০ ঘণ্টা; (৩) annotator; (৪) LLM baseline না থাকা; (৫) দুই মেশিনের ফারাক reviewer-এর প্রশ্ন হবে, খোলাখুলি লেখা আছে; (৬) label-এর 48.2% একমত সব implicit ফলের সীমা; (৭) licence: IHC/ISHate-এর text re-host করা যাবে না, তাই শুধু manifest; (৮) submission deadline এখনো ঠিক হয়নি।</p>
+
+<h2>১৬. সামনের কাজ, আর team-এর কাছে যা দরকার</h2>
+<ol>
+<li><b>Tweets notebook V5 চালানো</b> (V4-এর output input হিসেবে দিয়ে): transfer set-এর ৫ arm, ~২.৫ ঘণ্টা। ফল এলে <span class="k">scripts/transfer_verdict.py</span> পাঁচটা prediction-এর PASS/FAIL দেয়।</li>
+<li><b>Implicit notebook চালানো</b> (<span class="k">kaggle/dmthd_implicit.ipynb</span>, ৮–১০ GPU-ঘণ্টা): এখানে তিন teacher-ই implication শিখে আসা, distillation-এর জন্য সবচেয়ে ন্যায্য সুযোগ। ISHate out-of-domain মূল্যায়নও এতেই হবে। B2-এর prediction: implicit-discrimination AUC নড়বে না; নড়লে পেপার constructive হয়।</li>
+<li><b>Wikipedia, Kaggle-এ</b>, শুধু headline student আর disagreement-aware variant: laptop-এর সংখ্যা বদলাতে।</li>
+<li><b>Laptop-এ ৩০ মিনিটের একটা run</b> transformers 4.4x pin করে: দুই মেশিনের ফারাকের কারণ (F30)।</li>
+<li><b>Zero-shot LLM baseline</b>, ২,০০০টা নমুনায়: reviewer-এর প্রশ্ন আগেই সামলাতে (API budget বা Kaggle-এ open model, সিদ্ধান্ত দরকার)।</li>
+<li><b>Annotation:</b> ৩০০ item-এর sheet annotator-দের কাছে; মনে করিয়ে দেওয়া দরকার।</li>
+<li><b>Framing আর venue:</b> supervisor-দের সঙ্গে B2 (বা V5 টিকলে constructive B) আর IPM/Findings-এর সিদ্ধান্ত। Deadline ঠিক করা।</li>
+<li><b>লেখা:</b> framing ঠিক হলে introduction, abstract, related work, statements।</li>
+</ol>
+
+<h2>১৭. কোথায় কী আছে (repository: github.com/mahdihasanshadi/THESIS)</h2>
+<table>
+<tr><th style="width:38%">কী</th><th>কোথায়</th></tr>
+<tr><td>প্রতিটা run আর সংখ্যার কালানুক্রমিক record</td><td class="k">LOG.md</td></tr>
+<tr><td>Glossary, সিদ্ধান্ত D1–D19, finding F1–F30, কী দাবি করা যায়/যায় না, open question</td><td class="k">DECISIONS.md</td></tr>
+<tr><td>Team-এর নেওয়ার মতো সিদ্ধান্ত, option আর যুক্তিসহ</td><td class="k">paper/OPEN_DECISIONS.md</td></tr>
+<tr><td>Results draft (১৭ সেপ্টেম্বর), তিনটা abstract, method, setup, related work, statements</td><td class="k">paper/results_draft.md, abstract_draft.md, method_draft.md, setup_draft.md, related_work_draft.md, statements_draft.md</td></tr>
+<tr><td>পূর্ণ manuscript (B2 framing)</td><td class="k">branch paper-b2-audit: paper/PAPER.md</td></tr>
+<tr><td>সব table (কোড থেকে তৈরি), ৬৬টা তুলনার significance table</td><td class="k">paper/tables/</td></tr>
+<tr><td>Q1 checklist, evidence pointer সহ</td><td class="k">paper/q1_checklist.md</td></tr>
+<tr><td>Kaggle notebook আর driver</td><td class="k">kaggle/dmthd_tweets.ipynb, dmthd_implicit.ipynb, dmthd_wikipedia.ipynb, run_benchmark.py</td></tr>
+<tr><td>Code: data prep, teacher/student training, evaluation, analysis</td><td class="k">src/dmthd/</td></tr>
+<tr><td>Test আর smoke script (push-এর আগে চলে)</td><td class="k">scripts/</td></tr>
+<tr><td>Probe set, annotation kit, corpus manifest</td><td class="k">probes/, annotation/, paper/manifests/</td></tr>
+<tr><td>যাচাই করা bibliography (৬৩ entry)</td><td class="k">paper/references.bib</td></tr>
+</table>
+<p class="small">এই document-এর উৎস: <span class="k">paper/briefing/team_briefing_2026-09-20.html</span>। প্রতিটি সংখ্যা repository-র table থেকে; কোনো সংখ্যা স্মৃতি থেকে লেখা নয়।</p>
+
+</body>
+</html>
