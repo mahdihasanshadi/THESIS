@@ -180,7 +180,7 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
 | v5: five out-of-sample arms, per-committee routing, probes for the sharp tau runs | 2.11 h | done, 21 September |
 | v6: transfer-set size curve on BERT-mini (5k to 168k), a composition control and a matched-steps control | 3.5 h | ran 21 September: monotone, +0.0123 [+0.0035, +0.0211] at 168k; D20's rule fires (F33) |
-| v7 (proposed): fine-tune-only for 35 epochs (the 168k arm's number of updates) and the 168k arm on BERT-small, three seeds each | ~2.7 h | the two controls the constructive framing still lacks; recommended before the paper is written |
+| v7: fine-tune-only for 35 epochs (the 168k arm's number of updates) on BERT-mini, and the 168k arm on BERT-small and BiLSTM, three seeds each | ~4 h | built 21 September (D21); the last run before the 3 October defense |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
@@ -227,19 +227,34 @@ supervisors should see it coming.
 0.0009 on the headline student, DECISIONS F23), so *Homogeneous* goes; *Robust* is unsupported (10 to
 15 points lost to obfuscation); *Dynamic* and *Multi-Teacher* name the two things the grid measured as
 adding nothing (F22, F29, F31). With D20's rule fired, the title should say what the paper shows.
-Three candidates, in order of preference:
 
-1. *Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact
-   Cyberbullying Detection*. Names the mechanism and the result; the audit is the evidence inside.
-2. *Out-of-Sample Knowledge Distillation for Cyberbullying Detection: Unlabelled Text, Not Teacher
-   Committees, Improves Compact Students*. Plainer, states the contrast the audit measured.
-3. *From Multi-Teacher to Out-of-Sample Knowledge Distillation for Cyberbullying Detection: An Audit
-   and the One Lever That Moves the Student*. Keeps continuity with the registered title for a
-   department that wants to see the lineage.
+**Updated later the same night, after thinking again.** My first candidate, *Distil Where the Teacher
+Is Uncertain*, is a good section heading and a risky title: read cold, it promises a method that
+selects text by the teacher's uncertainty, which the grid never tested (every arm used all of the
+transfer text, unselected). A title should not claim an experiment that does not exist. Two more
+constraints, from the literature and from the calendar. Distillation on an unlabelled transfer set is
+not new (Hinton et al. 2015 call it the transfer set; Turc et al. 2019 and Tang et al. 2019 distil
+compact students on unlabelled or augmented text), so the title must present the recipe as a measured
+finding in this domain, not as a new method; the contribution is the controlled audit that shows every
+other lever empty, the size curve with its controls, and the implication result. And the defense is on
+3 October, so the title has to be true of what v7 can still confirm by then.
 
-Any of the three is defensible today; none of them claims what v7 has not yet measured, because
-"compact" and "cyberbullying detection" are true of the one student and corpus measured. If the
-department requires the registered wording to survive in part, option 3.
+What a good title must do here: name the task and the technique for search (knowledge distillation,
+cyberbullying detection, compact); state the finding, not the apparatus; survive v7 whichever way it
+goes; and read aloud in one breath at a defense.
+
+| | Candidate | For | Against |
+|---|---|---|---|
+| A | *Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection: More Unlabelled Text Helps, More Teachers Do Not* | States both findings; every word measured; true of one student or three; searchable | Long; "out-of-sample" needs one sentence of definition in the abstract |
+| B | *Unlabelled Text, Not Teacher Committees: A Controlled Study of Knowledge Distillation for Compact Cyberbullying Detectors* | Audit-forward, honest about the method's origin; the contrast is the paper's sentence | "Detectors" plural should wait for v7; "controlled study" undersells the constructive result |
+| C | *Knowledge Distillation for Cyberbullying Detection Works Out of Sample and Not In: Evidence from 170 Controlled Runs* | Memorable; the mechanism is the title | The run count will age; "not in" is a strong reading of intervals that include zero |
+| D | *From Multi-Teacher to Out-of-Sample Knowledge Distillation for Cyberbullying Detection: A Controlled Audit and a Scaling Recipe* | Keeps the registered title's lineage; audit and recipe both named | Longest; "scaling recipe" sounds larger than a 1.2-point curve on one corpus |
+| E | *Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection* | The best sentence in the paper | Misreadable as uncertainty-based selection, which was never tested; keep it as Section 5.3d's heading |
+
+**Recommendation: A**, filed as the thesis title, with D as the fallback if the department wants the
+registered wording to survive in part. A stays true whether v7 confirms the second student or not,
+because it names the task and not the number of students. If v7's prediction 1 fails, the subtitle
+changes to *More Unlabelled Text Helps at Matched Compute Only Partly*, or the title moves to D.
 
 ---
 

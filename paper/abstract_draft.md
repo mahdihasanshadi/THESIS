@@ -152,8 +152,9 @@ its motivation.
 
 ## Version C: the constructive framing, with the audit as its evidence (recommended after v6)
 
-*Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact
-Cyberbullying Detection*
+*Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection: More Unlabelled Text
+Helps, More Teachers Do Not* (title candidate A in `OPEN_DECISIONS.md`, Decision 3; "Distil where the
+teacher is uncertain" stays as the section heading it earns)
 
 Compact detectors of abusive language are usually trained by distillation from one or more large
 teachers on the labelled split the teachers were fine-tuned on. We show, under controls the setting

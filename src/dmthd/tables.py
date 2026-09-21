@@ -39,6 +39,7 @@ MODE_LABEL = {"ft": "Fine-tune only", "skd": "Single-teacher KD", "uniform": "Un
               "pseudo_transfer": "Committee hard pseudo-labels + transfer set",
               "ft_matched": "Fine-tune only, matched optimisation steps"}
 SCALE_RE = re.compile(r"^(skd|uniform)_transfer_(generic)?(\d+k?)$")
+MATCH_RE = re.compile(r"^ft_matched(?:_(\d+k?))?$")     # fine-tuning alone at a transfer arm's number of updates
 
 
 def mode_label(mode, default=None):
@@ -50,6 +51,9 @@ def mode_label(mode, default=None):
         who = "Single-teacher KD" if m.group(1) == "skd" else "Uniform multi-teacher"
         what = "generic tweets" if m.group(2) else "transfer rows"
         return f"{who} + {m.group(3)} {what}"
+    m = MATCH_RE.match(mode)
+    if m and m.group(1):
+        return f"Fine-tune only, matched to the {m.group(1)} arm's steps"
     return mode if default is None else default
 
 
@@ -329,7 +333,7 @@ def main():
 
     # ---- the size curve: does the out-of-sample gain grow with the transfer set? ----
     head = s[s["student"] == args.headline]
-    curve_modes = [m for m in head["mode"].unique() if SCALE_RE.match(m) or m == "ft_matched"]
+    curve_modes = [m for m in head["mode"].unique() if SCALE_RE.match(m) or MATCH_RE.match(m)]
     if curve_modes:
         sc = agg(head[head["mode"].isin(curve_modes + ["ft"])])
         ref = sc[sc["mode"] == "ft"]
@@ -350,7 +354,8 @@ def main():
                          "Epochs": f"{steps:.0f}" if steps is not None and not pd.isna(steps) else "--",
                          "Seeds": int(r.n), "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
                          "$\\Delta$ vs fine-tune only": "--" if (np.isnan(ref_f1) or r.mode == "ft") else f"{r.macro_f1_mean - ref_f1:+.4f}",
-                         "_order": (0 if r.mode == "ft" else 1 if r.mode == "ft_matched" else 2 if comp == "generic tweets" else 3, n_rows)})
+                         "_order": (0 if r.mode == "ft" else 1 if MATCH_RE.match(r.mode) else 2 if comp == "generic tweets" else 3,
+                                    n_rows if not MATCH_RE.match(r.mode) else (steps or 0))})
         rows.sort(key=lambda x: x["_order"])
         for x in rows:
             del x["_order"]
@@ -359,6 +364,25 @@ def main():
               "labelling, on the headline student. Prefixes of the shuffled transfer set are nested subsets; "
               "rows beyond the abuse-domain set are generic tweets. The matched-steps row fine-tunes alone for "
               "as many updates as the base-size transfer arm.", "scaling")
+
+    # ---- the largest transfer set on the other students (D21) ----
+    is_curve = s["mode"].map(lambda m: bool(SCALE_RE.match(m)))
+    others = s[(s["student"] != args.headline) & is_curve]
+    if not others.empty:
+        rows = []
+        for st in others["student"].unique():
+            sub = agg(s[(s["student"] == st) & (s["mode"].isin(["ft", "skd"]) | is_curve)])
+            f_ft = next((float(r.macro_f1_mean) for r in sub.itertuples() if r.mode == "ft"), np.nan)
+            f_skd = next((float(r.macro_f1_mean) for r in sub.itertuples() if r.mode == "skd"), np.nan)
+            for r in sorted(sub.itertuples(), key=lambda r: (r.mode != "ft", r.mode != "skd", _count(getattr(r, "transfer_rows_mean", None)))):
+                rows.append({"Student": STUDENT_LABEL.get(st, st), "Arm": mode_label(r.mode),
+                             "Transfer rows": _count(getattr(r, "transfer_rows_mean", None)), "Seeds": int(r.n),
+                             "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
+                             "$\\Delta$ vs fine-tune only": "--" if (r.mode == "ft" or np.isnan(f_ft)) else f"{r.macro_f1_mean - f_ft:+.4f}",
+                             "$\\Delta$ vs single teacher in sample": "--" if (r.mode in ("ft", "skd") or np.isnan(f_skd)) else f"{r.macro_f1_mean - f_skd:+.4f}"})
+        write(pd.DataFrame(rows), args.out, "scaling_students",
+              "The largest transfer set on the other students, one teacher labelling, beside their in-sample "
+              "fine-tuning and single-teacher runs.", "scaling-students")
 
     # ---- routing: does the weighting select an expert, or average over the committee? ----
     # One measurement per trained committee, in weight_routing/<committee>/. Older runs measured a single

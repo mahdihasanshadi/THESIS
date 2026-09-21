@@ -389,6 +389,37 @@ without measuring it. The curve is one student on one corpus. And the gain is in
 implication (F33). Proposed v7, about 2.7 GPU-hours: the 35-epoch fine-tune-only control and the
 168k arm on BERT-small, three seeds each.
 
+### D21. The two controls the constructive framing still lacks, before the defense
+*Decided 21 September, night, after F33; predictions written before the run (Kaggle v7). The thesis
+defense is on 3 October, so this is the last GPU run before the document is written.*
+
+F33 fires D20's rule on one student, with the steps control matched to the 42k arm and not to the
+168k arm that carries the claim. Two controls close the two objections a reviewer, or an examiner,
+will raise first. Both run in the same stage (`transfer_scale`, `TRANSFER_SCALE_MATCH_LARGEST=1`,
+`TRANSFER_SCALE_STUDENTS=bert-small,bilstm`), resumed from v6's output, about 4 GPU-hours:
+- `ft_matched_168k`: fine-tuning alone on BERT-mini for 35 epochs, the 168k arm's number of updates
+  (6 × 202,607 / 34,607), early stopping off, best validation epoch kept, three seeds;
+- `skd_transfer_168k` on BERT-small (28.8M, same family) and on BiLSTM (10.4M, the heterogeneous
+  student), one teacher labelling, three seeds each, beside their in-sample `ft` and `skd` runs.
+`significance.py` adds the largest arm against its own steps control and, on the other students, the
+arm against fine-tuning and against the same teacher in sample; `tables.py` writes
+`scaling_students`; `scripts/scaling_verdict.py` scores the predictions below as items 5 and 6.
+
+**Predictions.**
+1. Steps are not the explanation at 168k either: fine-tuning for 35 epochs gains at most +0.004 over
+   six (the 13-epoch control gained +0.0027 and its validation score had stopped rising by epoch 11),
+   and the 168k arm keeps at least +0.006 over it with an interval that excludes zero.
+2. The curve holds on a second BERT-family student: BERT-small's 168k arm gains at least +0.005 over
+   its fine-tuning (0.8469 ± 0.0040) and beats its in-sample single-teacher run (0.8488).
+3. It holds on the heterogeneous student too, and by more: BiLSTM's 168k arm gains at least +0.010
+   over its fine-tuning (0.8693 ± 0.0043), since BiLSTM already gains +0.0055 from the same teacher
+   in sample (F3) and has no pre-training to make the soft labels redundant.
+4. Decision rule for the wording, fixed now. Both controls hold: the thesis states the result for
+   compact students in the plural and the title keeps "compact cyberbullying detection" unqualified.
+   Prediction 1 fails: the constructive sentence becomes "at matched compute the gain is X" with X
+   from the table, and the title returns to the audit-led candidate (Decision 3, option D). Only
+   prediction 2 or 3 fails: the result is stated for the students where it holds, by name.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.

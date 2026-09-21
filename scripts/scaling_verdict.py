@@ -101,6 +101,35 @@ def main():
         print(f"{verdict:<8} {name}\n         {detail}")
     print(f"\nDecision rule (D20): {decision}.")
 
+    # D21: the two controls the constructive framing still lacked after v6
+    if sig is not None and not mixed.empty:
+        top_arm = mixed.iloc[-1]["Arm"]
+        more = []
+        hit = sig[(sig["Student"] == "BERT-mini") & sig["Baseline"].str.startswith("Fine-tune only, matched to the")
+                  & (sig["Candidate"] == top_arm)]
+        if hit.empty:
+            more.append(("5. the largest arm keeps >= +0.006 over fine-tuning at its own number of updates, interval excluding zero",
+                         "not run", ""))
+        else:
+            d, (lo, hi) = float(hit.iloc[0]["Difference"]), interval(hit.iloc[0]["95 per cent interval"])
+            more.append(("5. the largest arm keeps >= +0.006 over fine-tuning at its own number of updates, interval excluding zero",
+                         "PASS" if d >= 0.006 and lo > 0 else "FAIL", f"{d:+.4f} [{lo:+.4f}, {hi:+.4f}]"))
+        others = sig[(sig["Student"] != "BERT-mini") & (sig["Baseline"] == "Fine-tune only") & sig["Candidate"].str.contains("transfer rows")]
+        if others.empty:
+            more.append(("6. on each other student the largest arm gains >= +0.005 over fine-tuning", "not run", ""))
+        for _, r in others.iterrows():
+            d, (lo, hi) = float(r["Difference"]), interval(r["95 per cent interval"])
+            more.append((f"6. {r['Student']}: the largest arm gains >= +0.005 over fine-tuning", "PASS" if d >= 0.005 else "FAIL",
+                         f"{d:+.4f} [{lo:+.4f}, {hi:+.4f}]" + (" (interval excludes zero)" if lo > 0 else "")))
+        print()
+        for name, verdict, detail in more:
+            print(f"{verdict:<8} {name}\n         {detail}")
+        ran = [v for _, v, _ in more if v != "not run"]
+        if ran:
+            print("\nD21: " + ("both controls hold; the constructive sentence may be stated for compact students in the plural"
+                               if all(v == "PASS" for v in ran) else
+                               "at least one control fails; state the result for the student and compute where it holds, and say where it does not"))
+
 
 if __name__ == "__main__":
     main()

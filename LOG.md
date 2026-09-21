@@ -767,3 +767,12 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   against the matched-steps control; the table is now 94 rows. `results_tweets_implicit_seed1.csv`
   rebuilt from the v6 tree (42 models, the 34 earlier rows unchanged). Proposed v7, about 2.7 GPU-h:
   a 35-epoch fine-tune-only control and the 168k arm on BERT-small.
+- **v7 built (D21).** The thesis defense is on 3 October, so this is the last GPU run before writing.
+  Driver stage `transfer_scale` now also runs `ft_matched_168k` (fine-tuning alone for the 168k
+  arm's number of updates, 35 epochs on the tweet corpus) on the headline student and the largest arm
+  on the other students named in `TRANSFER_SCALE_STUDENTS` (default `bert-small,bilstm`);
+  `tables.py` writes `scaling_students` and labels the new control; `significance.py` adds the
+  D21 comparisons on every student; `scripts/scaling_verdict.py` scores them as items 5 and 6;
+  `scripts/smoke_driver.py` asserts the new arms. Predictions and the wording rule are in D21.
+  Resumes from v6's output; about 4 GPU-hours (drop BiLSTM with `TRANSFER_SCALE_STUDENTS=bert-small`
+  for about 3).

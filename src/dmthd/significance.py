@@ -18,7 +18,7 @@ from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
 
 from .aggregate import paired_bootstrap
-from .tables import ABLATION_LABEL, SCALE_RE, STUDENT_LABEL, mode_label, write
+from .tables import ABLATION_LABEL, MATCH_RE, SCALE_RE, STUDENT_LABEL, mode_label, write
 
 # baseline, candidate, and the question the row answers
 EVERY_STUDENT = [("ft", "skd", "does one teacher help"),
@@ -61,40 +61,60 @@ def label(mode):
     return mode_label(mode, ABLATION_LABEL.get(mode, mode.replace("sweep_tau_", "D-MTHD, tau = ")))
 
 
+def _rows_of(home, arm):
+    """The transfer rows an arm trained on, from any of its seeds."""
+    for seed in sorted(os.listdir(os.path.join(home, arm))):
+        try:
+            with open(os.path.join(home, arm, seed, "results.json"), encoding="utf-8") as f:
+                return int(json.load(f).get("transfer_rows") or 0)
+        except (OSError, ValueError):
+            continue
+    return 0
+
+
 def scaling_jobs(runs, headline):
-    """The size-curve comparisons (D20), built from whatever arms exist: each arm against fine-tuning,
-    each size against the next smaller one, the composition control against the abuse-domain arm of the
-    same size, and the base-size arm against fine-tuning at matched steps."""
-    home = os.path.join(runs, headline)
-    arms = sorted(d for d in os.listdir(home) if SCALE_RE.match(d)) if os.path.isdir(home) else []
-
-    def rows_of(arm):           # the transfer rows an arm trained on, from any of its seeds
-        for seed in sorted(os.listdir(os.path.join(home, arm))):
-            try:
-                with open(os.path.join(home, arm, seed, "results.json"), encoding="utf-8") as f:
-                    return int(json.load(f).get("transfer_rows") or 0)
-            except (OSError, ValueError):
-                continue
-        return 0
-
-    sized = sorted((rows_of(a), a) for a in arms if not SCALE_RE.match(a).group(2))
-    jobs = [("ft", a, f"one teacher with {a.split('_')[-1]} transfer rows against fine-tuning") for _, a in sized]
-    jobs += [(sized[i - 1][1], sized[i][1], "does the gain grow from the smaller set") for i in range(1, len(sized))]
-    for a in arms:
-        m = SCALE_RE.match(a)
-        if m.group(2):
-            twin = f"{m.group(1)}_transfer_{m.group(3)}"
-            jobs.append(("ft", a, "generic tweets of the same size against fine-tuning"))
-            if twin in arms:
-                jobs.append((a, twin, "abuse-domain text against generic text of the same size"))
-    if sized:
-        jobs.append(("ft", "ft_matched", "more fine-tuning steps alone"))
-        # the matched-steps control follows the base-size arm, which is the composition control's twin
-        generic = [rows_of(a) for a in arms if SCALE_RE.match(a).group(2)]
-        base = next((a for n, a in sized if generic and n == generic[0]), sized[-1][1])
-        jobs.append(("ft_matched", base, "the transfer set against fine-tuning at matched steps"))
-        if sized[-1][1] != base:
-            jobs.append(("ft_matched", sized[-1][1], "the largest set against the matched-steps control"))
+    """The size-curve comparisons (D20, D21), built from whatever arms exist. On the headline student:
+    each arm against fine-tuning, each size against the next smaller one, the composition control
+    against the abuse-domain arm of the same size, the base-size arm against fine-tuning at matched
+    steps, and the largest arm against fine-tuning at its own number of steps. On any other student
+    that has a curve arm: that arm against fine-tuning and against the same teacher in sample.
+    Returns (student, baseline, candidate, question) tuples."""
+    jobs = []
+    students = sorted(d for d in os.listdir(runs)
+                      if os.path.isdir(os.path.join(runs, d)) and d not in ("teachers", "weight_routing"))
+    for student in students:
+        home = os.path.join(runs, student)
+        arms = sorted(d for d in os.listdir(home) if SCALE_RE.match(d))
+        if not arms:
+            continue
+        if student != headline:
+            for a in arms:
+                jobs.append((student, "ft", a, f"one teacher with {a.split('_')[-1]} transfer rows against fine-tuning"))
+                jobs.append((student, "skd", a, "the transfer set against the same teacher in sample"))
+            continue
+        sized = sorted((_rows_of(home, a), a) for a in arms if not SCALE_RE.match(a).group(2))
+        jobs += [(student, "ft", a, f"one teacher with {a.split('_')[-1]} transfer rows against fine-tuning") for _, a in sized]
+        jobs += [(student, sized[i - 1][1], sized[i][1], "does the gain grow from the smaller set") for i in range(1, len(sized))]
+        for a in arms:
+            m = SCALE_RE.match(a)
+            if m.group(2):
+                twin = f"{m.group(1)}_transfer_{m.group(3)}"
+                jobs.append((student, "ft", a, "generic tweets of the same size against fine-tuning"))
+                if twin in arms:
+                    jobs.append((student, a, twin, "abuse-domain text against generic text of the same size"))
+        if sized:
+            jobs.append((student, "ft", "ft_matched", "more fine-tuning steps alone"))
+            # the matched-steps control follows the base-size arm, which is the composition control's twin
+            generic = [_rows_of(home, a) for a in arms if SCALE_RE.match(a).group(2)]
+            base = next((a for n, a in sized if generic and n == generic[0]), sized[-1][1])
+            largest = sized[-1][1]
+            jobs.append((student, "ft_matched", base, "the transfer set against fine-tuning at matched steps"))
+            if largest != base:
+                jobs.append((student, "ft_matched", largest, "the largest set against the matched-steps control"))
+            matched_l = next((d for d in sorted(os.listdir(home)) if MATCH_RE.match(d) and MATCH_RE.match(d).group(1)), None)
+            if matched_l:
+                jobs.append((student, "ft", matched_l, "fine-tuning for the largest arm's number of updates"))
+                jobs.append((student, matched_l, largest, "the largest set against fine-tuning at its own number of updates"))
     return jobs
 
 
@@ -123,7 +143,7 @@ def main():
     students.sort(key=lambda s: s != args.headline)
     jobs = [(s, b, c, q, args.runs) for s in students for b, c, q in EVERY_STUDENT]
     jobs += [(args.headline, b, c, q, args.runs) for b, c, q in HEADLINE_ONLY]
-    jobs += [(args.headline, b, c, q, args.runs) for b, c, q in scaling_jobs(args.runs, args.headline)]
+    jobs += [(s, b, c, q, args.runs) for s, b, c, q in scaling_jobs(args.runs, args.headline)]
     jobs = [j for j in jobs if os.path.isdir(os.path.join(args.runs, j[0], j[1])) and os.path.isdir(os.path.join(args.runs, j[0], j[2]))]
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         rows = [r for r in pool.map(one, jobs) if r]

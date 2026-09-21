@@ -35,7 +35,7 @@ Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HET
 MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1,
 SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug); for the transfer stages
 TRANSFER, TRANSFER_SOURCES, TRANSFER_STUDENTS, TRANSFER_ARMS, KNN_K, TRANSFER_SCALE, TRANSFER_SIZES,
-TRANSFER_SCALE_SOURCES, TRANSFER_SCALE_COMMITTEE.
+TRANSFER_SCALE_SOURCES, TRANSFER_SCALE_COMMITTEE, TRANSFER_SCALE_MATCH_LARGEST, TRANSFER_SCALE_STUDENTS.
 """
 import argparse
 import atexit
@@ -122,6 +122,10 @@ TRANSFER_SCALE = os.environ.get("TRANSFER_SCALE", "1") == "1"
 TRANSFER_SCALE_SOURCES = os.environ.get("TRANSFER_SCALE_SOURCES", "sentiment,emoji,emotion")
 TRANSFER_SIZES = os.environ.get("TRANSFER_SIZES", "")   # empty: 5000,10000,21000,42013,84000,168000 (50,100 under LIMIT)
 TRANSFER_SCALE_COMMITTEE = os.environ.get("TRANSFER_SCALE_COMMITTEE", "0") == "1"
+# The two controls the size curve still lacked after v6 (DECISIONS D21): fine-tuning alone for as many
+# updates as the LARGEST arm, and the largest arm on other students (tags; empty turns it off).
+TRANSFER_SCALE_MATCH_LARGEST = os.environ.get("TRANSFER_SCALE_MATCH_LARGEST", "1") == "1"
+TRANSFER_SCALE_STUDENTS = [s for s in os.environ.get("TRANSFER_SCALE_STUDENTS", "bert-small,bilstm").split(",") if s]
 # Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
 # before that so the notebook finishes cleanly with a downloadable output.
 TIME_BUDGET_S = float(os.environ.get("TIME_BUDGET_S", "39600"))
@@ -751,12 +755,30 @@ class Bench:
         if TRANSFER_SCALE_COMMITTEE and sizes:
             arms.append((f"uniform_transfer_{k(sizes[-1])}",
                          f"--epochs {STUDENT_EPOCHS} --mode uniform --teachers {' '.join(homo)} {via} --transfer_rows 0:{sizes[-1]}"))
+        if TRANSFER_SCALE_MATCH_LARGEST and sizes and sizes[-1] != n_base:
+            # the steps control for the largest arm: 35 epochs at 168k on the tweet corpus (D21)
+            ep_l = max(int(STUDENT_EPOCHS), round(int(STUDENT_EPOCHS) * (n_train + sizes[-1]) / max(n_train, 1)))
+            arms.append((f"ft_matched_{k(sizes[-1])}", f"--epochs {ep_l} --patience {ep_l} --mode ft"))
         for arm, flags in arms:
             for seed in SEEDS:
                 out = f"{self.runs}/{stag}/{arm}/seed{seed}"
                 if not done(out):
                     check_budget(f"{stag}/{arm}/seed{seed}")
                     sh(f"python -m dmthd.train_student {common} --seed {seed} --out_dir {out} {flags} --tag {arm}")
+        # the largest set on the other students, beside their in-sample ft and skd runs (D21)
+        if sizes:
+            arm = f"skd_transfer_{k(sizes[-1])}"
+            flags = f"--epochs {STUDENT_EPOCHS} --mode skd --teachers {homo[0]} {via} --transfer_rows 0:{sizes[-1]}"
+            for name2, stag2 in self.student_list[1:]:
+                if stag2 not in TRANSFER_SCALE_STUDENTS:
+                    continue
+                common2 = (f"--student {name2} --data_dir {self.data} --batch {self.cfg['student_batch']} {self.fp} "
+                           f"{self.common} {self.limit} --cache {self.cache}")
+                for seed in SEEDS:
+                    out = f"{self.runs}/{stag2}/{arm}/seed{seed}"
+                    if not done(out):
+                        check_budget(f"{stag2}/{arm}/seed{seed}")
+                        sh(f"python -m dmthd.train_student {common2} --seed {seed} --out_dir {out} {flags} --tag {arm}")
 
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]

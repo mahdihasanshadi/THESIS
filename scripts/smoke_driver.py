@@ -79,6 +79,10 @@ for arm, rows in (("skd_transfer_50", 50), ("skd_transfer_100", 100), ("skd_tran
 r = os.path.join(a.root, "runs", "tweets", "tiny", "ft_matched", "seed1", "results.json")
 assert os.path.exists(r), "the matched-steps control did not run"
 assert json.load(open(r))["epochs_run"] == 2 and json.load(open(r))["transfer_rows"] == 0, "matched-steps control is wrong"
+r = os.path.join(a.root, "runs", "tweets", "tiny", "ft_matched_100", "seed1", "results.json")
+assert os.path.exists(r) and json.load(open(r))["epochs_run"] == 2, "the control matched to the largest arm did not run"
+r = os.path.join(a.root, "runs", "tweets", "bilstm", "skd_transfer_100", "seed1", "results.json")
+assert os.path.exists(r) and json.load(open(r))["transfer_rows"] == 100, "the largest arm did not run on the second student"
 env = {**os.environ, "PYTHONPATH": SRC}
 tables_out = os.path.join(a.root, "tables_tweets")
 for mod in ("tables", "significance"):
@@ -89,8 +93,12 @@ for mod in ("tables", "significance"):
         sys.exit(f"DRIVER SMOKE FAILED at dmthd.{mod} on the smoke tree")
 scaling = open(os.path.join(tables_out, "scaling.csv"), encoding="utf-8").read()
 assert "generic tweets" in scaling and "matched optimisation steps" in scaling, "the scaling table lacks its control rows"
+assert "matched to the 100 arm" in scaling, "the scaling table lacks the control matched to the largest arm"
+students = open(os.path.join(tables_out, "scaling_students.csv"), encoding="utf-8").read()
+assert "BiLSTM" in students and "100 transfer rows" in students, "the second-student table is missing"
 sig = open(os.path.join(tables_out, "significance.csv"), encoding="utf-8").read()
 assert "matched steps" in sig and "does the gain grow" in sig, "the size-curve comparisons are missing from significance.csv"
+assert "its own number of updates" in sig and "same teacher in sample" in sig, "the D21 comparisons are missing from significance.csv"
 print("transfer_scale stage: extended set built, nested sizes, composition control and matched-steps control trained, tabled and tested")
 
 # 2. every teacher collapses
