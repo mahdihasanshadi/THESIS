@@ -4,11 +4,12 @@ Every number here is read from a `results.json` or an `eval_*.json` produced by 
 Nothing is typed from memory and nothing is rounded in our favour. Where a result contradicts what we
 set out to show, it is reported in the same voice as the results that support it.
 
-The tweet-corpus grid is complete: 131 student runs over five students, three seeds per
+The tweet-corpus grid is complete: 146 student runs over five students, three seeds per
 configuration, a homogeneous and a heterogeneous committee on every student and a third committee,
-which adds an implicit-abuse specialist, on the headline student, plus ablations, controls and
-hyper-parameter sweeps. The first 120 runs took 8.2 GPU-hours; a further 1.4 added the specialist, its
-committee, two controls and the three sharpest weighting temperatures. The Wikipedia benchmark and the
+which adds an implicit-abuse specialist, on the headline student, plus ablations, controls,
+hyper-parameter sweeps and five out-of-sample distillation arms. The first 120 runs took 8.2
+GPU-hours; a further 1.4 added the specialist, its committee, two controls and the three sharpest
+weighting temperatures, and a further 2.1 the out-of-sample arms. The Wikipedia benchmark and the
 student grid on the implicit benchmark are in progress and their sections are marked as such.
 
 **One rule constrains what may appear in these tables.** The same code, data and seeds produce
@@ -18,8 +19,9 @@ identically. Numbers produced elsewhere are excluded rather than reconciled.
 
 **Every difference is tested, not read off a table.** Intervals are paired bootstraps over the test
 set: seeds paired by index, 1,000 resamples per seed, 95 per cent interval of the pooled differences
-(`python -m dmthd.significance`, Table `significance`). The grid makes 51 such comparisons. One
-interval excludes zero: the one that removes pre-training.
+(`python -m dmthd.significance`, Table `significance`). The grid makes 77 such comparisons. Three
+intervals exclude zero: the one that removes pre-training, and two of the out-of-sample arms of
+Section 5.3c.
 
 ---
 
@@ -208,33 +210,81 @@ specialist on its own sits within 0.0002 of the fine-tune-only student, and putt
 corpus into the student directly, by pre-training on it before the tweet task, gives the lowest
 sarcasm-discrimination AUC of the 25 pre-trained models analysed.
 
-**The weights do move towards the specialist, a little, and no more than towards HateBERT.** In the
-committee the students trained with, at tau = 1, the specialist's mean weight is 0.2519 against a
-uniform 0.25. Split by class, measured on the training split over all five cached teachers, as mean
-weight on `other_cyberbullying` minus mean weight on the four targeted classes (uniform weight 0.200):
+**The weights do move towards the specialist, a little, and less than towards HateBERT.** Measured in
+the committee the students trained with, on the training split, as mean weight on
+`other_cyberbullying` minus mean weight on the four targeted classes (uniform weight 0.25):
 
-| Teacher | tau = 0.05 | tau = 1 |
+| Teacher (committee with the specialist) | tau = 0.05 | tau = 1 |
 |---|---|---|
-| HateBERT | +0.0486 [+0.0460, +0.0512] | +0.0105 [+0.0094, +0.0116] |
-| Implicit specialist | +0.0441 [+0.0416, +0.0465] | +0.0090 [+0.0080, +0.0100] |
-| RoBERTa-irony | +0.0184 [+0.0159, +0.0210] | +0.0053 [+0.0043, +0.0064] |
-| BERT-large | -0.0063 [-0.0089, -0.0035] | +0.0011 [-0.0002, +0.0023] |
-| DeBERTa-v3-base | -0.1048 [-0.1067, -0.1028] | -0.0259 [-0.0274, -0.0245] |
+| HateBERT | +0.0235 [+0.0209, +0.0260] | +0.0044 [+0.0034, +0.0055] |
+| Implicit specialist | +0.0187 [+0.0163, +0.0212] | +0.0027 [+0.0018, +0.0036] |
+| RoBERTa-irony | -0.0075 [-0.0101, -0.0048] | -0.0011 [-0.0021, +0.0001] |
+| BERT-large | -0.0347 [-0.0375, -0.0317] | -0.0060 [-0.0074, -0.0046] |
 
-Three things limit what this shows. At the temperature the students trained with, the specialist's
-shift is a twentieth of the uniform weight; it reaches a fifth only at tau = 0.05, a sharpness that
-left the homogeneous committee's score unchanged (Section 5.3) and has not been run with the specialist. The shift is not specific to the specialist: HateBERT, which never saw the
-implicit corpus, gains slightly more, as the near-identical predictions in Section 5.3a would predict.
-And the table pools all five cached teachers, a committee no student trained with. Which teacher leads
-on an instance is the same in any sub-committee, but the sizes are not, and the measurement on the
-committees actually trained is queued for the next session. Because the weights are computed from
-cross-entropy against the gold label, a positive shift also means only that a teacher fits
-`other_cyberbullying` better than it fits the targeted classes, not that it reads implication.
+With tens of thousands of instances almost any contrast excludes zero, so the size is the evidence.
+At the temperature the students trained with, the specialist's shift is a hundredth of the uniform
+weight; it reaches a tenth only at tau = 0.05, a sharpness that left the homogeneous committee's score
+unchanged (Section 5.3) and has not been run with the specialist. The shift is not specific to the
+specialist: HateBERT, which never saw the implicit corpus, gains more, as the near-identical
+predictions in Section 5.3a would predict. And because the weights are computed from cross-entropy
+against the gold label, a positive shift means only that a teacher fits `other_cyberbullying` better
+than it fits the targeted classes, not that it reads implication.
 
 **So on this corpus the answer to the question the specialist was built for is no.** A teacher that
 has learned implication from labelled data passes nothing a compact student's decisions can use,
 whether it is weighted, averaged, used alone, or replaced by pre-training on its data. The implicit
 benchmark, where that knowledge is in-domain rather than transferred, is the test that remains.
+
+## 5.3c Distillation's gain is in the data the student imitates on
+
+Sections 5.3 to 5.3b changed the weighting, the committee and the teacher, and nothing moved. The
+audit of Section 5.5 says why: the teachers' outputs on the training split are the gold labels. So
+the last experiment changed the data instead. A transfer set of 42,013 unlabelled in-domain tweets
+(the transfer set of the setup section) was added to training; on those rows the student has no gold
+label and trains on the committee's soft labels and hidden states alone. Five arms on BERT-mini, three
+seeds each, beside the in-sample runs of the same objectives:
+
+| Objective | Labelled split only | + transfer set | Gain over fine-tune only |
+|---|---|---|---|
+| Fine-tune only | 0.8393 +- 0.0003 | -- | -- |
+| Single teacher (BERT-large) | 0.8405 +- 0.0017 | 0.8466 +- 0.0016 | +0.0073 [-0.0003, +0.0150] |
+| Uniform committee | 0.8385 +- 0.0018 | 0.8462 +- 0.0016 | +0.0070 [-0.0001, +0.0144] |
+| Uniform committee + DeBERTa | 0.8378 +- 0.0024 | 0.8477 +- 0.0026 | +0.0084 [+0.0007, +0.0164] |
+| Reliability-weighted committee | 0.8378 +- 0.0011 | 0.8484 +- 0.0011 | +0.0091 [+0.0020, +0.0165] |
+| Committee's hard pseudo-labels, cross-entropy only | -- | 0.8412 +- 0.0013 | +0.0020 [-0.0062, +0.0104] |
+
+The transfer set is the first intervention in the grid that moves the headline student: every one of
+the twelve soft-label seeds (0.8444 to 0.8501) lies above every fine-tune-only seed (0.8389 to
+0.8395), two of the four arms exclude zero, and the transfer set's own effect on the committee is
++0.0077 [+0.0000, +0.0155]. The gain is the same whatever the labeller: the four soft-label arms lie
+within 0.0022 of each other, the committee is not a better labeller than one teacher (-0.0003
+[-0.0061, +0.0056]), and the reliability weighting of Section 3.8, now estimated out of sample, adds
++0.0021 [-0.0017, +0.0082], inside the ceiling Section 5.4 set for it. Hard pseudo-labels on the same
+text, with the same number of optimisation steps, gain +0.0020, so most of the gain is carried by the
+soft labels (their share against hard labels, +0.0050 [-0.0016, +0.0118], has an interval that
+includes zero). It lands where the in-sample runs never moved: F1 on `other_cyberbullying` rises from
+0.707 to 0.710--0.720 and on `not_cyberbullying` from 0.644 to 0.655--0.663, the two classes that
+confuse each other.
+
+This is the constructive half of Section 5.5. On the training split the teachers' soft labels are the
+gold labels and distillation reduces to fine-tuning; on text the teachers have not fitted, their soft
+labels carry information the gold labels do not, and an 11M student receives it. It is a distillation
+result, not a multi-teacher result, and it is modest: 0.7 to 0.9 macro-F1 from 1.2 times the training
+split in unlabelled text. We pre-registered a threshold of 0.010 for the committee arm and it was not
+met; the two arms that clear zero were not the pre-registered one, and we report the family as
+consistent rather than any arm as decisive. Two things it does not show. The transfer arms take 2.2
+times the optimisation steps of fine-tuning; the hard-label arm shares those steps and gains 0.002,
+which bounds but does not measure the steps-alone explanation, and a fine-tune-only run at matched
+steps is the missing control. And whether the gain grows with more unlabelled text is unmeasured.
+
+**It is a task gain, not an implication gain.** On the first seed, sarcasm-discrimination AUC is
+0.765 with one teacher and 0.762 with the DeBERTa committee, inside the in-sample band of Section
+5.8, and 0.753, 0.753 and 0.727 for the uniform committee, the weighted committee and the hard-label
+arm, below it. Every transfer-trained student fires less on sarcasm of both kinds (recall on ironic
+abuse 0.66 to 0.71 at a false-positive rate of 0.30 to 0.39, against 0.79 at 0.40). The transfer text
+is offensive-language data in which abuse is mostly explicit, so what the teachers' soft labels teach
+there is explicit abuse; nothing in the set carries the distinction the probes measure. If a transfer
+set is to help with implication, its composition is the first thing to change, not its size.
 
 ## 5.4 Ablations and controls: only pre-training matters
 
@@ -284,7 +334,7 @@ one supports no estimate at all.
 The failure is discrimination. Mean p(abusive) is **0.748** on ironic abuse and **0.449** on benign
 sarcasm, and the two distributions overlap heavily: sarcasm-discrimination AUC is **0.773**. At a 0.5
 threshold, recall of 0.792 costs a **39.5%** false-positive rate on sarcasm that attacks nobody, and
-**no threshold up to 0.90 brings that rate under 10%**, on this model or on any of the 26 analysed.
+**no threshold up to 0.90 brings that rate under 10%**, on this model or on any of the 34 analysed.
 
 The benchmark's own labels show the same confusion: `other_cyberbullying` recall 0.710 with 109 of its
 errors going to `not_cyberbullying`, and `not_cyberbullying` recall 0.648 with 126 going the other
@@ -328,10 +378,10 @@ here will show.
 
 This is the strongest result in the paper and it is not the one we expected.
 
-Across all **133 evaluated models** in the grid, teachers and students, every mode and every seed, the
-false-positive rate on benign sarcasm and the recall on ironic abuse correlate at **+0.712**. The
+Across all **151 evaluated models** in the grid, teachers and students, every mode and every seed, the
+false-positive rate on benign sarcasm and the recall on ironic abuse correlate at **+0.724**. The
 quantity that separates real discrimination from a shifted decision threshold, recall minus
-false-positive rate, has mean **0.357** and standard deviation **0.051**, while its two components
+false-positive rate, has mean **0.358** and standard deviation **0.049**, while its two components
 range over 0.14 to 0.59 and 0.54 to 0.81 respectively. The parts move a great deal. The difference
 between them barely moves.
 
@@ -339,7 +389,7 @@ between them barely moves.
 |---|---|---|---|---|
 | DeBERTa-v3-xsmall | 21 | 0.334 | 0.728 | 0.394 |
 | Teachers | 5 | 0.301 | 0.690 | 0.388 |
-| BERT-mini | 44 | 0.390 | 0.765 | 0.375 |
+| BERT-mini | 62 | 0.371 | 0.744 | 0.372 |
 | DistilBERT | 21 | 0.238 | 0.607 | 0.369 |
 | BERT-small | 21 | 0.380 | 0.713 | 0.333 |
 | BiLSTM | 21 | 0.336 | 0.623 | 0.287 |
@@ -351,12 +401,14 @@ points on a single trade-off curve rather than different curves. The worst margi
 direction: whatever ability these models have to tell implied abuse from harmless sarcasm comes from
 pre-training, and nothing we added to the objective moves it.
 
-**The threshold-free measure says the same thing about the headline student.** Over the 25
-pre-trained BERT-mini models analysed, which cover every objective and committee, four temperatures,
-the T, alpha and delta sweeps, every ablation and both controls, sarcasm-discrimination AUC has mean
-0.771 and standard deviation 0.005, from 0.756 to 0.777. The randomly initialised student scores
-0.613. Over the same 25 models the operating point at a 0.5 threshold moves far more: recall on
+**The threshold-free measure says the same thing about the headline student.** Over the 28
+in-sample pre-trained BERT-mini models analysed, which cover every objective and committee, seven
+temperatures, the T, alpha and delta sweeps, every ablation and both controls, sarcasm-discrimination
+AUC has mean 0.771 and standard deviation 0.004, from 0.756 to 0.777. The randomly initialised student
+scores 0.613. Over the same 28 models the operating point at a 0.5 threshold moves far more: recall on
 ironic abuse from 0.758 to 0.821 and the false-positive rate from 0.343 to 0.448, correlated at +0.87.
+The five out-of-sample arms of Section 5.3c are the only trained variants that leave the band, and
+they leave it downward.
 
 **This is why the paper reports a threshold-free area and not a recall.** Recall at a fixed cut
 measures how readily a model fires. Across a hundred models, that is all it measures.
@@ -433,17 +485,19 @@ about reproducibility that a field publishing three-decimal differences should n
 
 **Seeds.** Three per configuration, one for ablations, controls and sweeps. Differences are read from
 bootstrap intervals, not from seed variance, and single-seed rows are treated as indicative only. The
-threshold-free probe analysis (Sections 5.3b, 5.6 and the end of 5.7) covers the first seed of each
-configuration; the three sharpest temperatures were trained after it ran and are not yet in it.
+threshold-free probe analysis (Sections 5.3b, 5.3c, 5.6 and the end of 5.7) covers the first seed of
+each configuration.
+
+**The out-of-sample arms take more optimisation steps.** With the transfer set an epoch covers
+76,620 rows against 34,607, so those students see 2.2 times the updates of every other run. The
+hard-label arm shares the steps and gains 0.002, which bounds the explanation; a fine-tune-only run
+at matched steps would measure it, and has not been run.
 
 **Teacher variance is not estimated.** Each teacher is trained once.
 
 **The heterogeneous comparison is confounded.** DeBERTa-v3-xsmall is simply a weaker model on this
 task than the BERT-lineage students it is compared against, so the student swap mixes architecture
 family with model quality. The hidden-state term is the controlled version of that question.
-
-**The routing measurement pools every cached teacher.** Section 5.3b says what that does and does not
-change; the per-committee measurement replaces it in the next session.
 
 **Probes are rule-built, not hand-verified.** About 1,000 items each, with a 300-item human-annotated
 subset in progress. Probe metrics are reported only for models trained on Twitter-domain data; on a

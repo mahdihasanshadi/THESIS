@@ -283,6 +283,34 @@ not, and a committee is the right thing to label it with. The audit then explain
 grid found nothing, which is a stronger paper than either half alone. If prediction 1 fails, the
 audit gains one more measured negative and the branch manuscript stands.
 
+**Outcome, 21 September (Kaggle v5, 2.11 h, 146 finished runs).** Scored by
+`scripts/transfer_verdict.py` against the predictions above; BERT-mini fine-tune-only is 0.8393 ± 0.0003.
+
+| Arm | Macro-F1 | Against fine-tune-only |
+|---|---|---|
+| Single-teacher KD + transfer set | 0.8466 ± 0.0016 | +0.0073 [-0.0003, +0.0150] |
+| Uniform committee + transfer set | 0.8462 ± 0.0016 | +0.0070 [-0.0001, +0.0144] |
+| Uniform committee + DeBERTa + transfer set | 0.8477 ± 0.0026 | +0.0084 [+0.0007, +0.0164] |
+| Out-of-sample (kNN) weighting + transfer set | 0.8484 ± 0.0011 | +0.0091 [+0.0020, +0.0165] |
+| Hard pseudo-labels + transfer set | 0.8412 ± 0.0013 | +0.0020 [-0.0062, +0.0104] |
+
+1. **Not met as written.** The pre-registered arm gains +0.0070, below the 0.010 asked for, and its
+   interval touches zero. Two arms of the same family clear zero (the DeBERTa committee and the
+   corrected weighting), and every one of the twelve soft-label seeds (0.8444 to 0.8501) sits above
+   every fine-tune-only seed (0.8389 to 0.8395). The effect is real and smaller than predicted.
+2. **Failed.** The committee is not the better labeller for the student: -0.0003 [-0.0061, +0.0056]
+   against one teacher.
+3. **Held.** The corrected weighting adds +0.0021 [-0.0017, +0.0082] over averaging, inside the ceiling
+   F29 set. On the transfer set its weights stay near uniform (entropy ratio 0.993) because the
+   teachers' local accuracies there differ by 0.03 (0.767 / 0.798 / 0.794).
+4. **Held.** Hard pseudo-labels gain +0.0020 where soft labels gain +0.0070; the difference, -0.0050
+   [-0.0118, +0.0016], is the soft labels' share, with an interval that includes zero.
+5. **Failed downward.** Sarcasm-discrimination AUC falls for three of the five arms (0.753, 0.753,
+   0.727; the single-teacher and DeBERTa arms stay at 0.765 and 0.762). See F32.
+
+By the rule written above, the route as a *multi-teacher* result is closed: the committee, the
+weighting and the specialist add nothing out of sample either. What the run found instead is F31.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.
@@ -693,6 +721,13 @@ In the four-teacher committee the students trained with, the specialist's mean w
   driver measures each trained committee separately, into `weight_routing/<committee>/`, the tau
   diagnostic likewise runs on the homogeneous committee, and the tables prefer the per-committee files.
 
+*21 September, measured per trained committee (v5).* In the `spec` committee at tau = 1 the
+specialist's contrast is +0.0027 [+0.0018, +0.0036] on a uniform weight of 0.25, HateBERT's +0.0044,
+BERT-large's -0.0060, irony's -0.0011; at tau = 0.05 they are +0.0187, +0.0235, -0.0347 and -0.0075.
+In the homogeneous committee HateBERT is the only teacher that gains on indirect abuse (+0.0081 at
+tau = 1, +0.0449 at 0.05). The pooled estimate above overstated the specialist's share: in the
+committee the students trained with, it is a hundredth of the uniform weight.
+
 ### F25. What the tweet students know about abuse does not include implication
 BERT-mini trained on tweets, applied with no further training to the implicit benchmark's 2,064 test
 posts (seed 1). It calls 81.0 per cent of them abusive against a true rate of 35.7 per cent (binary
@@ -793,6 +828,56 @@ them runs, every absolute BERT-mini and BERT-small number on Kaggle should be re
 under-trained by four points, which is also why both sit below the classical floor; the comparisons
 within the grid remain valid because every run shares the condition.
 
+### F31. Distillation's gain is in the data the student imitates on, not in the committee or its weighting
+Kaggle v5, 21 September: the D19 arms on BERT-mini, three seeds each, beside the in-sample runs of
+the same objectives (F3, F6, F22).
+
+| Objective | Labelled split only (in sample) | + 42,013 unlabelled tweets (out of sample) |
+|---|---|---|
+| Single teacher (BERT-large) | 0.8405 ± 0.0017 | 0.8466 ± 0.0016 |
+| Uniform committee | 0.8385 ± 0.0018 | 0.8462 ± 0.0016 |
+| Uniform committee + DeBERTa | 0.8378 ± 0.0024 | 0.8477 ± 0.0026 |
+| Reliability-weighted committee | 0.8378 ± 0.0011 (in-sample weights) | 0.8484 ± 0.0011 (out-of-sample weights) |
+| Hard labels only | 0.8393 ± 0.0003 (gold; fine-tune only) | 0.8412 ± 0.0013 (gold + committee pseudo-labels) |
+
+Every soft-label objective gains 0.006 to 0.011 from the transfer set (one teacher +0.0061 [-0.0009,
++0.0133]; the committee +0.0077 [+0.0000, +0.0155]), and the gain is the same whatever the labeller:
+the four soft-label arms lie within 0.0022 of each other. Hard pseudo-labels on the same text, with
+the same number of optimisation steps, give +0.0020, so most of the gain is carried by the soft labels
+rather than by the extra text or the extra steps. Over the whole tweet grid the intervals that exclude
+zero are now three: removing pre-training, and two of these arms.
+
+The gain lands where the in-sample runs never moved: F1 on `other_cyberbullying` 0.707 -> 0.710 to
+0.720 and on `not_cyberbullying` 0.644 -> 0.655 to 0.663, the two classes that confuse each other.
+Calibration goes the other way: ECE 0.042 for fine-tuning and for the hard-label arm, 0.076 to 0.080
+for every soft-label arm, in sample or out.
+
+This is the constructive half of F28 and F29. On the training split the teachers' soft labels are the
+gold labels and distillation reduces to fine-tuning; on text they have not fitted, their soft labels
+carry information the gold labels do not, and the student receives it. It is a distillation result,
+not a multi-teacher result, and it is modest: +0.7 to +0.9 macro-F1 on an 11M student from 1.2 times
+the training split in unlabelled text, in one session. Whether it grows with more text is the open
+question that decides whether it can lead a paper (open question 7).
+
+Two limits. The transfer arms take 2.2 times the optimisation steps of fine-tuning (76,620 rows per
+epoch against 34,607); the hard-label arm shares those steps and gains 0.002, which bounds the
+steps-alone explanation but does not measure it, and a fine-tune-only run at matched steps should.
+And the absolute BERT-mini numbers remain subject to F30.
+
+### F32. The transfer set moves the student's operating point on sarcasm, and not towards implication
+Seed 1 of each transfer arm against fine-tune-only (sarcasm-discrimination AUC 0.773, recall 0.792
+at a false-positive rate of 0.395 at the 0.5 threshold): one teacher 0.765 (0.692 / 0.308), the
+DeBERTa committee 0.762 (0.712 / 0.350), the uniform committee 0.753 (0.657 / 0.302), the corrected
+weighting 0.753 (0.658 / 0.304), hard pseudo-labels 0.727 (0.700 / 0.390). Every transfer-trained
+student fires less on sarcasm of both kinds, and three of the five rank ironic abuse against benign
+sarcasm slightly worse than any of the 28 in-sample variants, whose AUC spans 0.756 to 0.777 (mean
+0.771, sd 0.004; the three sharp-tau runs, analysed in v5, sit at 0.772). The transfer text is
+offensive-language data (Davidson, OLID) in which abuse is mostly explicit, so what the teachers'
+soft labels teach there is explicit abuse; nothing in the set carries the distinction the probes
+measure. The gain of F31 is a task gain, not an implication gain, which is what F19 and F23 predict,
+and it says that if a transfer set is to help with implication, its composition is the first thing
+to change, not its size.
+
 ---
 
 ## 5. What the paper may and may not claim
@@ -833,13 +918,21 @@ within the grid remain valid because every run shares the condition.
 - One of the two widely used corpora is materially dirty (F1). That the two do not transfer to each
   other (F9) is measured on the laptop only and waits for the Wikipedia grid (F26).
 - A deployment profile a practitioner can act on (F11).
+- Where distillation's gain is: on 42,013 unlabelled in-domain tweets a single teacher's soft labels
+  raise the 11M student by 0.006 to 0.009 macro-F1, every soft-label seed above every no-teacher
+  seed, while the same objectives on the labelled split gave nothing; the committee, the corrected
+  weighting and hard pseudo-labels add nothing to that (F31). The gain is a task gain and leaves
+  sarcasm discrimination where it was or slightly lower (F32).
 
 **May not claim:**
 - That D-MTHD beats uniform averaging. It does not, at any tau from 0.05 to 5 (F22).
 - That the method beats the no-teacher control on the headline student. Six paired bootstrap
   intervals, all containing zero (F3, F23).
-- That distillation significantly improves any student. It raises every one, within test-set noise
-  (F27).
+- That in-sample distillation improves any student. It raises every one, within test-set noise
+  (F27). Out of sample it does, on the headline student, by less than a point (F31); that the gain
+  grows with more text, or holds on the other students, has not been measured.
+- That a committee labels a transfer set better than one teacher, for the student. It does not
+  (F31), although the committee's own predictions are better (F29).
 - Anything about BERT-mini or BERT-small in absolute terms, until the environment discrepancy in F17
   is resolved. The *comparisons within* the Kaggle grid are valid because everything in it was
   trained the same way; the absolute numbers are not yet trustworthy.
@@ -879,6 +972,11 @@ within the grid remain valid because every run shares the condition.
 6. What is the human agreement on sarcastic abuse? The 300-item annotation answers this, and it also
    tells us how much of the benign-sarcasm probe is mislabelled. F14's 346 disagreements are the
    same question measured on a different corpus.
+7. Does the out-of-sample gain grow with the transfer set? F31 measures one size, 1.2 times the
+   training split, and gets +0.007 to +0.009. A curve over about 10,000, 42,000 and 100,000 or more
+   unlabelled tweets (TweetEval's other configurations and whatever the provenance rule allows) on
+   BERT-mini, with a fine-tune-only run at matched optimisation steps as the control, decides
+   whether the constructive result can lead the paper or closes it. About three GPU-hours.
 
 ---
 
@@ -917,6 +1015,12 @@ Worth keeping because the paper's framing came out of these turns, and because a
    mechanism that teaches implication" to "here is what distillation does and does not transfer about
    implication, measured", with the implicit benchmark as the one place a constructive result could
    still come from.
+9. **"The gain is in the data, not the committee."** 21 September. The transfer set was the one
+   lever the audit left, and it moved the student: +0.007 to +0.009 with every seed above every
+   no-teacher seed, from soft labels on text the teachers had not fitted. One teacher does it as well
+   as three; the weighting and the specialist add nothing here either; and the gain is in the task,
+   not in implication. The paper's constructive sentence is now "distil where the teacher is
+   uncertain", and whether that sentence leads the paper or closes it depends on one more run.
 
 ---
 

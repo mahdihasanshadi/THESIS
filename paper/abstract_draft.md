@@ -125,7 +125,10 @@ one student it spans only 0.756 to 0.777 AUC, while a randomly initialised stude
 133 models, recall on ironic abuse and false positives on harmless sarcasm rise together (r = 0.71), so
 recall at a fixed threshold, the usual report, measures readiness to fire rather than understanding.
 And tweet-trained students rank implied hate on a corpus that annotates it at 0.60 AUC, against 0.82
-for the same architecture trained there.
+for the same architecture trained there. The one intervention that moves the student is the data: on
+42,013 unlabelled in-domain tweets a single teacher's soft labels raise it by 0.007 to 0.009 macro-F1,
+with every seed above every no-teacher seed, while the committee, its weighting and hard
+pseudo-labels add nothing to that; the gain is in the task, not in implication.
 
 We release the evaluation protocol, a single-source implicit-abuse benchmark with per-row manifests
 that verify a rebuild without redistributing text, and evidence that pooling sources into such a

@@ -72,6 +72,17 @@ BERT-mini & the same knowledge by pre-training, not distillation & D-MTHD + impl
 BERT-mini & the sharpest weighting against averaging & Uniform multi-teacher & D-MTHD, tau = 0.05 & 1 & +0.0020 & [-0.0042, +0.0077] & no \\
 BERT-mini & the sharpest weighting against the default & D-MTHD & D-MTHD, tau = 0.05 & 1 & +0.0007 & [-0.0008, +0.0023] & no \\
 BERT-mini & what pre-training is worth & Fine-tune only & randomly initialised student & 1 & -0.0488 & [-0.0603, -0.0376] & yes \\
+BERT-mini & one teacher with a transfer set against fine-tuning & Fine-tune only & Single-teacher KD + transfer set & 3 & +0.0073 & [-0.0003, +0.0150] & no \\
+BERT-mini & the committee with a transfer set against fine-tuning & Fine-tune only & Uniform multi-teacher + transfer set & 3 & +0.0070 & [-0.0001, +0.0144] & no \\
+BERT-mini & the DeBERTa committee with a transfer set against fine-tuning & Fine-tune only & Uniform multi-teacher (het.) + transfer set & 3 & +0.0084 & [+0.0007, +0.0164] & yes \\
+BERT-mini & corrected weighting with a transfer set against fine-tuning & Fine-tune only & Out-of-sample reliability weighting + transfer set & 3 & +0.0091 & [+0.0020, +0.0165] & yes \\
+BERT-mini & hard pseudo-labels with a transfer set against fine-tuning & Fine-tune only & Committee hard pseudo-labels + transfer set & 3 & +0.0020 & [-0.0062, +0.0104] & no \\
+BERT-mini & what the transfer set adds to one teacher & Single-teacher KD & Single-teacher KD + transfer set & 3 & +0.0061 & [-0.0009, +0.0133] & no \\
+BERT-mini & what the transfer set adds to the committee & Uniform multi-teacher & Uniform multi-teacher + transfer set & 3 & +0.0077 & [+0.0000, +0.0155] & yes \\
+BERT-mini & is the committee the better labeller & Single-teacher KD + transfer set & Uniform multi-teacher + transfer set & 3 & -0.0003 & [-0.0061, +0.0056] & no \\
+BERT-mini & does the DeBERTa teacher help as a labeller & Uniform multi-teacher + transfer set & Uniform multi-teacher (het.) + transfer set & 3 & +0.0015 & [-0.0045, +0.0072] & no \\
+BERT-mini & does out-of-sample reliability beat averaging & Uniform multi-teacher + transfer set & Out-of-sample reliability weighting + transfer set & 3 & +0.0021 & [-0.0017, +0.0082] & no \\
+BERT-mini & soft labels against hard pseudo-labels & Uniform multi-teacher + transfer set & Committee hard pseudo-labels + transfer set & 3 & -0.0050 & [-0.0118, +0.0016] & no \\
 \bottomrule
 \end{tabular}
 \end{table}

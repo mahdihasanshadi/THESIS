@@ -144,6 +144,19 @@ than re-weighting the same knowledge. Its predictions are written down; one resu
 the tweet notebook decides them. If prediction 1 holds, Decision 1 becomes a constructive paper whose
 audit explains why the in-sample grid found nothing; if it fails, B2 stands.
 
+**Outcome, 21 September (v5).** Prediction 1 was not met as written: the committee arm gains +0.0070
+[-0.0001, +0.0144], below the 0.010 asked for, though two arms of the family clear zero and every
+soft-label seed sits above every no-teacher seed (DECISIONS F31). The committee is not a better
+labeller than one teacher, the corrected weighting adds +0.002, hard pseudo-labels +0.002, and the
+sarcasm AUC does not rise (F32). So the multi-teacher method is closed out of sample too. What the run
+found is a distillation recipe: the student gains only when it imitates a teacher on text the teacher
+has not fitted. The recommendation keeps its shape and changes its tone: B2, with F31 as its
+constructive last section ("where the gain is"), and one more run, the transfer-set scaling curve of
+open question 7 (about three GPU-hours, with a matched-steps fine-tuning control), before deciding
+whether that section can lead. If the gain grows with the set, the title can turn constructive, for
+example *Distil Where the Teacher Is Uncertain: An Audit of Multi-Teacher Distillation for
+Abusive-Language Detection*; if it does not, B2 stands as written with the recipe as its coda.
+
 ---
 
 ## Decision 2. How the remaining GPU quota is spent — this one is needed now
@@ -158,7 +171,8 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | Sharp tau values, 0.05 / 0.1 / 0.2, one seed each | 20 min | done, 17 September (v4) |
 | fp16 control for the narrow students | 40 min | done (v2) |
 | v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
-| Per-committee routing and probes for the sharp tau runs | under 30 min, including the resume | queued for the next tweet session |
+| v5: five out-of-sample arms, per-committee routing, probes for the sharp tau runs | 2.11 h | done, 21 September |
+| v6 (proposed): transfer-set scaling curve on BERT-mini, with a matched-steps fine-tuning control | ~3 h | not started; open question 7 |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 

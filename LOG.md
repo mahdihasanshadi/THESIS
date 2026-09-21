@@ -711,3 +711,22 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   the Kaggle run is in. The manuscript as it stands is on the branch `paper-b2-audit`
   (`paper/PAPER.md`), so the framing decision does not block this work. Next: rerun the tweet notebook
   with v4's output attached, about 2.5 GPU-hours.
+
+## 2026-09-21
+
+- **Kaggle tweets v5 finished cleanly in 2.11 h:** the five out-of-sample arms, per-committee routing,
+  the tau diagnostic on the homogeneous committee, probes and the implicit analysis for the three
+  sharp-tau runs; 146 finished runs; the archive (881 files, 14.3 MB) now carries every analysis file,
+  so no rebuild from the log was needed. Tables regenerated from it are identical to Kaggle's on every
+  numeric cell; `significance.csv` has 77 rows, three excluding zero.
+- **Scored against D19 by `scripts/transfer_verdict.py`.** Prediction 1 not met as written (the
+  committee arm +0.0070 [-0.0001, +0.0144] against a bar of 0.010); 2 failed (the committee is not a
+  better labeller than one teacher, -0.0003); 3 held (corrected weighting +0.0021); 4 held (hard
+  pseudo-labels +0.0020 against soft +0.0070); 5 failed downward (AUC 0.753, 0.753, 0.727 for three
+  arms). Two arms exclude zero against fine-tuning (+0.0084 and +0.0091) and every soft-label seed
+  lies above every fine-tune-only seed: F31, the gain is in the data the student imitates on, not in
+  the committee or its weighting; F32, the transfer set moves the sarcasm operating point and not
+  towards implication. Results draft 5.3c added, 5.3b now reports per-committee routing (the
+  specialist's contrast at the trained tau is +0.0027 on a uniform 0.25, F24 amended), 5.7 and 5.10
+  updated. OPEN_DECISIONS: the recommendation stays B2 with F31 as its constructive section; one
+  scaling-curve run with a matched-steps control (open question 7) decides whether it can lead.
