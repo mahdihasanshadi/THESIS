@@ -16,6 +16,10 @@ Sources, used as text only; their labels are dropped before anything else reads 
   davidson  Davidson et al. 2017, hate_speech_offensive
   raw       the tweets our own preparation dropped for carrying more than one label. Their labels are
             unreliable; their text is in-domain and in no split.
+  sentiment, emoji, emotion
+            generic tweets from the other TweetEval configurations, for the size curve of DECISIONS
+            D20: the same platform, but not abuse-focused. With --base they extend an existing set,
+            whose rows are kept first and verbatim so that a prefix of the extended file is the base.
 Not used: the TweetEval irony configuration (SemEval-2018 Task 3), which is the irony teacher's own
 fine-tuning data and would put that teacher back in sample; and Founta et al. 2018, excluded under the
 provenance rule in paper/setup_draft.md.
@@ -39,6 +43,9 @@ SOURCES = {
     "olid": ("cardiffnlp/tweet_eval", "offensive", "text"),
     "hateval": ("cardiffnlp/tweet_eval", "hate", "text"),
     "davidson": ("tdavidson/hate_speech_offensive", None, "tweet"),
+    "sentiment": ("cardiffnlp/tweet_eval", "sentiment", "text"),
+    "emoji": ("cardiffnlp/tweet_eval", "emoji", "text"),
+    "emotion": ("cardiffnlp/tweet_eval", "emotion", "text"),
 }
 
 
@@ -75,6 +82,7 @@ def main():
     ap.add_argument("--probes", default=None, help="directory of probe CSVs to keep the transfer set disjoint from")
     ap.add_argument("--implicit_dir", default=None, help="the implicit benchmark's directory, likewise")
     ap.add_argument("--raw", default=None, help="raw corpus CSV, to recover the conflicting-label tweets")
+    ap.add_argument("--base", default=None, help="an existing transfer CSV to extend: its rows come first, verbatim")
     ap.add_argument("--sources", default="olid,hateval,davidson")
     ap.add_argument("--min_tokens", type=int, default=2)
     ap.add_argument("--seed", type=int, default=42)
@@ -122,6 +130,11 @@ def main():
         for f in sorted(os.listdir(args.implicit_dir)):
             if f.endswith(".csv"):
                 where[f"implicit/{f}"] = keys_of(os.path.join(args.implicit_dir, f))
+    base = None
+    if args.base:
+        base = pd.read_csv(args.base)
+        where["base"] = set(base["text"].map(clean_text).map(normalize_for_matching))
+        report["base"] = {"file": os.path.abspath(args.base), "rows": int(len(base))}
     report["rows_dropped_overlap"] = {}
     for name, ks in where.items():
         hit = df[KEY].isin(ks)
@@ -134,11 +147,15 @@ def main():
     df = df.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
     if args.limit:
         df = df.head(args.limit)
-        report["rows_written"] = int(len(df))
+    df = df[["text", "source"]]
+    if base is not None:
+        df = pd.concat([base[["text", "source"]], df], ignore_index=True)
+    report["rows_written"] = int(len(df))
     ensure_dir(os.path.dirname(os.path.abspath(args.out)))
-    df[["text", "source"]].to_csv(args.out, index=False, encoding="utf-8")
+    df.to_csv(args.out, index=False, encoding="utf-8")
     report["seed"], report["output"] = args.seed, os.path.abspath(args.out)
-    save_json(report, os.path.join(os.path.dirname(os.path.abspath(args.out)), "transfer_report.json"))
+    stem = os.path.splitext(os.path.basename(args.out))[0]
+    save_json(report, os.path.join(os.path.dirname(os.path.abspath(args.out)), f"{stem}_report.json"))
     print("Transfer set report")
     for k, v in report.items():
         print(f"  {k}: {v}")

@@ -11,13 +11,14 @@ A comparison whose runs are missing is skipped, and the seed count is shown beca
 controls and sweeps have one seed only.
 """
 import argparse
+import json
 import os
 from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
 
 from .aggregate import paired_bootstrap
-from .tables import ABLATION_LABEL, MODE_LABEL, STUDENT_LABEL, write
+from .tables import ABLATION_LABEL, SCALE_RE, STUDENT_LABEL, mode_label, write
 
 # baseline, candidate, and the question the row answers
 EVERY_STUDENT = [("ft", "skd", "does one teacher help"),
@@ -57,7 +58,42 @@ HEADLINE_ONLY = [("ft", "uniform_spec", "does a committee with the specialist he
 
 
 def label(mode):
-    return MODE_LABEL.get(mode, ABLATION_LABEL.get(mode, mode.replace("sweep_tau_", "D-MTHD, tau = ")))
+    return mode_label(mode, ABLATION_LABEL.get(mode, mode.replace("sweep_tau_", "D-MTHD, tau = ")))
+
+
+def scaling_jobs(runs, headline):
+    """The size-curve comparisons (D20), built from whatever arms exist: each arm against fine-tuning,
+    each size against the next smaller one, the composition control against the abuse-domain arm of the
+    same size, and the base-size arm against fine-tuning at matched steps."""
+    home = os.path.join(runs, headline)
+    arms = sorted(d for d in os.listdir(home) if SCALE_RE.match(d)) if os.path.isdir(home) else []
+
+    def rows_of(arm):           # the transfer rows an arm trained on, from any of its seeds
+        for seed in sorted(os.listdir(os.path.join(home, arm))):
+            try:
+                with open(os.path.join(home, arm, seed, "results.json"), encoding="utf-8") as f:
+                    return int(json.load(f).get("transfer_rows") or 0)
+            except (OSError, ValueError):
+                continue
+        return 0
+
+    sized = sorted((rows_of(a), a) for a in arms if not SCALE_RE.match(a).group(2))
+    jobs = [("ft", a, f"one teacher with {a.split('_')[-1]} transfer rows against fine-tuning") for _, a in sized]
+    jobs += [(sized[i - 1][1], sized[i][1], "does the gain grow from the smaller set") for i in range(1, len(sized))]
+    for a in arms:
+        m = SCALE_RE.match(a)
+        if m.group(2):
+            twin = f"{m.group(1)}_transfer_{m.group(3)}"
+            jobs.append(("ft", a, "generic tweets of the same size against fine-tuning"))
+            if twin in arms:
+                jobs.append((a, twin, "abuse-domain text against generic text of the same size"))
+    if sized:
+        jobs.append(("ft", "ft_matched", "more fine-tuning steps alone"))
+        # the matched-steps control follows the base-size arm, which is the composition control's twin
+        generic = [rows_of(a) for a in arms if SCALE_RE.match(a).group(2)]
+        base = next((a for n, a in sized if generic and n == generic[0]), sized[-1][1])
+        jobs.append(("ft_matched", base, "the transfer set against fine-tuning at matched steps"))
+    return jobs
 
 
 def one(job):
@@ -85,6 +121,7 @@ def main():
     students.sort(key=lambda s: s != args.headline)
     jobs = [(s, b, c, q, args.runs) for s in students for b, c, q in EVERY_STUDENT]
     jobs += [(args.headline, b, c, q, args.runs) for b, c, q in HEADLINE_ONLY]
+    jobs += [(args.headline, b, c, q, args.runs) for b, c, q in scaling_jobs(args.runs, args.headline)]
     jobs = [j for j in jobs if os.path.isdir(os.path.join(args.runs, j[0], j[1])) and os.path.isdir(os.path.join(args.runs, j[0], j[2]))]
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         rows = [r for r in pool.map(one, jobs) if r]

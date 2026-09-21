@@ -5,7 +5,7 @@
     PYTHONPATH=src python kaggle/run_benchmark.py --dataset implicit                        (downloads from the Hub)
 
 Stages, in the order `all` runs them: prepare | specialist | teachers | cache | students | transfer |
-sweep | probes | robustness | quant | bench | aggregate.
+transfer_scale | sweep | probes | robustness | quant | bench | aggregate.
 Every stage skips work whose results.json already exists, so a killed session resumes where it stopped.
 
 Design (the comparison grid): three teacher committees x two student families.
@@ -33,7 +33,9 @@ RESUME_FROM=/kaggle/input/<that-output>; its runs/ and cache/ trees are copied i
 
 Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HETERO_STUDENTS, SEEDS,
 MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1,
-SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug).
+SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug); for the transfer stages
+TRANSFER, TRANSFER_SOURCES, TRANSFER_STUDENTS, TRANSFER_ARMS, KNN_K, TRANSFER_SCALE, TRANSFER_SIZES,
+TRANSFER_SCALE_SOURCES, TRANSFER_SCALE_COMMITTEE.
 """
 import argparse
 import atexit
@@ -112,6 +114,14 @@ TRANSFER_STUDENTS = [s for s in os.environ.get("TRANSFER_STUDENTS", "").split(",
 TRANSFER_ARMS = [a for a in os.environ.get(
     "TRANSFER_ARMS", "skd_transfer,uniform_transfer,dmthd_knn_transfer,uniform_hetero_transfer,pseudo_transfer").split(",") if a]
 KNN_K = os.environ.get("KNN_K", "20")
+# The size curve (DECISIONS D20): nested subsets of the transfer set, as many generic tweets as the set
+# has abuse-domain ones (the composition control), larger sets that add generic tweets, and fine-tuning
+# alone for as many updates as the base-size transfer arm (the steps control). One teacher labels, since
+# the committee labelled no better (F31); TRANSFER_SCALE_COMMITTEE=1 adds the committee at the largest size.
+TRANSFER_SCALE = os.environ.get("TRANSFER_SCALE", "1") == "1"
+TRANSFER_SCALE_SOURCES = os.environ.get("TRANSFER_SCALE_SOURCES", "sentiment,emoji,emotion")
+TRANSFER_SIZES = os.environ.get("TRANSFER_SIZES", "")   # empty: 5000,10000,21000,42013,84000,168000 (50,100 under LIMIT)
+TRANSFER_SCALE_COMMITTEE = os.environ.get("TRANSFER_SCALE_COMMITTEE", "0") == "1"
 # Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
 # before that so the notebook finishes cleanly with a downloadable output.
 TIME_BUDGET_S = float(os.environ.get("TIME_BUDGET_S", "39600"))
@@ -408,7 +418,7 @@ class Bench:
                 print(f"resuming: {src} -> {ROOT}/cache/{self.name}", flush=True)
                 shutil.copytree(src, f"{ROOT}/cache/{self.name}", dirs_exist_ok=True)
                 copied.append(src)
-            for suffix in ("_val", "_transfer"):           # the transfer stage's caches, ten minutes to rebuild
+            for suffix in ("_val", "_transfer", "_transfer_big"):   # the transfer stages' caches, minutes to rebuild
                 for src in sorted(set(glob.glob(os.path.join(src_root, "**", "cache", self.name + suffix), recursive=True))):
                     print(f"resuming: {src} -> {ROOT}/cache/{self.name}{suffix}", flush=True)
                     shutil.copytree(src, f"{ROOT}/cache/{self.name}{suffix}", dirs_exist_ok=True)
@@ -683,6 +693,71 @@ class Bench:
                            f"--cache {self.cache} --teachers {' '.join(ctags)} --transfer {csv} "
                            f"--transfer_cache {self.cache}_transfer {flags} --tag {arm}")
 
+    def transfer_scale(self):
+        """The size curve of DECISIONS D20 on the headline student, one teacher labelling: nested
+        prefixes of the transfer set (5k to 42k, abuse-domain text), the same number of generic tweets
+        (composition control), larger sets that append generic tweets (84k, 168k), and fine-tuning
+        alone for as many updates as the base-size arm (steps control). Predictions in D20."""
+        if not TRANSFER_SCALE or self.name != "tweets":
+            return
+        homo = self.committee("homo")
+        base = f"{self.data}/transfer.csv"
+        if not homo or not os.path.exists(base):
+            print("transfer_scale skipped: no base transfer set", flush=True)
+            return
+        import pandas as pd
+        big = f"{self.data}/transfer_big.csv"
+        if not os.path.exists(big):
+            implicit_dir = f"{ROOT}/data/implicit"
+            extra = f"--implicit_dir {implicit_dir}" if os.path.exists(f"{implicit_dir}/test_ood_ishate.csv") else ""
+            sh(f"python -m dmthd.prepare_transfer --data_dir {self.data} --out {big} --base {base} --probes {PROBES} "
+               f"--sources {TRANSFER_SCALE_SOURCES} {extra} {self.limit}", check=False)
+        if not os.path.exists(big):
+            print("extended transfer set unavailable (no internet?): transfer_scale skipped", flush=True)
+            return
+        n_base = len(pd.read_csv(base, usecols=["source"]))
+        n_big = len(pd.read_csv(big, usecols=["source"]))
+        n_train = int(LIMIT) if LIMIT else len(pd.read_csv(f"{self.data}/train.csv", usecols=["label"]))
+        if LIMIT:
+            n_base, n_big = min(n_base, int(LIMIT)), min(n_big, 2 * int(LIMIT))   # cache_teachers heads the split by LIMIT
+        tags = homo if TRANSFER_SCALE_COMMITTEE else homo[:1]
+        cache = f"{self.cache}_transfer_big"
+        meta = f"{cache}/meta.json"
+        if not (os.path.exists(meta) and not self.cache_dirty
+                and set(tags) <= {t["tag"] for t in json.load(open(meta))["teachers"]}):
+            shutil.rmtree(cache, ignore_errors=True)
+            dirs = " ".join(f"{self.runs}/teachers/{tag}" for tag in tags)
+            limit = f"--limit {2 * int(LIMIT)}" if LIMIT else ""
+            sh(f"python -m dmthd.cache_teachers --data_dir {self.data} --split transfer_big --out {cache} --teachers {dirs} "
+               f"{self.common} {limit}")
+        default_sizes = "50,100" if LIMIT else "5000,10000,21000,42013,84000,168000"
+        sizes = sorted({min(int(s), n_big) for s in (TRANSFER_SIZES or default_sizes).split(",") if s})
+
+        def k(n):
+            return f"{n // 1000}k" if n >= 1000 else str(n)
+
+        name, stag = self.student_list[0]
+        common = (f"--student {name} --data_dir {self.data} --batch {self.cfg['student_batch']} {self.fp} {self.common} "
+                  f"{self.limit} --cache {self.cache}")
+        via = f"--transfer {big} --transfer_cache {cache}" + (f" --transfer_limit {2 * int(LIMIT)}" if LIMIT else "")
+        arms = [(f"skd_transfer_{k(n)}", f"--epochs {STUDENT_EPOCHS} --mode skd --teachers {homo[0]} {via} --transfer_rows 0:{n}")
+                for n in sizes]
+        gen = min(n_base, n_big - n_base)
+        if gen > 0:
+            arms.append((f"skd_transfer_generic{k(gen)}",
+                         f"--epochs {STUDENT_EPOCHS} --mode skd --teachers {homo[0]} {via} --transfer_rows {n_base}:{n_base + gen}"))
+        ep = max(int(STUDENT_EPOCHS), round(int(STUDENT_EPOCHS) * (n_train + n_base) / max(n_train, 1)))
+        arms.append(("ft_matched", f"--epochs {ep} --patience {ep} --mode ft"))
+        if TRANSFER_SCALE_COMMITTEE and sizes:
+            arms.append((f"uniform_transfer_{k(sizes[-1])}",
+                         f"--epochs {STUDENT_EPOCHS} --mode uniform --teachers {' '.join(homo)} {via} --transfer_rows 0:{sizes[-1]}"))
+        for arm, flags in arms:
+            for seed in SEEDS:
+                out = f"{self.runs}/{stag}/{arm}/seed{seed}"
+                if not done(out):
+                    check_budget(f"{stag}/{arm}/seed{seed}")
+                    sh(f"python -m dmthd.train_student {common} --seed {seed} --out_dir {out} {flags} --tag {arm}")
+
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]
         for _, stag in self.student_list:
@@ -837,7 +912,8 @@ if __name__ == "__main__":
     # probes after sweep: the implicit analysis covers every run of the headline student, and in the
     # other order the sweep runs finished after it had passed. Version 4 of the tweet run left its three
     # new tau values without a sarcasm-discrimination AUC that way.
-    order = ["prepare", "specialist", "teachers", "cache", "students", "transfer", "sweep", "probes", "robustness", "quant", "bench", "aggregate"]
+    order = ["prepare", "specialist", "teachers", "cache", "students", "transfer", "transfer_scale", "sweep", "probes",
+             "robustness", "quant", "bench", "aggregate"]
     stages = order if a.stage == "all" else [a.stage]
     ran_out = None
     for st in stages:

@@ -730,3 +730,28 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   specialist's contrast at the trained tau is +0.0027 on a uniform 0.25, F24 amended), 5.7 and 5.10
   updated. OPEN_DECISIONS: the recommendation stays B2 with F31 as its constructive section; one
   scaling-curve run with a matched-steps control (open question 7) decides whether it can lead.
+- **v6 built (D20): the size curve.** `prepare_transfer --base` extends an existing set with generic
+  TweetEval tweets (sentiment, emoji, emotion; 163,709 distinct texts before screening), keeping the base
+  rows first and verbatim so that prefixes of the extended file are nested subsets of the base;
+  `train_student --transfer_rows a:b` trains on a slice; driver stage `transfer_scale` runs, on the
+  headline student with one teacher labelling, the prefixes 5k / 10k / 21k / 42k, the same number of
+  generic tweets as the composition control, 84k and 168k, and fine-tuning for as many updates as the
+  42k arm as the steps control; `tables.py` writes a `scaling` table and `significance.py` adds the
+  curve's comparisons from whatever arms exist. Predictions and the decision rule for the title are in
+  D20. Smoke-tested end to end on CPU.
+- **Reviewed Prasomphan (2025, IEEE Access 13:95618) at Mahdi's request**, cited by teammates as
+  proof that multi-teacher distillation "works". What it does: three Thai teachers (ThaiBERT,
+  WangchanBERTa, mT5) fine-tuned on the training split, soft labels averaged with static
+  performance-based weights (T = 3), and an XGBoost student on SBERT + PCA features trained with
+  alpha 0.7 CE + beta 0.3 KL, then fine-tuned on hard labels; three sentiment/toxicity corpora
+  relabelled as bullying (negative = bullying). Reported accuracy 0.925 / 0.905 / 0.910. What it
+  lacks, in our terms: no XGBoost-on-the-same-features-without-teachers control (the P2 gap again),
+  no teacher accuracies, no seeds or intervals, no per-instance weighting (the weights are one
+  number per teacher), and the tokenisation-mismatched baselines (fine-tuned BERT 0.734 / 0.645,
+  DistilBERT 0.712 / 0.640, voting 0.701 / 0.644) sit below the majority class (0.745 Wisesight,
+  0.770 children's stories). Its own Table 4 has single-teacher distillation above multi-teacher on
+  Wisesight (0.879 vs 0.854), which is F29 in someone else's data. Algorithm 1 updates XGBoost "by
+  the gradient of L_total" per sample, which is not how gradient boosting trains; whether the
+  teacher probabilities are targets or input features is left ambiguous (Section III.D says both).
+  Use in the paper: a related-work example of an unaudited claim, cited neutrally
+  (`prasomphan2025mtkd`); it changes nothing in D19/D20.

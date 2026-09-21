@@ -172,7 +172,7 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | fp16 control for the narrow students | 40 min | done (v2) |
 | v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
 | v5: five out-of-sample arms, per-committee routing, probes for the sharp tau runs | 2.11 h | done, 21 September |
-| v6 (proposed): transfer-set scaling curve on BERT-mini, with a matched-steps fine-tuning control | ~3 h | not started; open question 7 |
+| v6: transfer-set size curve on BERT-mini (5k to 168k), a composition control and a matched-steps control | ~3.5 h | built 21 September (D20); to run |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 

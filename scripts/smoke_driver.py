@@ -67,6 +67,31 @@ for arm in ("skd_transfer", "uniform_transfer", "dmthd_knn_transfer", "pseudo_tr
 assert json.load(open(os.path.join(a.root, "runs", "tweets", "tiny", "dmthd_knn_transfer", "seed1", "results.json")))["weights"] == "knn"
 assert json.load(open(os.path.join(a.root, "runs", "tweets", "tiny", "pseudo_transfer", "seed1", "results.json")))["transfer_ce"] is True
 print("\ntransfer stage: set built unlabelled, knn weights present, five arms trained and analysed")
+big = os.path.join(a.root, "data", "tweets", "transfer_big.csv")
+assert os.path.exists(big), "the extended transfer set was not built"
+n_base = sum(1 for _ in open(tcsv, encoding="utf-8", errors="replace")) - 1
+assert sum(1 for _ in open(big, encoding="utf-8", errors="replace")) > n_base, "the extended set is not larger than the base"
+assert open(big, encoding="utf-8").readline().strip().split(",") == ["text", "source"], "the extended set must be unlabelled"
+for arm, rows in (("skd_transfer_50", 50), ("skd_transfer_100", 100), ("skd_transfer_generic200", 200)):
+    r = os.path.join(a.root, "runs", "tweets", "tiny", arm, "seed1", "results.json")
+    assert os.path.exists(r), f"size-curve arm {arm} did not run"
+    assert json.load(open(r))["transfer_rows"] == rows, f"{arm} trained on the wrong number of transfer rows"
+r = os.path.join(a.root, "runs", "tweets", "tiny", "ft_matched", "seed1", "results.json")
+assert os.path.exists(r), "the matched-steps control did not run"
+assert json.load(open(r))["epochs_run"] == 2 and json.load(open(r))["transfer_rows"] == 0, "matched-steps control is wrong"
+env = {**os.environ, "PYTHONPATH": SRC}
+tables_out = os.path.join(a.root, "tables_tweets")
+for mod in ("tables", "significance"):
+    args = ["--runs", os.path.join(a.root, "runs", "tweets"), "--out", tables_out, "--headline", "tiny"]
+    if mod == "tables":
+        args += ["--data", os.path.join(a.root, "data", "tweets")]
+    if subprocess.run([sys.executable, "-m", f"dmthd.{mod}"] + args, env=env).returncode != 0:
+        sys.exit(f"DRIVER SMOKE FAILED at dmthd.{mod} on the smoke tree")
+scaling = open(os.path.join(tables_out, "scaling.csv"), encoding="utf-8").read()
+assert "generic tweets" in scaling and "matched optimisation steps" in scaling, "the scaling table lacks its control rows"
+sig = open(os.path.join(tables_out, "significance.csv"), encoding="utf-8").read()
+assert "matched steps" in sig and "does the gain grow" in sig, "the size-curve comparisons are missing from significance.csv"
+print("transfer_scale stage: extended set built, nested sizes, composition control and matched-steps control trained, tabled and tested")
 
 # 2. every teacher collapses
 for d in ("runs/tweets/teachers", "cache/tweets"):

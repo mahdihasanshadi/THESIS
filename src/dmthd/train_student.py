@@ -97,6 +97,10 @@ def main():
                     help="npz from dmthd.knn_reliability: out-of-sample weights for every row, training and transfer")
     ap.add_argument("--transfer_ce", action="store_true",
                     help="also apply the hard-label term to transfer rows, against the committee's pseudo-label")
+    ap.add_argument("--transfer_rows", default=None,
+                    help="'a:b': use only this slice of the transfer set (its rows are shuffled, so prefixes are nested subsets)")
+    ap.add_argument("--transfer_limit", type=int, default=0,
+                    help="head the transfer set to this many rows instead of --limit (smoke tests of the size curve)")
     args = ap.parse_args()
     if args.transfer and (args.mode == "ft" or not args.transfer_cache):
         raise SystemExit("--transfer needs a distillation mode and --transfer_cache")
@@ -139,18 +143,23 @@ def main():
         if has_soft:
             raise SystemExit("--transfer is not implemented for corpora with annotator fractions")
         tf = pd.read_csv(args.transfer)
-        if args.limit:
-            tf = tf.head(args.limit)
+        if args.transfer_limit or args.limit:
+            tf = tf.head(args.transfer_limit or args.limit)
         f_logits, f_pooled, _ = load_caches(args.transfer_cache, args.teachers, train_df=tf, labelled=False)
         assert f_logits.shape[1] >= len(tf), "transfer cache shorter than the transfer set: rebuild it"
+        lo, hi = 0, len(tf)
+        if args.transfer_rows:
+            a, b = args.transfer_rows.split(":")
+            lo, hi = int(a or 0), min(int(b) if b else len(tf), len(tf))
+        tf = tf.iloc[lo:hi]
         n_transfer = len(tf)
-        f_logits, f_pooled = f_logits[:, :n_transfer], [p[:n_transfer] for p in f_pooled]
+        f_logits, f_pooled = f_logits[:, lo:hi], [p[lo:hi] for p in f_pooled]
         pseudo = torch.softmax(f_logits, -1).mean(0).argmax(1).numpy()
         tf = pd.DataFrame({"text": tf["text"].map(str).values, "label": pseudo})
         t_logits = torch.cat([t_logits[:, :n_train], f_logits], 1)
         t_pooled = [torch.cat([p[:n_train], q], 0) for p, q in zip(t_pooled, f_pooled)]
         if aux_logits is not None:
-            f_aux = np.load(os.path.join(args.transfer_cache, "aux_irony.npz"))["logits"].astype(np.float32)[:n_transfer]
+            f_aux = np.load(os.path.join(args.transfer_cache, "aux_irony.npz"))["logits"].astype(np.float32)[lo:hi]
             aux_logits = torch.cat([aux_logits[:n_train], torch.from_numpy(f_aux)], 0)
         tr = pd.concat([tr[["text", "label"]], tf], ignore_index=True)
         label_mask = torch.cat([torch.ones(n_train), torch.full((n_transfer,), 1.0 if args.transfer_ce else 0.0)])
@@ -281,6 +290,7 @@ def main():
            "scheme": args.scheme, "seed": args.seed, "T": args.T, "tau": args.tau, "alpha": args.alpha, "beta": args.beta,
            "gamma": args.gamma, "delta": args.delta if aux_logits is not None else 0.0, "lr": lr, "epochs_run": len(history),
            "transfer_rows": n_transfer, "transfer_ce": bool(args.transfer_ce) if n_transfer else None,
+           "transfer_slice": [lo, hi] if n_transfer else None,
            "weights": ("knn" if args.knn_weights else (args.transfer_weights if n_transfer and args.mode == "dmthd" else None)),
            "best_val_macro_f1": best_f1, "params": count_params(best), "train_time_s": elapsed_before + timer.elapsed(),
            "test": compute_metrics(te["label"].values, probs, names)}

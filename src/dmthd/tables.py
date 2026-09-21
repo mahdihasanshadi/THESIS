@@ -14,6 +14,7 @@ Produces, when the data exists:
   implicit    the table the paper's claim is argued on: F1 on the hard class, sarcasm-discrimination
               AUC, and the false-positive rate on benign sarcasm that buys it
   sweeps      validation macro-F1 per hyper-parameter value
+  scaling     out-of-sample distillation against the size and composition of the transfer set (D20)
 Numbers come only from results.json / eval_*.json / bench_*.csv; nothing is typed by hand.
 """
 import argparse
@@ -35,7 +36,23 @@ MODE_LABEL = {"ft": "Fine-tune only", "skd": "Single-teacher KD", "uniform": "Un
               "uniform_transfer": "Uniform multi-teacher + transfer set",
               "uniform_hetero_transfer": "Uniform multi-teacher (het.) + transfer set",
               "dmthd_knn_transfer": "Out-of-sample reliability weighting + transfer set",
-              "pseudo_transfer": "Committee hard pseudo-labels + transfer set"}
+              "pseudo_transfer": "Committee hard pseudo-labels + transfer set",
+              "ft_matched": "Fine-tune only, matched optimisation steps"}
+SCALE_RE = re.compile(r"^(skd|uniform)_transfer_(generic)?(\d+k?)$")
+
+
+def mode_label(mode, default=None):
+    """A readable name for a run directory, including the size-curve arms, whose names carry the size."""
+    if mode in MODE_LABEL:
+        return MODE_LABEL[mode]
+    m = SCALE_RE.match(mode)
+    if m:
+        who = "Single-teacher KD" if m.group(1) == "skd" else "Uniform multi-teacher"
+        what = "generic tweets" if m.group(2) else "transfer rows"
+        return f"{who} + {m.group(3)} {what}"
+    return mode if default is None else default
+
+
 STUDENT_LABEL = {"bert-mini": "BERT-mini", "bert-small": "BERT-small", "distilbert": "DistilBERT",
                  "deberta-xsmall": "DeBERTa-v3-xsmall", "bilstm": "BiLSTM", "tiny": "BERT-tiny"}
 ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instance",
@@ -77,7 +94,8 @@ def collect(runs):
                "seed": r.get("seed"), "params": r.get("params"), "macro_f1": t.get("macro_f1"),
                "accuracy": t.get("accuracy"), "ece": t.get("ece"), "roc_auc": t.get("roc_auc"),
                "pr_auc": t.get("pr_auc"), "train_time_s": r.get("train_time_s"), "tag": r.get("tag", ""),
-               "implicit_discrimination_auc": t.get("implicit_discrimination_auc")}
+               "implicit_discrimination_auc": t.get("implicit_discrimination_auc"),
+               "transfer_rows": r.get("transfer_rows"), "epochs_run": r.get("epochs_run")}
         if is_teacher:
             row["mode"], row["student"] = "teacher", rel[1]
         ev = _load(os.path.join(d, "eval_test.json")) or {}
@@ -131,7 +149,7 @@ def agg(df, keys=("student", "mode")):
                            "obf_mixed", "transfer_wikipedia", "transfer_tweets", "transfer_implicit",
                            "hard_class_f1", "sarcasm_auc", "ironic_recall_at_half", "benign_fpr_at_half",
                            "ironic_recall_at_fpr10", "transfer_implicit_focus_recall",
-                           "implicit_discrimination_auc")
+                           "implicit_discrimination_auc", "transfer_rows", "epochs_run")
                if c in df.columns] + [c for c in df.columns if c.startswith("ood_")]
     g = df.groupby(list(keys), dropna=False)
     out = g.agg(n=("seed", "count"), params=("params", "first"), **{f"{m}_mean": (m, "mean") for m in metrics},
@@ -231,7 +249,7 @@ def main():
     if not m.empty:
         m["order"] = m["mode"].map({k: i for i, k in enumerate(main_modes)})
         m = m.sort_values(["student", "order"])
-        rows = [{"Student": STUDENT_LABEL.get(r.student, r.student), "Method": MODE_LABEL.get(r.mode, r.mode),
+        rows = [{"Student": STUDENT_LABEL.get(r.student, r.student), "Method": mode_label(r.mode),
                  "Seeds": int(r.n), "Params (M)": f"{(r.params or 0) / 1e6:.1f}" if r.params else "--",
                  "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std), "Accuracy": fmt(r.accuracy_mean, r.accuracy_std),
                  "Benign-sarcasm FPR $\\downarrow$": fmt(getattr(r, "benign_fpr_mean", None), getattr(r, "benign_fpr_std", None), 3),
@@ -260,7 +278,7 @@ def main():
         for r in im.itertuples():
             at10 = getattr(r, "ironic_recall_at_fpr10_mean", None)
             unmet = (at10 is None or pd.isna(at10)) and analysed.get(r.mode, 0) > 0
-            rows.append({"Method": MODE_LABEL.get(r.mode, ABLATION_LABEL.get(r.mode, r.mode)), "Seeds": int(r.n),
+            rows.append({"Method": mode_label(r.mode, ABLATION_LABEL.get(r.mode, r.mode)), "Seeds": int(r.n),
                          "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
                          f"F1 on {hard.replace('_', ' ')}": fmt(getattr(r, "hard_class_f1_mean", None),
                                                                 getattr(r, "hard_class_f1_std", None), 3),
@@ -299,6 +317,38 @@ def main():
                 caption += (" n.r.: no threshold from 0.10 to 0.90 kept the false-positive rate on benign "
                             "sarcasm at or below 0.10.")
         write(t, args.out, "implicit", caption, "implicit")
+
+    # ---- the size curve: does the out-of-sample gain grow with the transfer set? ----
+    head = s[s["student"] == args.headline]
+    curve_modes = [m for m in head["mode"].unique() if SCALE_RE.match(m) or m == "ft_matched"]
+    if curve_modes:
+        sc = agg(head[head["mode"].isin(curve_modes + ["ft"])])
+        ref = sc[sc["mode"] == "ft"]
+        ref_f1 = float(ref.iloc[0].macro_f1_mean) if not ref.empty else np.nan
+        # rows beyond the abuse-domain set are generic; the composition control has exactly that many rows
+        gen = [int(round(r.transfer_rows_mean or 0)) for r in sc.itertuples() if SCALE_RE.match(r.mode) and SCALE_RE.match(r.mode).group(2)]
+        boundary = gen[0] if gen else max((int(round(r.transfer_rows_mean or 0)) for r in sc.itertuples()), default=0)
+        rows = []
+        for r in sc.itertuples():
+            m = SCALE_RE.match(r.mode)
+            n_rows = int(round(getattr(r, "transfer_rows_mean", 0) or 0))
+            comp = ("generic tweets" if (m and m.group(2)) else
+                    "abuse-domain tweets" if n_rows and n_rows <= boundary else
+                    "abuse-domain + generic" if n_rows else "--")
+            steps = getattr(r, "epochs_run_mean", None)
+            rows.append({"Arm": mode_label(r.mode), "Transfer rows": n_rows or 0, "Composition": comp,
+                         "Epochs": f"{steps:.0f}" if steps is not None and not pd.isna(steps) else "--",
+                         "Seeds": int(r.n), "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
+                         "$\\Delta$ vs fine-tune only": "--" if (np.isnan(ref_f1) or r.mode == "ft") else f"{r.macro_f1_mean - ref_f1:+.4f}",
+                         "_order": (0 if r.mode == "ft" else 1 if r.mode == "ft_matched" else 2 if comp == "generic tweets" else 3, n_rows)})
+        rows.sort(key=lambda x: x["_order"])
+        for x in rows:
+            del x["_order"]
+        write(pd.DataFrame(rows), args.out, "scaling",
+              "Out-of-sample distillation against the size and composition of the transfer set, one teacher "
+              "labelling, on the headline student. Prefixes of the shuffled transfer set are nested subsets; "
+              "rows beyond the abuse-domain set are generic tweets. The matched-steps row fine-tunes alone for "
+              "as many updates as the base-size transfer arm.", "scaling")
 
     # ---- routing: does the weighting select an expert, or average over the committee? ----
     # One measurement per trained committee, in weight_routing/<committee>/. Older runs measured a single

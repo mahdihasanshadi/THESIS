@@ -311,6 +311,46 @@ audit gains one more measured negative and the branch manuscript stands.
 By the rule written above, the route as a *multi-teacher* result is closed: the committee, the
 weighting and the specialist add nothing out of sample either. What the run found instead is F31.
 
+### D20. Measure the size curve before deciding what the transfer result is
+*Decided 21 September, after F31; predictions written before the run (Kaggle v6).*
+
+F31 measures one transfer set, 42,013 abuse-domain tweets, and finds +0.007 to +0.009 with one
+teacher labelling. Whether that is a footnote to the audit or the paper's result depends on one thing
+the grid has not measured: the slope. Three confounds go with it: size against composition (larger
+sets can only be built by adding generic tweets), soft labels against extra text (the hard-label arm
+bounds this but does not isolate it), and extra text against extra optimisation steps (the transfer
+arms take 2.2 times the updates of fine-tuning).
+
+**What v6 runs**, on BERT-mini, three seeds, one teacher (BERT-large) labelling, six epochs as
+everywhere else (`kaggle/run_benchmark.py`, stage `transfer_scale`):
+- nested prefixes of the shuffled transfer set: 5,000, 10,000, 21,000 and 42,013 rows (abuse-domain
+  text, the composition held fixed while the size changes; the 42,013 arm reproduces F31's);
+- the composition control: 42,013 generic tweets (TweetEval sentiment, emoji and emotion
+  configurations, text only, screened like the base set), the size held fixed while the composition
+  changes;
+- larger sets: 84,000 and 168,000 rows, the base set plus generic tweets;
+- the steps control: fine-tuning alone for 13 epochs, as many updates as the 42,013 arm, early stopping
+  off, best validation epoch kept.
+Every arm against fine-tuning, each size against the next smaller, generic against abuse-domain at
+42,013, and the base arm against the matched-steps control, in `significance.csv`; the curve in
+`paper/tables/scaling.csv`.
+
+**Predictions.**
+1. The gain rises with size at fixed composition: the 5k, 10k, 21k and 42k means are ordered, with at
+   most one inversion smaller than 0.002, and 42k reproduces F31 (+0.006 to +0.009 over fine-tuning).
+2. Composition matters more than size: 42k generic tweets gain at least 0.003 less than 42k
+   abuse-domain tweets, and each generic row added beyond 42k adds less than the abuse-domain rows did.
+3. Steps are not the explanation: fine-tuning for 13 epochs gains at most +0.002 over fine-tuning for
+   six, and the 42k arm beats it by at least 0.004.
+4. The decision rule, fixed now. If the largest arm gains at least +0.012 over fine-tuning with an
+   interval that excludes zero and the curve is still rising between 84k and 168k, the constructive
+   result leads the paper and the thesis title changes to say so. If the curve is flat beyond 42k
+   (168k within 0.003 of 42k), the recipe is the audit's coda, and B2 stands under a title that does not
+   claim it.
+
+**Cost.** About 3.5 GPU-hours in one resumed session: caching one teacher on about 200,000 texts, 24
+training runs from 3 to 17 minutes each, probes and the implicit analysis on them.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.
