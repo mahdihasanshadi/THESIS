@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\caption{Out-of-sample distillation against the size and composition of the transfer set, one teacher labelling, on the headline student. Prefixes of the shuffled transfer set are nested subsets; rows beyond the abuse-domain set are generic tweets. The matched-steps row fine-tunes alone for as many updates as the base-size transfer arm.}
+\label{tab:scaling}
+\begin{tabular}{lrlrrrr}
+\toprule
+Arm & Transfer rows & Composition & Epochs & Seeds & Macro-F1 & $\Delta$ vs fine-tune only \\
+\midrule
+Fine-tune only & 0 & -- & 6 & 3 & 0.8393 $\pm$ 0.0003 & -- \\
+Fine-tune only, matched optimisation steps & 0 & -- & 13 & 3 & 0.8420 $\pm$ 0.0021 & +0.0027 \\
+Single-teacher KD + 42k generic tweets & 42013 & generic tweets & 6 & 3 & 0.8445 $\pm$ 0.0044 & +0.0053 \\
+Single-teacher KD + 5k transfer rows & 5000 & abuse-domain tweets & 6 & 3 & 0.8402 $\pm$ 0.0015 & +0.0010 \\
+Single-teacher KD + 10k transfer rows & 10000 & abuse-domain tweets & 6 & 3 & 0.8428 $\pm$ 0.0003 & +0.0035 \\
+Single-teacher KD + 21k transfer rows & 21000 & abuse-domain tweets & 6 & 3 & 0.8436 $\pm$ 0.0016 & +0.0043 \\
+Single-teacher KD + 42k transfer rows & 42013 & abuse-domain tweets & 6 & 3 & 0.8463 $\pm$ 0.0009 & +0.0070 \\
+Single-teacher KD + 84k transfer rows & 84000 & abuse-domain + generic & 6 & 3 & 0.8474 $\pm$ 0.0056 & +0.0081 \\
+Single-teacher KD + 168k transfer rows & 168000 & abuse-domain + generic & 6 & 3 & 0.8516 $\pm$ 0.0012 & +0.0123 \\
+\bottomrule
+\end{tabular}
+\end{table}

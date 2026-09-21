@@ -755,3 +755,15 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   teacher probabilities are targets or input features is left ambiguous (Section III.D says both).
   Use in the paper: a related-work example of an unaudited claim, cited neutrally
   (`prasomphan2025mtkd`); it changes nothing in D19/D20.
+- **v6 ran (Kaggle, 3.52 h, 24 new runs, 170 finished; archive `E:/dmthd-work/kaggle_d738_v6`).**
+  The packaging cell's table step crashed on the old fine-tune runs' missing `transfer_rows` (NaN is
+  truthy, so `or 0` did not catch it); fixed in `tables.py` (`_count`) and every table regenerated
+  locally, identical to Kaggle's on the ones it wrote. Size curve on BERT-mini, one teacher, three
+  seeds, over fine-tuning: +0.0010 (5k), +0.0035 (10k), +0.0043 (21k), +0.0070 (42k), +0.0081 (84k),
+  +0.0123 [+0.0035, +0.0211] (168k); 42k generic tweets +0.0053; fine-tuning for the 42k arm's number
+  of updates +0.0027; 168k over that control +0.0096 [+0.0000, +0.0191]. D20 scored by
+  `scripts/scaling_verdict.py` (new): prediction 1 held, 2 and 3 half held, the decision rule fires:
+  the constructive result leads and the title changes (F33). `significance.py` adds the largest arm
+  against the matched-steps control; the table is now 94 rows. `results_tweets_implicit_seed1.csv`
+  rebuilt from the v6 tree (42 models, the 34 earlier rows unchanged). Proposed v7, about 2.7 GPU-h:
+  a 35-epoch fine-tune-only control and the 168k arm on BERT-small.

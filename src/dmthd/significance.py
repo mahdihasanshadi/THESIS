@@ -93,6 +93,8 @@ def scaling_jobs(runs, headline):
         generic = [rows_of(a) for a in arms if SCALE_RE.match(a).group(2)]
         base = next((a for n, a in sized if generic and n == generic[0]), sized[-1][1])
         jobs.append(("ft_matched", base, "the transfer set against fine-tuning at matched steps"))
+        if sized[-1][1] != base:
+            jobs.append(("ft_matched", sized[-1][1], "the largest set against the matched-steps control"))
     return jobs
 
 

@@ -351,6 +351,44 @@ Every arm against fine-tuning, each size against the next smaller, generic again
 **Cost.** About 3.5 GPU-hours in one resumed session: caching one teacher on about 200,000 texts, 24
 training runs from 3 to 17 minutes each, probes and the implicit analysis on them.
 
+**Outcome, 21 September (Kaggle v6, 3.52 h, 24 new runs, 170 finished).** Scored by
+`scripts/scaling_verdict.py` against the predictions above. BERT-mini fine-tune-only is 0.8393 ± 0.0003;
+one teacher (BERT-large) labels every arm; three seeds each; the extended set holds 205,593 rows.
+
+| Arm | Transfer rows | Macro-F1 | Against fine-tune-only |
+|---|---|---|---|
+| 5k prefix, abuse-domain | 5,000 | 0.8402 ± 0.0015 | +0.0010 [-0.0056, +0.0074] |
+| 10k prefix | 10,000 | 0.8428 ± 0.0003 | +0.0035 [-0.0027, +0.0099] |
+| 21k prefix | 21,000 | 0.8436 ± 0.0016 | +0.0043 [-0.0026, +0.0116] |
+| 42k, the whole abuse-domain set | 42,013 | 0.8463 ± 0.0009 | +0.0070 [-0.0003, +0.0144] |
+| 84k, base + generic | 84,000 | 0.8474 ± 0.0056 | +0.0081 [-0.0030, +0.0203] |
+| 168k, base + generic | 168,000 | 0.8516 ± 0.0012 | +0.0123 [+0.0035, +0.0211] |
+| 42k generic tweets (composition control) | 42,013 | 0.8445 ± 0.0044 | +0.0053 [-0.0048, +0.0146] |
+| Fine-tune only, 13 epochs (steps control) | 0 | 0.8420 ± 0.0021 | +0.0027 [-0.0040, +0.0096] |
+
+1. **Held.** The four abuse-domain sizes are ordered with no inversion (+0.0010, +0.0035, +0.0043,
+   +0.0070), and 42k reproduces F31 (+0.0070 against +0.0073 in v5; the paired seeds differ by at most
+   0.0011).
+2. **Half held.** Generic tweets of the same size gain +0.0053, only 0.0017 less than the abuse-domain
+   set (+0.0017 [-0.0066, +0.0113]): composition matters less than predicted, and text from the same
+   platform carries most of the value. Beyond 42k the generic rows add 0.4 points per 10,000 where the
+   abuse-domain rows added 1.7, so the returns diminish as predicted.
+3. **Half held.** Fine-tuning for as many updates as the 42k arm gains +0.0027, above the 0.002
+   allowed; its best validation epoch is the sixth for two seeds and the eleventh for the third, so
+   the extra epochs buy a longer search over checkpoints rather than a better optimum. The 42k arm
+   still beats it by +0.0043 [-0.0032, +0.0122], and the 168k arm by +0.0096 [+0.0000, +0.0191].
+4. **The rule fires.** The largest arm gains +0.0123 with an interval that excludes zero, the curve
+   rises from 84k to 168k (+0.0042), and 168k is not within 0.003 of 42k. By the rule written before
+   the run, the constructive result leads the paper and the thesis title changes to say so.
+
+What the rule does not cover, stated here rather than found by a reviewer: the steps control matches
+the 42k arm, the 168k arm takes 2.7 times its updates, and a fine-tune-only run of that length (35
+epochs) has not been run. The control's validation score peaks by its sixth to eleventh epoch (0.853
+to 0.854) while the 168k arm's peaks at 0.858 to 0.861, which argues against steps as the explanation
+without measuring it. The curve is one student on one corpus. And the gain is in the task, not in
+implication (F33). Proposed v7, about 2.7 GPU-hours: the 35-epoch fine-tune-only control and the
+168k arm on BERT-small, three seeds each.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.
@@ -789,7 +827,8 @@ BERT-mini fine-tune-only on Kaggle, seed 1, against the laptop figures in bracke
 - at the 0.5 cut, recall 0.792 at a false-positive rate of 0.395 (0.704 at 0.317): nearly the same
   margin at a different operating point, which is F19 again;
 - **no threshold up to 0.90 brings the false-positive rate under 10 per cent**, on this model or on any
-  of the 26 analysed (the laptop model reached it at 0.90, with recall 0.427);
+  of the 26 analysed (the laptop model reached it at 0.90, with recall 0.427); *amended 21 September:
+  two of the eight size-curve models of v6 reach it at 0.90, with recall 0.389 and 0.338 (F33)*;
 - **the lexical split changes.** Ironic-abuse recall is 0.91 on the 43 items with profanity and 0.76 on
   the 1,517 without (0.72 and 0.67). Across the 25 pre-trained Kaggle models the with-profanity advantage
   is 6 to 16 points and never negative. "Not a profanity detector" survives, since items without
@@ -920,6 +959,31 @@ to change, not its size.
 
 ---
 
+### F33. The out-of-sample gain grows with the transfer set, comes from any tweets, and stays out of implication
+Kaggle v6, BERT-mini, one teacher labelling, three seeds per arm (D20). Nested prefixes of the
+42,013-tweet abuse-domain set gain +0.0010 (5k), +0.0035 (10k), +0.0043 (21k) and +0.0070 (42k) over
+fine-tuning; appending generic TweetEval tweets gives +0.0081 at 84k and +0.0123 [+0.0035, +0.0211]
+at 168k, the first distillation arm in the grid whose interval against fine-tuning excludes zero on
+the headline student. Six sizes, six ordered means, no inversion; no single step is significant on
+its own (the largest, 84k to 168k, is +0.0042 [-0.0047, +0.0134]), so the evidence is the ordering
+and the endpoint. Composition matters less than expected: 42,013 generic tweets gain +0.0053, within
+0.002 of the abuse-domain set. Steps explain a part: fine-tuning for the 42k arm's number of updates
+gains +0.0027, and against that control the 42k arm keeps +0.0043 [-0.0032, +0.0122] and the 168k
+arm +0.0096 [+0.0000, +0.0191]; no control matches the 168k arm's length. The gain lands where the
+in-sample runs never moved: F1 on `not_cyberbullying` 0.644 to 0.671 and on `other_cyberbullying`
+0.707 to 0.720 between fine-tuning and 168k, `gender` +0.016, the other three classes within 0.007.
+Implication does not move: sarcasm-discrimination AUC on the first seed is 0.758, 0.764, 0.752,
+0.765, 0.771 and 0.761 along the curve and 0.760 for the generic control, inside the band of F23,
+while the operating point slides towards caution (recall on ironic abuse 0.74 to 0.57, false
+positives on benign sarcasm 0.35 to 0.25 at the 0.5 cut), which is F19 traced along one axis. Two of
+the eight new models reach a false-positive rate under 10 per cent at the 0.90 cut, the first in the
+grid: the 84k arm at 0.093 with recall 0.389 and the 13-epoch control at 0.087 with recall 0.338.
+Licenses: the paper may claim that soft labels on unlabelled platform text raise an 11M student by
+1.2 points with an interval that excludes zero, that the gain grows with the amount of text over the
+range measured, that it needs one teacher and no weighting, and that it is a task gain. It may not
+claim that the text must be abuse-domain, that the gain is free of an optimisation-length component,
+or that it holds beyond BERT-mini and this corpus until v7 and a second student are run.
+
 ## 5. What the paper may and may not claim
 
 **May claim, with the evidence above:**
@@ -963,14 +1027,21 @@ to change, not its size.
   seed, while the same objectives on the labelled split gave nothing; the committee, the corrected
   weighting and hard pseudo-labels add nothing to that (F31). The gain is a task gain and leaves
   sarcasm discrimination where it was or slightly lower (F32).
+- That the gain grows with the transfer set: monotone over six sizes from 5,000 to 168,000 rows,
+  +0.0123 [+0.0035, +0.0211] at the largest, from generic tweets nearly as well as from abuse-domain
+  ones, and +0.0096 [+0.0000, +0.0191] over fine-tuning run for the 42k arm's number of updates (F33).
 
 **May not claim:**
 - That D-MTHD beats uniform averaging. It does not, at any tau from 0.05 to 5 (F22).
 - That the method beats the no-teacher control on the headline student. Six paired bootstrap
   intervals, all containing zero (F3, F23).
 - That in-sample distillation improves any student. It raises every one, within test-set noise
-  (F27). Out of sample it does, on the headline student, by less than a point (F31); that the gain
-  grows with more text, or holds on the other students, has not been measured.
+  (F27). Out of sample it does, on the headline student, by 0.7 of a point at 42k and 1.2 at 168k
+  (F31, F33); that it holds on the other students, or survives a fine-tune-only control run for the
+  168k arm's number of updates, has not been measured (proposed v7).
+- That the transfer text must be in-domain. Generic tweets of the same size gain within 0.002 of the
+  abuse-domain set (F33); what the text must be is unlabelled, from the platform, and unseen by the
+  teachers.
 - That a committee labels a transfer set better than one teacher, for the student. It does not
   (F31), although the committee's own predictions are better (F29).
 - Anything about BERT-mini or BERT-small in absolute terms, until the environment discrepancy in F17
@@ -1017,6 +1088,10 @@ to change, not its size.
    unlabelled tweets (TweetEval's other configurations and whatever the provenance rule allows) on
    BERT-mini, with a fine-tune-only run at matched optimisation steps as the control, decides
    whether the constructive result can lead the paper or closes it. About three GPU-hours.
+   **Answered 21 September: yes.** Monotone over 5,000 to 168,000 rows, +0.0123 [+0.0035, +0.0211] at
+   168,000, from generic tweets nearly as well as from abuse-domain ones; the constructive result
+   leads (F33, D20). Still open: a fine-tune-only control at the 168k arm's length, and a second
+   student (v7).
 
 ---
 
@@ -1061,6 +1136,13 @@ Worth keeping because the paper's framing came out of these turns, and because a
    as three; the weighting and the specialist add nothing here either; and the gain is in the task,
    not in implication. The paper's constructive sentence is now "distil where the teacher is
    uncertain", and whether that sentence leads the paper or closes it depends on one more run.
+10. **"The curve rises."** 21 September, night. The size curve was the last run the audit needed
+   before choosing its own title, and it rose all the way: six sizes, six ordered means, +0.012 at
+   168,000 rows with the interval clear of zero, from generic tweets nearly as much as from
+   abuse-domain ones, while implication stayed where pre-training left it (F33). The centre of gravity
+   moves for the last time, from "here is what distillation does not transfer" to "distil where the
+   teacher is uncertain: the gain is in the unlabelled text, it grows with it, and nothing about the
+   committee is needed", with the audit as the evidence that every other lever was tried and measured.
 
 ---
 
@@ -1087,4 +1169,5 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | Driver smoke test, all four passes | `scripts/smoke_driver.py` |
 | Paired bootstrap for every comparison the paper states | `python -m dmthd.significance`, `paper/tables/significance.csv` |
 | Teacher agreement and oracle with the implicit specialist | `paper/complementarity_with_specialist.json` |
-| Per-model sarcasm analysis, first seed, Kaggle v4 | `paper/results_tweets_implicit_seed1.csv` |
+| Per-model sarcasm analysis, first seed, Kaggle v6 (42 models) | `paper/results_tweets_implicit_seed1.csv` |
+| The size curve, and D20's predictions scored against it | `paper/tables/scaling.csv`, `scripts/scaling_verdict.py` |

@@ -80,6 +80,15 @@ def _load(path):
         return None
 
 
+def _count(x):
+    """A row count from an aggregated mean that may be missing: runs older than the field are NaN,
+    which Python's `or` does not treat as false."""
+    try:
+        return 0 if x is None or pd.isna(x) else int(round(float(x)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def collect(runs):
     """One row per finished run directory, with test metrics and probe metrics where present."""
     rows = []
@@ -326,12 +335,13 @@ def main():
         ref = sc[sc["mode"] == "ft"]
         ref_f1 = float(ref.iloc[0].macro_f1_mean) if not ref.empty else np.nan
         # rows beyond the abuse-domain set are generic; the composition control has exactly that many rows
-        gen = [int(round(r.transfer_rows_mean or 0)) for r in sc.itertuples() if SCALE_RE.match(r.mode) and SCALE_RE.match(r.mode).group(2)]
-        boundary = gen[0] if gen else max((int(round(r.transfer_rows_mean or 0)) for r in sc.itertuples()), default=0)
+        gen = [_count(getattr(r, "transfer_rows_mean", None)) for r in sc.itertuples()
+               if SCALE_RE.match(r.mode) and SCALE_RE.match(r.mode).group(2)]
+        boundary = gen[0] if gen else max((_count(getattr(r, "transfer_rows_mean", None)) for r in sc.itertuples()), default=0)
         rows = []
         for r in sc.itertuples():
             m = SCALE_RE.match(r.mode)
-            n_rows = int(round(getattr(r, "transfer_rows_mean", 0) or 0))
+            n_rows = _count(getattr(r, "transfer_rows_mean", None))
             comp = ("generic tweets" if (m and m.group(2)) else
                     "abuse-domain tweets" if n_rows and n_rows <= boundary else
                     "abuse-domain + generic" if n_rows else "--")

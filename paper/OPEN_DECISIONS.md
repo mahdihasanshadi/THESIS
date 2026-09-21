@@ -5,6 +5,13 @@ ones below are different: they change what the paper *is*, where it is sent, or 
 remaining GPU quota is spent. Each one states the options, the argument for and against each, the
 evidence that will settle it, and when it has to be settled by.
 
+**Updated 21 September, night, after the size curve.** D20's decision rule, written before the run,
+fires: the out-of-sample gain grows with the transfer set, monotone over six sizes, +0.0123
+[+0.0035, +0.0211] at 168,000 rows, from generic tweets nearly as well as from abuse-domain ones
+(DECISIONS F33). The recommendation for Decision 1 is now Version C in `abstract_draft.md`, the
+constructive framing with the audit as its evidence, and Decision 3 gains a title question that is
+now urgent. Two controls the constructive framing still lacks are listed in Decision 2 as v7.
+
 **Updated 17 September, after the specialist runs.** Three of the four numbers Decision 1 was waiting
 for are in, and they change the recommendation: the specialist does not help on the tweet corpus, the
 reason is measured, and sharper weighting does not rescue the method either, which also closes
@@ -172,7 +179,8 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | fp16 control for the narrow students | 40 min | done (v2) |
 | v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
 | v5: five out-of-sample arms, per-committee routing, probes for the sharp tau runs | 2.11 h | done, 21 September |
-| v6: transfer-set size curve on BERT-mini (5k to 168k), a composition control and a matched-steps control | ~3.5 h | built 21 September (D20); to run |
+| v6: transfer-set size curve on BERT-mini (5k to 168k), a composition control and a matched-steps control | 3.5 h | ran 21 September: monotone, +0.0123 [+0.0035, +0.0211] at 168k; D20's rule fires (F33) |
+| v7 (proposed): fine-tune-only for 35 epochs (the 168k arm's number of updates) and the 168k arm on BERT-small, three seeds each | ~2.7 h | the two controls the constructive framing still lacks; recommended before the paper is written |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
@@ -214,6 +222,24 @@ supervisors should see it coming.
   which we report as-is. Synthetic character edits are not real evasion, and the paper will say so.
 
 **What settles it:** the homogeneity 2x2, which is already in the grid.
+
+**Updated 21 September, night: the whole title, not two words.** The 2x2 ran (hidden-state term worth
+0.0009 on the headline student, DECISIONS F23), so *Homogeneous* goes; *Robust* is unsupported (10 to
+15 points lost to obfuscation); *Dynamic* and *Multi-Teacher* name the two things the grid measured as
+adding nothing (F22, F29, F31). With D20's rule fired, the title should say what the paper shows.
+Three candidates, in order of preference:
+
+1. *Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact
+   Cyberbullying Detection*. Names the mechanism and the result; the audit is the evidence inside.
+2. *Out-of-Sample Knowledge Distillation for Cyberbullying Detection: Unlabelled Text, Not Teacher
+   Committees, Improves Compact Students*. Plainer, states the contrast the audit measured.
+3. *From Multi-Teacher to Out-of-Sample Knowledge Distillation for Cyberbullying Detection: An Audit
+   and the One Lever That Moves the Student*. Keeps continuity with the registered title for a
+   department that wants to see the lineage.
+
+Any of the three is defensible today; none of them claims what v7 has not yet measured, because
+"compact" and "cyberbullying detection" are true of the one student and corpus measured. If the
+department requires the registered wording to survive in part, option 3.
 
 ---
 

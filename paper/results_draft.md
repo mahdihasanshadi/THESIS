@@ -4,12 +4,13 @@ Every number here is read from a `results.json` or an `eval_*.json` produced by 
 Nothing is typed from memory and nothing is rounded in our favour. Where a result contradicts what we
 set out to show, it is reported in the same voice as the results that support it.
 
-The tweet-corpus grid is complete: 146 student runs over five students, three seeds per
+The tweet-corpus grid is complete: 170 student runs over five students, three seeds per
 configuration, a homogeneous and a heterogeneous committee on every student and a third committee,
 which adds an implicit-abuse specialist, on the headline student, plus ablations, controls,
-hyper-parameter sweeps and five out-of-sample distillation arms. The first 120 runs took 8.2
-GPU-hours; a further 1.4 added the specialist, its committee, two controls and the three sharpest
-weighting temperatures, and a further 2.1 the out-of-sample arms. The Wikipedia benchmark and the
+hyper-parameter sweeps, five out-of-sample distillation arms and the eight arms of a transfer-set
+size curve with its controls. The first 120 runs took 8.2 GPU-hours; a further 1.4 added the
+specialist, its committee, two controls and the three sharpest weighting temperatures, a further 2.1
+the out-of-sample arms, and a further 3.5 the size curve. The Wikipedia benchmark and the
 student grid on the implicit benchmark are in progress and their sections are marked as such.
 
 **One rule constrains what may appear in these tables.** The same code, data and seeds produce
@@ -272,10 +273,8 @@ labels carry information the gold labels do not, and an 11M student receives it.
 result, not a multi-teacher result, and it is modest: 0.7 to 0.9 macro-F1 from 1.2 times the training
 split in unlabelled text. We pre-registered a threshold of 0.010 for the committee arm and it was not
 met; the two arms that clear zero were not the pre-registered one, and we report the family as
-consistent rather than any arm as decisive. Two things it does not show. The transfer arms take 2.2
-times the optimisation steps of fine-tuning; the hard-label arm shares those steps and gains 0.002,
-which bounds but does not measure the steps-alone explanation, and a fine-tune-only run at matched
-steps is the missing control. And whether the gain grows with more unlabelled text is unmeasured.
+consistent rather than any arm as decisive. Two things it did not show when it first ran, the
+steps-alone explanation and the slope, are measured in Section 5.3d.
 
 **It is a task gain, not an implication gain.** On the first seed, sarcasm-discrimination AUC is
 0.765 with one teacher and 0.762 with the DeBERTa committee, inside the in-sample band of Section
@@ -285,6 +284,70 @@ abuse 0.66 to 0.71 at a false-positive rate of 0.30 to 0.39, against 0.79 at 0.4
 is offensive-language data in which abuse is mostly explicit, so what the teachers' soft labels teach
 there is explicit abuse; nothing in the set carries the distinction the probes measure. If a transfer
 set is to help with implication, its composition is the first thing to change, not its size.
+
+## 5.3d The gain grows with the transfer set, and any tweets will do
+
+Section 5.3c left two things unmeasured: the slope, and the optimisation-length confound. The last
+run measured both, with its predictions written before it ran (DECISIONS D20). One teacher labels,
+since the committee labelled no better; BERT-mini, three seeds per arm, six epochs as everywhere
+else. The transfer set is shuffled once, so its prefixes are nested subsets; beyond its 42,013
+abuse-domain tweets it is extended with generic tweets from TweetEval's sentiment, emoji and emotion
+configurations, screened exactly like the base set, 205,593 rows in all. Two controls: the same
+number of generic tweets as the base set, the size held fixed while the composition changes; and
+fine-tuning alone for 13 epochs, the number of updates the 42k arm takes, early stopping off and the
+best validation epoch kept.
+
+| Arm | Transfer rows | Macro-F1 | Gain over fine-tune only |
+|---|---|---|---|
+| Fine-tune only | 0 | 0.8393 +- 0.0003 | -- |
+| Fine-tune only, 13 epochs (matched steps) | 0 | 0.8420 +- 0.0021 | +0.0027 [-0.0040, +0.0096] |
+| 42k generic tweets (composition control) | 42,013 | 0.8445 +- 0.0044 | +0.0053 [-0.0048, +0.0146] |
+| 5k abuse-domain | 5,000 | 0.8402 +- 0.0015 | +0.0010 [-0.0056, +0.0074] |
+| 10k abuse-domain | 10,000 | 0.8428 +- 0.0003 | +0.0035 [-0.0027, +0.0099] |
+| 21k abuse-domain | 21,000 | 0.8436 +- 0.0016 | +0.0043 [-0.0026, +0.0116] |
+| 42k abuse-domain | 42,013 | 0.8463 +- 0.0009 | +0.0070 [-0.0003, +0.0144] |
+| 84k: 42k abuse-domain + 42k generic | 84,000 | 0.8474 +- 0.0056 | +0.0081 [-0.0030, +0.0203] |
+| 168k: 42k abuse-domain + 126k generic | 168,000 | 0.8516 +- 0.0012 | +0.0123 [+0.0035, +0.0211] |
+
+The curve rises at every step. Six sizes give six ordered means with no inversion, the 42k arm
+reproduces Section 5.3c's to within 0.0003, and at 168k the gain is +0.0123 with an interval that
+excludes zero: the first distillation arm in the grid that beats fine-tuning on the headline student
+by more than the test set can resolve. No single step of the curve is significant on its own (the
+largest, 84k to 168k, is +0.0042 [-0.0047, +0.0134]); the evidence is the ordering, and the endpoint.
+
+Composition matters less than we predicted. We expected generic tweets of the same size to gain at
+least 0.003 less than the abuse-domain set; they gain 0.0017 less (+0.0017 [-0.0066, +0.0113]), with
+two of three seeds level with the abuse-domain arm. Text from the same platform carries most of the
+value, which makes the recipe cheaper than we assumed: the unlabelled text need not be abuse-related,
+only in the register the student will meet. Returns diminish, as predicted: the abuse-domain rows
+added 1.7 points of macro-F1 per 10,000, the generic rows appended beyond them 0.4.
+
+Optimisation length explains a part, and not the whole. Fine-tuning for the 42k arm's number of
+updates gains +0.0027, above the 0.002 we allowed; its best validation epoch is the sixth for two
+seeds and the eleventh for the third, so the extra epochs buy a longer search over checkpoints rather
+than a better optimum. Against this control the 42k arm keeps +0.0043 [-0.0032, +0.0122] and the 168k
+arm +0.0096 [+0.0000, +0.0191]. The control matches the 42k arm only; the 168k arm takes 2.7 times its
+updates, and a fine-tune-only run of that length has not been run. Its validation curve argues
+against steps as the explanation (the control peaks at 0.853 to 0.854, the 168k arm at 0.858 to
+0.861) without measuring it, and we list it as the first thing to run next.
+
+Where the gain lands is the same along the whole curve: between fine-tuning and the 168k arm, F1 on
+`not_cyberbullying` rises from 0.644 to 0.671 and on `other_cyberbullying` from 0.707 to 0.720,
+`gender` by 0.016, and the three remaining targeted classes by at most 0.007. The unlabelled text
+teaches the boundary the labelled split draws worst.
+
+**Still a task gain, not an implication gain.** Along the curve the first seed's
+sarcasm-discrimination AUC is 0.758, 0.764, 0.752, 0.765, 0.771 and 0.761, inside the band of
+Section 5.8, and the generic control's is 0.760. What moves is the operating point: at the 0.5 cut,
+recall on ironic abuse falls from 0.74 to 0.57 and the false-positive rate on benign sarcasm from
+0.35 to 0.25 as the set grows, the student firing less on sarcasm of both kinds, which is Section
+5.7's trade-off traced along one axis. Two of the eight new models are the first in the grid to hold
+the false-positive rate under 10 per cent at the 0.90 cut, at recall 0.389 (the 84k arm) and 0.338
+(the 13-epoch control), which is where Section 5.6 said the safe operating point would cost.
+
+The constructive sentence of this paper is therefore measured on three axes: the gain exists, it
+grows with the unlabelled text, and it comes from any tweets. What it needs before it can be stated
+for more than one student and one corpus is listed in Section 5.10.
 
 ## 5.4 Ablations and controls: only pre-training matters
 
@@ -489,9 +552,11 @@ threshold-free probe analysis (Sections 5.3b, 5.3c, 5.6 and the end of 5.7) cove
 each configuration.
 
 **The out-of-sample arms take more optimisation steps.** With the transfer set an epoch covers
-76,620 rows against 34,607, so those students see 2.2 times the updates of every other run. The
-hard-label arm shares the steps and gains 0.002, which bounds the explanation; a fine-tune-only run
-at matched steps would measure it, and has not been run.
+76,620 rows against 34,607, and 202,607 at 168k, so those students see 2.2 to 5.9 times the updates
+of every other run. Fine-tuning alone for the 42k arm's number of updates gains +0.0027 (Section
+5.3d), so a part of the out-of-sample gain is optimisation length; the 42k and 168k arms keep +0.0043
+and +0.0096 over that control. No fine-tune-only run matches the 168k arm's length, and one is the
+first item of further work, with the curve on a second student the second.
 
 **Teacher variance is not estimated.** Each teacher is trained once.
 

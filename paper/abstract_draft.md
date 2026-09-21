@@ -4,6 +4,11 @@ Decision 1 in `OPEN_DECISIONS.md` is about framing, and framing is hard to judge
 here are the versions written out. Every number is a placeholder marked `[ ]` except the ones
 already measured, which are given as they stand.
 
+**Updated 21 September, night, after the size curve.** D20's rule fired: the out-of-sample gain grows
+with the transfer set and clears zero at 168,000 rows (DECISIONS F33). Version C below is the
+constructive framing that result licenses, with the audit as its evidence, and is now the recommended
+one; B2 is its fallback and shares every measured sentence with it.
+
 **Updated 17 September, after the specialist runs.** Version B's bet did not pay on the tweet corpus:
 the implicit specialist helps neither in a committee nor alone, and the reason is measured (DECISIONS
 F23). Version A has lost its last qualification, since no weighting temperature from 0.05 to 5
@@ -142,6 +147,39 @@ on an unmeasured number. The implicit benchmark's student grid, still to run, is
 that bears on it, and the abstract makes a prediction there that could fail: implicit-discrimination
 AUC will not move beyond test-set noise. If it does, the paper becomes Version B with this evidence as
 its motivation.
+
+---
+
+## Version C: the constructive framing, with the audit as its evidence (recommended after v6)
+
+*Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact
+Cyberbullying Detection*
+
+Compact detectors of abusive language are usually trained by distillation from one or more large
+teachers on the labelled split the teachers were fine-tuned on. We show, under controls the setting
+is rarely given, that this teaches the student nothing the labels do not. Across five students from
+10M to 71M parameters, three teacher committees, per-instance reliability weighting at every
+temperature from 0.05 to 5 and an implicit-abuse specialist teacher, no distilled student beats
+fine-tuning by more than the test set can resolve (170 runs, three seeds, paired bootstrap), and the
+reason is measured: teachers adapted to one split agree at Cohen's kappa 0.89 to 0.96 and assign the
+gold label a probability near one, so their soft labels are the gold labels and a reliability
+weighting has nothing to express. The gain is elsewhere. On unlabelled tweets the teachers have not
+fitted, a single teacher's soft labels raise an 11M student by 0.007 macro-F1 with 42,013 tweets and
+by 0.012 with 168,000 ([+0.004, +0.021]), monotonically over six sizes, from generic tweets nearly as
+well as from abuse-related ones, and by 0.010 over fine-tuning run for the same number of updates as
+the 42k arm; the committee, its weighting and hard pseudo-labels add nothing to it. The gain is in
+the task: measured without a threshold, the ability to tell ironic abuse from harmless sarcasm stays
+where pre-training put it, 0.75 to 0.77 AUC across every variant of the student, while the operating
+point slides towards caution, and across every model in the grid recall on ironic abuse and false
+positives on harmless sarcasm rise together (r = 0.71). We release the protocol, the transfer-set
+construction with its provenance screens, and a single-source implicit-abuse benchmark with per-row
+manifests.
+
+**What this version is betting on:** that a 1.2-point constructive result on one student and one
+corpus carries a paper when it comes with the audit showing every other lever measured and found
+empty. Its risk is the two controls it still lacks, a fine-tune-only run at the 168k arm's length and
+the curve on a second student (v7 in `OPEN_DECISIONS.md`), and a reviewer asking for a second corpus.
+Every sentence of B2 survives inside it, so B2 remains the fallback at no cost if v7 disappoints.
 
 ---
 

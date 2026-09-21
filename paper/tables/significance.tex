@@ -83,6 +83,22 @@ BERT-mini & is the committee the better labeller & Single-teacher KD + transfer 
 BERT-mini & does the DeBERTa teacher help as a labeller & Uniform multi-teacher + transfer set & Uniform multi-teacher (het.) + transfer set & 3 & +0.0015 & [-0.0045, +0.0072] & no \\
 BERT-mini & does out-of-sample reliability beat averaging & Uniform multi-teacher + transfer set & Out-of-sample reliability weighting + transfer set & 3 & +0.0021 & [-0.0017, +0.0082] & no \\
 BERT-mini & soft labels against hard pseudo-labels & Uniform multi-teacher + transfer set & Committee hard pseudo-labels + transfer set & 3 & -0.0050 & [-0.0118, +0.0016] & no \\
+BERT-mini & one teacher with 5k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 5k transfer rows & 3 & +0.0010 & [-0.0056, +0.0074] & no \\
+BERT-mini & one teacher with 10k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 10k transfer rows & 3 & +0.0035 & [-0.0027, +0.0099] & no \\
+BERT-mini & one teacher with 21k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 21k transfer rows & 3 & +0.0043 & [-0.0026, +0.0116] & no \\
+BERT-mini & one teacher with 42k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 42k transfer rows & 3 & +0.0070 & [-0.0003, +0.0144] & no \\
+BERT-mini & one teacher with 84k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 84k transfer rows & 3 & +0.0081 & [-0.0030, +0.0203] & no \\
+BERT-mini & one teacher with 168k transfer rows against fine-tuning & Fine-tune only & Single-teacher KD + 168k transfer rows & 3 & +0.0123 & [+0.0035, +0.0211] & yes \\
+BERT-mini & does the gain grow from the smaller set & Single-teacher KD + 5k transfer rows & Single-teacher KD + 10k transfer rows & 3 & +0.0026 & [-0.0033, +0.0086] & no \\
+BERT-mini & does the gain grow from the smaller set & Single-teacher KD + 10k transfer rows & Single-teacher KD + 21k transfer rows & 3 & +0.0008 & [-0.0049, +0.0068] & no \\
+BERT-mini & does the gain grow from the smaller set & Single-teacher KD + 21k transfer rows & Single-teacher KD + 42k transfer rows & 3 & +0.0027 & [-0.0037, +0.0088] & no \\
+BERT-mini & does the gain grow from the smaller set & Single-teacher KD + 42k transfer rows & Single-teacher KD + 84k transfer rows & 3 & +0.0011 & [-0.0096, +0.0129] & no \\
+BERT-mini & does the gain grow from the smaller set & Single-teacher KD + 84k transfer rows & Single-teacher KD + 168k transfer rows & 3 & +0.0042 & [-0.0047, +0.0134] & no \\
+BERT-mini & generic tweets of the same size against fine-tuning & Fine-tune only & Single-teacher KD + 42k generic tweets & 3 & +0.0053 & [-0.0048, +0.0146] & no \\
+BERT-mini & abuse-domain text against generic text of the same size & Single-teacher KD + 42k generic tweets & Single-teacher KD + 42k transfer rows & 3 & +0.0017 & [-0.0066, +0.0113] & no \\
+BERT-mini & more fine-tuning steps alone & Fine-tune only & Fine-tune only, matched optimisation steps & 3 & +0.0027 & [-0.0040, +0.0096] & no \\
+BERT-mini & the transfer set against fine-tuning at matched steps & Fine-tune only, matched optimisation steps & Single-teacher KD + 42k transfer rows & 3 & +0.0043 & [-0.0032, +0.0122] & no \\
+BERT-mini & the largest set against the matched-steps control & Fine-tune only, matched optimisation steps & Single-teacher KD + 168k transfer rows & 3 & +0.0096 & [+0.0000, +0.0191] & yes \\
 \bottomrule
 \end{tabular}
 \end{table}
