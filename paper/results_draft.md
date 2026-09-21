@@ -1,4 +1,4 @@
-# Results (draft, 17 September 2026)
+# Results (draft, 21 September 2026)
 
 Every number here is read from a `results.json` or an `eval_*.json` produced by the committed code.
 Nothing is typed from memory and nothing is rounded in our favour. Where a result contradicts what we
