@@ -92,3 +92,9 @@ BERT-mini,abuse-domain text against generic text of the same size,Single-teacher
 BERT-mini,more fine-tuning steps alone,Fine-tune only,"Fine-tune only, matched optimisation steps",3,+0.0027,"[-0.0040, +0.0096]",no
 BERT-mini,the transfer set against fine-tuning at matched steps,"Fine-tune only, matched optimisation steps",Single-teacher KD + 42k transfer rows,3,+0.0043,"[-0.0032, +0.0122]",no
 BERT-mini,the largest set against the matched-steps control,"Fine-tune only, matched optimisation steps",Single-teacher KD + 168k transfer rows,3,+0.0096,"[+0.0000, +0.0191]",yes
+BERT-mini,fine-tuning for the largest arm's number of updates,Fine-tune only,"Fine-tune only, matched to the 168k arm's steps",3,-0.0013,"[-0.0106, +0.0072]",no
+BERT-mini,the largest set against fine-tuning at its own number of updates,"Fine-tune only, matched to the 168k arm's steps",Single-teacher KD + 168k transfer rows,3,+0.0136,"[+0.0023, +0.0240]",yes
+BERT-small,one teacher with 168k transfer rows against fine-tuning,Fine-tune only,Single-teacher KD + 168k transfer rows,3,+0.0057,"[-0.0063, +0.0171]",no
+BERT-small,the transfer set against the same teacher in sample,Single-teacher KD,Single-teacher KD + 168k transfer rows,3,+0.0038,"[-0.0049, +0.0137]",no
+BiLSTM,one teacher with 168k transfer rows against fine-tuning,Fine-tune only,Single-teacher KD + 168k transfer rows,3,+0.0163,"[+0.0063, +0.0271]",yes
+BiLSTM,the transfer set against the same teacher in sample,Single-teacher KD,Single-teacher KD + 168k transfer rows,3,+0.0108,"[+0.0023, +0.0200]",yes
