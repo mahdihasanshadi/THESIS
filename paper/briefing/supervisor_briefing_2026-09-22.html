@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<title>সুপারভাইজার ব্রিফিং: থিসিসের শুরু থেকে শেষ</title>
+<style>
+  @page { size: A4; margin: 13mm 14mm 15mm 14mm; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Nirmala UI", "Vrinda", "Segoe UI", sans-serif; font-size: 10.4pt; line-height: 1.5; color: #111; }
+  h1 { font-size: 16pt; margin: 0 0 3pt 0; }
+  .sub { color: #444; font-size: 9.2pt; margin: 0 0 8pt 0; }
+  h2 { font-size: 12pt; margin: 12pt 0 4pt 0; padding: 2pt 6pt; background: #eef3fb; border-left: 4px solid #2a78d6; }
+  h3 { font-size: 10.8pt; margin: 8pt 0 2pt 0; }
+  p { margin: 0 0 5pt 0; text-align: justify; }
+  ul, ol { margin: 0 0 5pt 16pt; padding: 0; }
+  li { margin: 0 0 2pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 4pt 0 7pt 0; font-size: 9.3pt; }
+  th, td { border: 1px solid #c9c9c9; padding: 2.5pt 5pt; text-align: left; vertical-align: top; }
+  th { background: #f2f2f2; }
+  td.n { text-align: right; white-space: nowrap; font-family: "Segoe UI", sans-serif; }
+  .box { border: 1.5px solid #2a78d6; background: #f5f9ff; padding: 6pt 9pt; margin: 6pt 0 8pt 0; }
+  .warn { border-left: 4px solid #eb6834; background: #fff6f1; padding: 5pt 8pt; margin: 5pt 0 8pt 0; }
+  .ok { color: #0a6b0a; font-weight: bold; }
+  .no { color: #b3261e; font-weight: bold; }
+  .en { font-family: "Segoe UI", sans-serif; }
+  img { max-width: 100%; display: block; margin: 4pt auto 2pt auto; }
+  .cap { font-size: 8.8pt; color: #444; text-align: center; margin: 0 0 8pt 0; }
+  .pb { page-break-before: always; }
+  .avoid { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<h1>থিসিসের পুরো গল্প: শুরু থেকে এখন পর্যন্ত</h1>
+<p class="sub">সুপারভাইজারকে ব্রিফ করার জন্য। তারিখ: ২২ সেপ্টেম্বর ২০২৬। প্রতিটি সংখ্যা Kaggle-এর ফলাফল ফাইল থেকে নেওয়া, আন্দাজে লেখা নয়। স্কোর মানে test set-এর macro-F1 (১.০ হলো নিখুঁত), যদি আলাদা করে বলা না থাকে।</p>
+
+<div class="box">
+<b>এক কথায় থিসিস:</b> ছোট মডেলকে (student) বড় মডেল (teacher) দিয়ে শেখালে, teacher যে টুইটগুলো দিয়ে নিজে শিখেছে সেগুলোর উপর শেখালে কোনো লাভ হয় না; কিন্তু teacher কখনো দেখেনি এমন নতুন, লেবেলবিহীন টুইটের উপর শেখালে student ভালো হয়, এবং যত বেশি টুইট দেওয়া যায় তত ভালো হয়। একাধিক teacher বা "dynamic weighting" কোনো কাজে আসে না। আর sarcasm বা ইঙ্গিতে করা bullying চেনার ক্ষমতা কোনো পদ্ধতিতেই বাড়ে না।<br><br>
+<b>নতুন শিরোনাম:</b> <span class="en"><i>Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection: More Unlabelled Text Helps, More Teachers Do Not</i></span>
+</div>
+
+<h2>১. আমরা কোথা থেকে শুরু করেছিলাম</h2>
+<p><b>Phase 2 (ফেব্রুয়ারি ২০২৬):</b> Wikipedia corpus-এ দুইটি teacher (BERT-large ও RoBERTa) থেকে DistilBERT student-কে শেখানো হয়েছিল, প্রতি batch-এ dynamic weighting দিয়ে। Student পেয়েছিল 0.8947, teacher দুটি 0.8936 ও 0.8904। শুনতে ভালো, কিন্তু তিনটি জিনিস ছিল না:</p>
+<ol>
+  <li><b>teacher ছাড়া student-এর স্কোর</b> (fine-tune only) মাপা হয়নি। এটা না মাপলে বোঝা যায় না teacher আদৌ কিছু শিখিয়েছে কিনা।</li>
+  <li>প্রতিটি পরীক্ষা <b>মাত্র একবার</b> চালানো হয়েছিল, তাই ফারাকটা কাকতালীয় কিনা বলা যায় না। P2 রিপোর্ট নিজেই এটা স্বীকার করেছে (Section 4.6)।</li>
+  <li>dynamic weighting সাধারণ গড়ের (uniform average) চেয়ে ভালো কিনা, তা পরীক্ষা করা হয়নি।</li>
+</ol>
+<p><b>Phase 3-এর শুরুতে (টুইট ডেটাসেটে):</b> আগের কোডে teacher ছাড়া DistilBERT পেয়েছিল 0.859, আর D-MTHD student পেয়েছিল 0.830, অর্থাৎ teacher দেওয়ায় ফল <b>খারাপ</b> হচ্ছিল। weight-গুলোও আটকে ছিল। ডেটাতেও সমস্যা ছিল: একই টুইট ভিন্ন লেবেলে, আর train ও test-এ একই টুইট।</p>
+
+<h2>২. আমরা প্রথমে কী ঠিক করলাম (১০ থেকে ১২ সেপ্টেম্বর)</h2>
+<table>
+  <tr><th>কী</th><th>কী করলাম</th><th>কেন</th></tr>
+  <tr><td>ডেটা পরিষ্কার</td><td>47,692 টুইট থেকে 3,168টি পরস্পরবিরোধী লেবেলের টুইট, 507টি ডুপ্লিকেট ও 758টি খুব ছোট টুইট বাদ। থাকল 43,259: train 34,607, validation 4,326, test 4,326।</td><td>একই টুইট যদি train ও test দুই জায়গাতেই থাকে, তাহলে স্কোর মিথ্যা বেশি দেখায়।</td></tr>
+  <tr><td>ন্যূনতম মান (floor)</td><td>সাধারণ TF-IDF + logistic regression: <b>0.8798</b></td><td>কোনো neural model এর নিচে গেলে তা কাজের নয়।</td></tr>
+  <tr><td>Teacher</td><td>BERT-large 0.8973, RoBERTa-irony 0.8926, HateBERT 0.8887; পরে DeBERTa-v3 0.8720 ও implicit specialist 0.8931</td><td>তিনটি ভিন্ন দক্ষতা: সাধারণ ভাষা, গালাগালি, ব্যঙ্গ।</td></tr>
+  <tr><td>Student</td><td>পাঁচটি: BERT-mini (11.2M, প্রধান), BERT-small (28.8M), DistilBERT (67M), DeBERTa-v3-xsmall (70.8M), BiLSTM (10.4M)</td><td>একটি student-এ ফল দেখলে সেটা কাকতালীয় হতে পারে।</td></tr>
+  <tr><td>ন্যায্য তুলনা</td><td>প্রতিটি student-কে teacher ছাড়াও train করা, প্রতিটি পরীক্ষা ৩ বার (৩টি seed), প্রতিটি তুলনায় paired bootstrap interval</td><td>ফারাক সত্যি না কাকতালীয়, সেটা বোঝার একমাত্র উপায়।</td></tr>
+  <tr><td>Sarcasm মাপা</td><td>883টি নিরীহ sarcasm টুইট ও 1,560টি ব্যঙ্গাত্মক bullying টুইট; threshold ছাড়া মাপ (AUC)</td><td>থিসিসের আসল লক্ষ্য ছিল ইঙ্গিতে করা bullying ধরা।</td></tr>
+  <tr><td>Implicit benchmark</td><td>Implicit Hate Corpus থেকে আলাদা benchmark (16,509 / 2,064 / 2,064); ISHate (27,096) সম্পূর্ণ আলাদা রাখা</td><td>দুই corpus মেশালে মডেল ইঙ্গিত না বুঝে শুধু "কোন corpus থেকে এসেছে" চিনে ফেলে (0.91 নির্ভুলতায়)।</td></tr>
+</table>
+<p><b>Statistically significant মানে সহজ ভাষায়:</b> test set-কে ১০০০ বার নতুন করে নমুনা নিয়ে দেখা হয় ফারাকটা টিকে থাকে কিনা। যদি ৯৫% ক্ষেত্রে ফারাক শূন্যের উপরে থাকে, তাহলে সেটা সত্যিকারের উন্নতি। আমাদের test set-এ মোটামুটি <b>0.007-এর চেয়ে ছোট ফারাক</b> ধরা যায় না।</p>
+
+<h2>৩. প্রথম বড় ফল: লেবেলযুক্ত ডেটায় teacher কোনো কাজে আসে না</h2>
+<p>Kaggle Session 1 ও 4-এ ১৩১টি run। প্রধান student BERT-mini-এর ফল:</p>
+<table class="avoid">
+  <tr><th>পদ্ধতি</th><th>স্কোর</th><th>teacher ছাড়ার তুলনায়</th><th>ফল</th></tr>
+  <tr><td>Teacher ছাড়া (fine-tune only)</td><td class="n">0.8393</td><td>ভিত্তি</td><td></td></tr>
+  <tr><td>একটি teacher (BERT-large)</td><td class="n">0.8405</td><td class="n">+0.0012</td><td class="no">পার্থক্য নেই</td></tr>
+  <tr><td>তিন teacher-এর সাধারণ গড়</td><td class="n">0.8385</td><td class="n">−0.0007</td><td class="no">পার্থক্য নেই</td></tr>
+  <tr><td>আমাদের D-MTHD (dynamic weighting)</td><td class="n">0.8378</td><td class="n">−0.0015</td><td class="no">পার্থক্য নেই</td></tr>
+  <tr><td>D-MTHD + DeBERTa teacher</td><td class="n">0.8373</td><td class="n">−0.0019</td><td class="no">পার্থক্য নেই</td></tr>
+  <tr><td>D-MTHD + implicit specialist teacher</td><td class="n">0.8373</td><td class="n">−0.0019</td><td class="no">পার্থক্য নেই</td></tr>
+  <tr><td>Pre-training ছাড়া student</td><td class="n">0.7905</td><td class="n">−0.0488</td><td class="ok">একমাত্র বড় পার্থক্য</td></tr>
+</table>
+<p><b>বাকি চারটি student-এও একই:</b> teacher দিলে স্কোর সামান্য বাড়ে (0.001 থেকে 0.007), কিন্তু কোনোটাই significant নয়। যেমন DistilBERT 0.8907 থেকে 0.8975, BiLSTM 0.8693 থেকে 0.8764।</p>
+<p><b>Dynamic weighting বনাম সাধারণ গড়:</b> পাঁচটি student-এর কোনোটাতেই D-MTHD সাধারণ গড়কে হারায়নি। Weighting-কে তীক্ষ্ণ করার temperature (τ) 0.05 থেকে 5 পর্যন্ত ১০০ গুণ বদলেও স্কোর 0.8385 থেকে 0.8392-এর মধ্যে থেকেছে। Weight প্রায় সমান থেকেছে: সবচেয়ে ভারী teacher-ও গড়ে 0.356, যেখানে সমান ভাগ হলো 0.333।</p>
+<p><b>বাড়তি উপাদান খুলে দেখা (ablation):</b> irony head, hidden-state term, dynamic weight, প্রতিটি সরালে স্কোর বদলায় সর্বোচ্চ 0.0014, আর weighting সরালে বরং 0.0008 বাড়ে। "Homogeneous" অংশের (hidden-state term) অবদান মাত্র 0.0009।</p>
+
+<h2>৪. কেন কাজ করেনি: সহজ ব্যাখ্যা</h2>
+<div class="box">
+<b>উদাহরণ:</b> ধরুন তিনজন শিক্ষক একই প্রশ্নপত্রের উত্তর মুখস্থ করেছেন। এখন ছাত্রকে সেই একই প্রশ্নপত্র দিয়ে পড়ানো হলো। শিক্ষকেরা শুধু মুখস্থ উত্তরই বলবেন, নতুন কিছু শেখাতে পারবেন না। আর তিনজনের উত্তর যেহেতু একই, কোন শিক্ষকের কথা বেশি শুনবেন সেটা বেছে নেওয়ারও কোনো মানে নেই।
+</div>
+<p>আমাদের ক্ষেত্রে ঠিক এটাই হয়েছে, এবং আমরা তা মেপে দেখিয়েছি:</p>
+<ul>
+  <li><b>Teacher-রা training টুইট মুখস্থ করে ফেলেছে।</b> তাদের training loss শেষে 0.03 থেকে 0.08, মানে প্রতিটি training টুইটে তারা সঠিক উত্তরে প্রায় ৯৫% নিশ্চিত। তাই তাদের "soft label" আর আসল লেবেল একই জিনিস। Student নতুন কিছু পায় না।</li>
+  <li><b>Weighting-এর বাছার কিছু নেই।</b> সব teacher সব training টুইটে প্রায় নিখুঁত, তাই "কে বেশি নির্ভরযোগ্য" মাপলে সবাই সমান আসে। এজন্যই dynamic weighting আর সাধারণ গড় একই ফল দেয়।</li>
+  <li><b>Teacher-রা একে অপরের কপি হয়ে গেছে।</b> একই ডেটায় train করার পর তারা ১০টির মধ্যে ৯টির বেশি টুইটে একমত (Cohen's kappa 0.89 থেকে 0.96)। সবাই একসাথে সঠিক 83.2% টুইটে, সবাই একসাথে ভুল 4.7% টুইটে।</li>
+  <li><b>Implicit specialist-ও কপি হয়ে গেছে।</b> ইঙ্গিতে করা ঘৃণা শেখানো teacher-টি টুইট ডেটায় train হওয়ার পর HateBERT-এর সাথে 0.962 kappa-তে একমত, প্রায় হুবহু এক।</li>
+  <li><b>Committee নিজে ভালো, কিন্তু student পায় না।</b> Test set-এ তিন teacher-এর গড় সেরা teacher-এর চেয়ে 0.5 থেকে 0.8 পয়েন্ট ভালো। কিন্তু সেই সুবিধা student-এর কাছে পৌঁছায় না, কারণ student শেখে training টুইটে, যেখানে teacher-দের কোনো অনিশ্চয়তা নেই।</li>
+</ul>
+
+<div class="pb"></div>
+<h2>৫. সমাধান: teacher যে টুইট দেখেনি, সেখানে শেখানো (Session 5, ২১ সেপ্টেম্বর)</h2>
+<div class="box">
+<b>একই উদাহরণ:</b> শিক্ষকদের দিয়ে মুখস্থ প্রশ্নপত্র না পড়িয়ে, নতুন প্রশ্ন দেওয়া হলো যার উত্তরপত্র কারো কাছে নেই। এখন শিক্ষকের চিন্তা ("সম্ভবত A, তবে B-ও হতে পারে") ছাত্রের জন্য নতুন তথ্য। একেই বলা হয়েছে <b>out-of-sample</b>: teacher-এর training নমুনার বাইরে।
+</div>
+<p>আমরা 42,013টি নতুন টুইট জোগাড় করলাম (OLID, Davidson, HatEval এবং আমাদের ডেটার বাদ পড়া টুইট), লেবেল ছাড়া। প্রতিটি টুইট train, validation, test ও সব probe set-এর সাথে মিলিয়ে দেখা হয়েছে, মিললে বাদ; প্রায় ১০,০০০ টুইট এভাবে বাদ গেছে। Student এই টুইটগুলোতে শুধু teacher-এর soft label অনুকরণ করে।</p>
+<table class="avoid">
+  <tr><th>পদ্ধতি (BERT-mini, 42,013 নতুন টুইট)</th><th>স্কোর</th><th>teacher ছাড়ার তুলনায়</th><th>ফল</th></tr>
+  <tr><td>একটি teacher + নতুন টুইট</td><td class="n">0.8466</td><td class="n">+0.0073</td><td>প্রথম সত্যিকারের উন্নতি</td></tr>
+  <tr><td>তিন teacher-এর গড় + নতুন টুইট</td><td class="n">0.8462</td><td class="n">+0.0070</td><td>একটি teacher-এর মতোই</td></tr>
+  <tr><td>DeBERTa সহ committee + নতুন টুইট</td><td class="n">0.8477</td><td class="n">+0.0084</td><td class="ok">significant</td></tr>
+  <tr><td>সংশোধিত weighting + নতুন টুইট</td><td class="n">0.8484</td><td class="n">+0.0091</td><td class="ok">significant</td></tr>
+  <tr><td>Soft label-এর বদলে শুধু hard label</td><td class="n">0.8412</td><td class="n">+0.0020</td><td class="no">প্রায় কিছুই না</td></tr>
+</table>
+<p><b>এখান থেকে তিনটি শিক্ষা:</b> (১) লাভটা আসে নতুন টুইট থেকে, teacher-এর সংখ্যা থেকে নয়: তিন teacher আর এক teacher প্রায় সমান (−0.0003)। (২) লাভটা আসে soft label থেকে: শুধু hard label দিলে লাভ প্রায় শূন্য। (৩) ১২টি soft-label run-এর প্রতিটি teacher ছাড়া প্রতিটি run-এর উপরে।</p>
+
+<h2>৬. প্রমাণ শক্ত করা: আরও টুইট, আর তিনটি নিয়ন্ত্রণ পরীক্ষা (Session 6 ও 7)</h2>
+<p>প্রতিটি run-এর আগে আমরা লিখে রেখেছিলাম কী ফল আশা করছি এবং কী সিদ্ধান্ত নেব, তারপর script দিয়ে মিলিয়েছি। যাতে কেউ বলতে না পারে আমরা ফল দেখে গল্প বানিয়েছি।</p>
+<table class="avoid">
+  <tr><th>পরীক্ষা (BERT-mini, একটি teacher)</th><th>নতুন টুইট</th><th>স্কোর</th><th>teacher ছাড়ার তুলনায়</th></tr>
+  <tr><td>Teacher ছাড়া, সাধারণ training (6 epoch)</td><td class="n">0</td><td class="n">0.8393</td><td>ভিত্তি</td></tr>
+  <tr><td>+ 5,000 টুইট</td><td class="n">5,000</td><td class="n">0.8402</td><td class="n">+0.0010</td></tr>
+  <tr><td>+ 10,000 টুইট</td><td class="n">10,000</td><td class="n">0.8428</td><td class="n">+0.0035</td></tr>
+  <tr><td>+ 21,000 টুইট</td><td class="n">21,000</td><td class="n">0.8436</td><td class="n">+0.0043</td></tr>
+  <tr><td>+ 42,000 টুইট</td><td class="n">42,013</td><td class="n">0.8463</td><td class="n">+0.0070</td></tr>
+  <tr><td>+ 84,000 টুইট (সাধারণ টুইট যোগ করে)</td><td class="n">84,000</td><td class="n">0.8474</td><td class="n">+0.0081</td></tr>
+  <tr><td><b>+ 168,000 টুইট</b></td><td class="n">168,000</td><td class="n"><b>0.8516</b></td><td class="n"><b>+0.0123</b>, significant</td></tr>
+  <tr><td>নিয়ন্ত্রণ ১: শুধু সাধারণ টুইট (sentiment, emoji), গালাগালি নয়</td><td class="n">42,013</td><td class="n">0.8445</td><td class="n">+0.0053</td></tr>
+  <tr><td>নিয়ন্ত্রণ ২: নতুন টুইট ছাড়া, 13 epoch লম্বা training</td><td class="n">0</td><td class="n">0.8420</td><td class="n">+0.0027</td></tr>
+  <tr><td>নিয়ন্ত্রণ ৩: নতুন টুইট ছাড়া, 35 epoch লম্বা training</td><td class="n">0</td><td class="n">0.8380</td><td class="n">−0.0013</td></tr>
+</table>
+<img src="../thesis/figures/fig_size_curve.png" alt="size curve">
+<p class="cap">চিত্র ১: যত বেশি নতুন টুইট, তত ভালো স্কোর। ধূসর রেখাগুলো নতুন টুইট ছাড়া লম্বা training, যা কোনো কাজে আসে না।</p>
+<ul>
+  <li><b>যত টুইট, তত লাভ:</b> ছয়টি ধাপেই স্কোর বেড়েছে, একবারও কমেনি। 168,000-এ লাভ +0.0123, যা significant: পুরো থিসিসে BERT-mini-এর প্রথম significant উন্নতি।</li>
+  <li><b>কোন টুইট, সেটা তেমন জরুরি না:</b> গালাগালির টুইট না দিয়ে সাধারণ টুইট দিলেও লাভ প্রায় একই (+0.0053 বনাম +0.0070)। তাই শুধু একই platform-এর লেবেলবিহীন টুইট হলেই চলে, যা পাওয়া সহজ।</li>
+  <li><b>এটা শুধু "বেশি training" নয়:</b> নতুন টুইট যোগ করলে training-এর ধাপ বাড়ে। তাই আমরা নতুন টুইট ছাড়া একই সংখ্যক ধাপ train করে দেখেছি: 35 epoch-এ স্কোর বাড়ে না, বরং 13 epoch-এর পর overfit করে কমে যায়। সেই তুলনায় 168,000-এর লাভ +0.0136, significant।</li>
+</ul>
+<table class="avoid">
+  <tr><th>অন্য student-এও কাজ করে কি?</th><th>teacher ছাড়া</th><th>+ 168,000 টুইট</th><th>লাভ</th><th>ফল</th></tr>
+  <tr><td>BERT-mini (11.2M)</td><td class="n">0.8393</td><td class="n">0.8516</td><td class="n">+0.0123</td><td class="ok">significant</td></tr>
+  <tr><td>BERT-small (28.8M)</td><td class="n">0.8469</td><td class="n">0.8526</td><td class="n">+0.0057</td><td>বাড়ে, কিন্তু significant নয়</td></tr>
+  <tr><td>BiLSTM (10.4M)</td><td class="n">0.8693</td><td class="n">0.8856</td><td class="n">+0.0163</td><td class="ok">significant, সবচেয়ে বেশি</td></tr>
+</table>
+<p>BiLSTM মাত্র 10.4M parameter নিয়ে এখন TF-IDF floor (0.8798) পার করেছে এবং DistilBERT-এর (67M, 0.8907) খুব কাছে, ছয় ভাগের এক ভাগ আকারে। আর এই পদ্ধতিতে ব্যবহারের সময় (inference) কোনো বাড়তি খরচ নেই: নতুন টুইট শুধু training-এ লাগে।</p>
+
+<div class="pb"></div>
+<h2>৭. যা বদলায়নি: sarcasm ও ইঙ্গিতে করা bullying</h2>
+<p>থিসিসের মূল লক্ষ্য ছিল ইঙ্গিতে বা ব্যঙ্গে করা bullying ধরা। আমরা এটা মেপেছি এমনভাবে যাতে threshold-এর উপর নির্ভর না করে: মডেল কতটা ভালোভাবে <b>ক্ষতিকর ব্যঙ্গকে নিরীহ ব্যঙ্গের উপরে</b> রাখে (AUC; 0.5 মানে আন্দাজ, 1.0 মানে নিখুঁত)।</p>
+<ul>
+  <li><b>কোনো পদ্ধতিতেই বাড়েনি।</b> Pre-trained student-এর প্রতিটি সংস্করণ, teacher সহ বা ছাড়া, নতুন টুইট সহ বা ছাড়া, 0.73 থেকে 0.78-এর মধ্যে। শুধু pre-training ছাড়া student নেমে যায় 0.613-তে। অর্থাৎ এই ক্ষমতা আসে pre-training থেকে, আমাদের কোনো পদ্ধতি থেকে নয়।</li>
+  <li><b>যা বদলায় তা হলো মডেল কত সহজে "bullying" বলে দেয়।</b> ১৮৪টি মডেলে দেখা গেছে: যে মডেল বেশি ব্যঙ্গাত্মক bullying ধরে, সে সমান হারে বেশি নিরীহ ব্যঙ্গকেও ভুল করে bullying বলে (correlation +0.77)। নতুন টুইটে শেখানো student কম "fire" করে: ভুল ধরা 35% থেকে 25%-এ নামে, কিন্তু ধরাও 74% থেকে 57%-এ নামে। আলাদা করার ক্ষমতা একই থাকে।</li>
+  <li><b>অন্য ডেটাসেটে একই।</b> টুইটে শেখা মডেল Implicit Hate Corpus-এ ইঙ্গিতে করা ঘৃণা চেনে মাত্র 0.60 AUC-তে (প্রায় আন্দাজ), যেখানে সেই ডেটাতেই train করা একই মডেল পায় 0.82।</li>
+  <li><b>লেবেলও নিশ্চিত নয়।</b> দুটি বিশেষজ্ঞ corpus একই টুইট "ঘৃণা কিনা" নিয়ে 99.7% একমত, কিন্তু "ইঙ্গিতে কিনা" নিয়ে মাত্র 48.2%। ইঙ্গিত মাপা মানুষের জন্যও কঠিন।</li>
+</ul>
+<img src="../thesis/figures/fig_tradeoff.png" alt="tradeoff">
+<p class="cap">চিত্র ২: ১৮৪টি মডেল একই রেখায়। কোনো পদ্ধতি রেখার উপরে ওঠে না, শুধু রেখা বরাবর সরে।</p>
+
+<h2>৮. প্রতিটি তুলনা: কী জানতে চেয়েছিলাম, আর উত্তর</h2>
+<table>
+  <tr><th>#</th><th>কোনটার সাথে কোনটা</th><th>কেন এই তুলনা</th><th>উত্তর</th></tr>
+  <tr><td>১</td><td>Teacher সহ বনাম teacher ছাড়া (লেবেলযুক্ত ডেটায়)</td><td>Distillation আদৌ কাজ করে কিনা</td><td class="no">না, significant নয়</td></tr>
+  <tr><td>২</td><td>তিন teacher বনাম এক teacher</td><td>বেশি teacher দিলে লাভ কিনা</td><td class="no">না</td></tr>
+  <tr><td>৩</td><td>Dynamic weighting বনাম সাধারণ গড়</td><td>আমাদের মূল পদ্ধতি কাজ করে কিনা</td><td class="no">না, কোনো τ-তেই</td></tr>
+  <tr><td>৪</td><td>DeBERTa teacher যোগ বনাম না</td><td>ভিন্ন ধরনের teacher দিলে লাভ কিনা</td><td class="no">না</td></tr>
+  <tr><td>৫</td><td>Implicit specialist যোগ বনাম না</td><td>ইঙ্গিতের জ্ঞান student-এ যায় কিনা</td><td class="no">না</td></tr>
+  <tr><td>৬</td><td>Specialist একা; implicit ডেটায় pre-train</td><td>উপরের ফলের নিয়ন্ত্রণ পরীক্ষা</td><td class="no">না</td></tr>
+  <tr><td>৭</td><td>Hidden-state term সহ বনাম ছাড়া</td><td>"Homogeneous" অংশ কাজ করে কিনা</td><td class="no">না (+0.0009)</td></tr>
+  <tr><td>৮</td><td>Pre-trained বনাম random student</td><td>Pre-training-এর মূল্য কত</td><td class="ok">অনেক (−0.049)</td></tr>
+  <tr><td>৯</td><td>লেবেলযুক্ত ডেটা বনাম + নতুন টুইট</td><td>Out-of-sample distillation কাজ করে কিনা</td><td class="ok">হ্যাঁ (+0.007)</td></tr>
+  <tr><td>১০</td><td>Soft label বনাম hard label</td><td>লাভ কি soft label থেকে</td><td class="ok">হ্যাঁ (+0.007 বনাম +0.002)</td></tr>
+  <tr><td>১১</td><td>Committee বনাম এক teacher, নতুন টুইটে</td><td>নতুন টুইটে কি বেশি teacher লাগে</td><td class="no">না, একজনই যথেষ্ট</td></tr>
+  <tr><td>১২</td><td>5,000 থেকে 168,000 টুইট</td><td>বেশি টুইটে বেশি লাভ কিনা</td><td class="ok">হ্যাঁ, প্রতি ধাপে</td></tr>
+  <tr><td>১৩</td><td>গালাগালির টুইট বনাম সাধারণ টুইট</td><td>টুইটের বিষয় জরুরি কিনা</td><td>সামান্য; সাধারণ টুইটেও চলে</td></tr>
+  <tr><td>১৪</td><td>নতুন টুইট ছাড়া লম্বা training</td><td>লাভটা কি শুধু বেশি training-এর</td><td class="ok">না, টুইটের কারণেই</td></tr>
+  <tr><td>১৫</td><td>BERT-small ও BiLSTM-এ একই পরীক্ষা</td><td>অন্য মডেলেও কাজ করে কিনা</td><td class="ok">হ্যাঁ (BiLSTM significant)</td></tr>
+  <tr><td>১৬</td><td>সব মডেলের sarcasm AUC</td><td>ইঙ্গিত চেনার ক্ষমতা বাড়ে কিনা</td><td class="no">না, কোনো পদ্ধতিতেই</td></tr>
+</table>
+
+<h2>৯. আমাদের অর্জন, আর যা আমরা দাবি করি না</h2>
+<table class="avoid">
+  <tr><th>আমরা যা দেখিয়েছি (অর্জন)</th><th>যা দাবি করি না</th></tr>
+  <tr><td>
+    <ul>
+      <li>ন্যায্য নিয়ন্ত্রণ দিয়ে দেখিয়েছি, লেবেলযুক্ত ডেটায় multi-teacher distillation কাজ করে না, এবং <b>কেন</b> করে না তা মেপে দেখিয়েছি।</li>
+      <li>একটি পদ্ধতি পেয়েছি যা কাজ করে: নতুন লেবেলবিহীন টুইটে distillation; BERT-mini-তে +1.2, BiLSTM-এ +1.6 পয়েন্ট, টুইট বাড়ালে আরও বাড়ে।</li>
+      <li>দেখিয়েছি sarcasm চেনার ক্ষমতা pre-training-এ স্থির, এবং এটা মাপার একটি threshold-ছাড়া পদ্ধতি দিয়েছি।</li>
+      <li>পরিষ্কার benchmark, আলাদা implicit benchmark, পুরো কোড GitHub-এ, আর আগে থেকে লেখা ভবিষ্যদ্বাণী দিয়ে যাচাই।</li>
+      <li>DistilBERT (67M) BERT-large-এর (335M) সমান স্কোর পায়, পাঁচ গুণ ছোট ও ছয় গুণ দ্রুত।</li>
+    </ul></td>
+  <td>
+    <ul>
+      <li>Out-of-sample distillation নতুন আবিষ্কার নয় (Hinton, 2015-এর ধারণা)। আমাদের অবদান হলো এই ক্ষেত্রে নিয়ন্ত্রিত পরীক্ষায় দেখানো যে এটাই একমাত্র জিনিস যা কাজ করে।</li>
+      <li>দ্বিতীয় কোনো ডেটাসেটে পরীক্ষা হয়নি।</li>
+      <li>BERT-small-এর লাভ significant নয়।</li>
+      <li>Sarcasm probe মানুষ দিয়ে যাচাই করা হয়নি (annotation বাকি)।</li>
+      <li>Laptop ও Kaggle-এ একই কোডে BERT-mini-এর স্কোর আলাদা আসে; তাই সব তুলনা শুধু Kaggle-এর ভেতরে।</li>
+    </ul></td></tr>
+</table>
+<p><b>আগে থেকে লেখা ১১টি ভবিষ্যদ্বাণীর ফল:</b> ৬টি সত্যি হয়েছে, ২টি আংশিক, ৩টি ভুল হয়েছে, এবং ভুলগুলোও থিসিসে লেখা আছে। যেমন আমরা ভেবেছিলাম নতুন টুইটে committee এক teacher-এর চেয়ে ভালো শেখাবে; তা হয়নি।</p>
+
+<h2>১০. শিরোনাম কেন বদলালাম</h2>
+<p>পুরোনো শিরোনাম: <span class="en"><i>A Dynamic Multi-Teacher Homogeneous Knowledge Distillation Framework for Robust Cyberbullying Detection</i></span>। এর প্রতিটি মূল শব্দ আমরা মেপেছি: <b>Dynamic</b> weighting গড়ের চেয়ে ভালো নয়; <b>Multi-Teacher</b> এক teacher-এর চেয়ে ভালো নয়; <b>Homogeneous</b> অংশের অবদান 0.0009; আর <b>Robust</b> নয়, কারণ বানান বিকৃত করলে স্কোর 0.839 থেকে 0.712-তে নামে এবং distillation তা আটকায় না। তাই নতুন শিরোনাম সেটাই বলে যা আসলে প্রমাণিত: নতুন লেবেলবিহীন টুইট সাহায্য করে, বেশি teacher করে না।</p>
+
+<h2>১১. কাজের সময়রেখা ও এখনকার অবস্থা</h2>
+<table class="avoid">
+  <tr><th>Kaggle session</th><th>কী হলো</th><th>GPU ঘণ্টা</th></tr>
+  <tr><td>১</td><td>পাঁচ student, তিন committee: লেবেলযুক্ত ডেটার পুরো পরীক্ষা (১২০ run)</td><td class="n">8.24</td></tr>
+  <tr><td>২ ও ৩</td><td>ব্যর্থ (একটি resume bug, একটি আটকে যাওয়া cell); দুটোই ঠিক করা হয়েছে</td><td class="n">--</td></tr>
+  <tr><td>৪</td><td>Implicit specialist, নিয়ন্ত্রণ পরীক্ষা, তীক্ষ্ণ τ</td><td class="n">1.41</td></tr>
+  <tr><td>৫</td><td>প্রথম out-of-sample পরীক্ষা (42,013 টুইট)</td><td class="n">2.11</td></tr>
+  <tr><td>৬</td><td>5,000 থেকে 168,000 টুইটের পরীক্ষা ও নিয়ন্ত্রণ</td><td class="n">3.52</td></tr>
+  <tr><td>৭</td><td>35 epoch নিয়ন্ত্রণ, BERT-small ও BiLSTM</td><td class="n">3.16</td></tr>
+  <tr><td></td><td><b>মোট: ১৭৯টি student run</b></td><td class="n"><b>18.44</b></td></tr>
+</table>
+<p><b>এখন:</b> পুরো thesis draft LaTeX-এ (BRAC format) তৈরি, আটটি অধ্যায়, সাতটি চিত্র, পাঁচটি appendix। জমা ২৬ সেপ্টেম্বর, slides ২৯ সেপ্টেম্বর, defense ৩ অক্টোবর। আর কোনো GPU পরীক্ষা বাকি নেই।</p>
+
+<h2>১২. সুপারভাইজার যা জিজ্ঞেস করতে পারেন</h2>
+<table>
+  <tr><th>প্রশ্ন</th><th>ছোট উত্তর</th></tr>
+  <tr><td>তাহলে কি আমাদের মূল পদ্ধতি ব্যর্থ?</td><td>লেবেলযুক্ত ডেটায় হ্যাঁ, এবং আমরা কারণ মেপে দেখিয়েছি। সেই কারণ থেকেই কাজ করা পদ্ধতিটি পেয়েছি। এটা একটা সম্পূর্ণ গবেষণার গল্প।</td></tr>
+  <tr><td>P2-তে তো কাজ করেছিল?</td><td>P2-তে একবার run, আর teacher ছাড়া student-এর তুলনা ছিল না। সেই তুলনা আর তিনটি run যোগ করলে ফারাক কাকতালীয় প্রমাণিত হয়।</td></tr>
+  <tr><td>+0.012 কি যথেষ্ট?</td><td>এটা significant, টুইট বাড়ালে বাড়ে, inference-এ বাড়তি খরচ নেই, আর BiLSTM-এ +0.016 যা একটি 10M মডেলকে 67M মডেলের কাছে নিয়ে যায়।</td></tr>
+  <tr><td>এটা কি শুধু বেশি training?</td><td>না। নতুন টুইট ছাড়া একই পরিমাণ training করে দেখেছি, কোনো লাভ নেই।</td></tr>
+  <tr><td>Sarcasm-এর লক্ষ্য তো পূরণ হলো না?</td><td>পূরণ হয়নি, এবং আমরা দেখিয়েছি কেন: এই ক্ষমতা pre-training থেকে আসে। ভবিষ্যতে দরকার এমন টুইট যেখানে sarcasm বা ইঙ্গিত লেবেল করা আছে।</td></tr>
+  <tr><td>Journal-এ পাঠানো যাবে?</td><td>হ্যাঁ: নিয়ন্ত্রিত পরীক্ষা, ব্যাখ্যা, আর একটি কাজ করা পদ্ধতি একসাথে আছে। তার আগে দ্বিতীয় ডেটাসেট যোগ করলে আরও শক্ত হবে।</td></tr>
+</table>
+
+</body>
+</html>
