@@ -776,3 +776,13 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   `scripts/smoke_driver.py` asserts the new arms. Predictions and the wording rule are in D21.
   Resumes from v6's output; about 4 GPU-hours (drop BiLSTM with `TRANSFER_SCALE_STUDENTS=bert-small`
   for about 3).
+- **v7 ran (Kaggle, 3.16 h, 9 new runs, 179 finished; archive `E:/dmthd-work/kaggle_d738_v7`).**
+  Tables built on Kaggle this time and match the local rebuild. BERT-mini fine-tuned alone for 35
+  epochs: 0.8380 ± 0.0033, -0.0013 [-0.0106, +0.0072] against six, validation peaking at epochs 6 to
+  13 and declining after; the 168k arm keeps +0.0136 [+0.0023, +0.0240] over it. BERT-small 168k:
+  0.8526 ± 0.0016, +0.0057 [-0.0063, +0.0171] over fine-tuning, +0.0038 over the same teacher in
+  sample. BiLSTM 168k: 0.8856 ± 0.0003, +0.0163 [+0.0063, +0.0271] over fine-tuning, +0.0108
+  [+0.0023, +0.0200] over the same teacher in sample; above the TF-IDF floor at 10.4M parameters. D21
+  predictions 1 and 3 held with intervals clear of zero, 2 held on the mean; the wording rule fires the
+  plural (F34). Tables, run summary and the per-model sarcasm CSV (43 models) regenerated; the D21
+  rows added to `significance.csv`. No further GPU runs before the defense.

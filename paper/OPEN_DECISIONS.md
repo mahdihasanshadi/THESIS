@@ -180,7 +180,7 @@ Kaggle gives 30 GPU-hours per account per week. Four accounts is 120. My estimat
 | v4 in total: specialist, `spec` committee, both controls, sharp tau, analyses | 1.4 h | complete, 131 runs |
 | v5: five out-of-sample arms, per-committee routing, probes for the sharp tau runs | 2.11 h | done, 21 September |
 | v6: transfer-set size curve on BERT-mini (5k to 168k), a composition control and a matched-steps control | 3.5 h | ran 21 September: monotone, +0.0123 [+0.0035, +0.0211] at 168k; D20's rule fires (F33) |
-| v7: fine-tune-only for 35 epochs (the 168k arm's number of updates) on BERT-mini, and the 168k arm on BERT-small and BiLSTM, three seeds each | ~4 h | built 21 September (D21); the last run before the 3 October defense |
+| v7: fine-tune-only for 35 epochs (the 168k arm's number of updates) on BERT-mini, and the 168k arm on BERT-small and BiLSTM, three seeds each | 3.2 h | ran 22 September: the control scores -0.0013, BiLSTM +0.0163 and BERT-small +0.0057 (F34); no further runs before the defense |
 | Implicit benchmark, full grid | 8-10 h, one session | not started |
 | Wikipedia, full grid | 20 h or more, 256-token inputs | not started, needs a second account |
 
@@ -251,8 +251,9 @@ goes; and read aloud in one breath at a defense.
 | D | *From Multi-Teacher to Out-of-Sample Knowledge Distillation for Cyberbullying Detection: A Controlled Audit and a Scaling Recipe* | Keeps the registered title's lineage; audit and recipe both named | Longest; "scaling recipe" sounds larger than a 1.2-point curve on one corpus |
 | E | *Distil Where the Teacher Is Uncertain: Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection* | The best sentence in the paper | Misreadable as uncertainty-based selection, which was never tested; keep it as Section 5.3d's heading |
 
-**Recommendation: A**, filed as the thesis title, with D as the fallback if the department wants the
-registered wording to survive in part. A stays true whether v7 confirms the second student or not,
+**Recommendation: A**, filed as the thesis title on 21 September, with D as the fallback if the
+department wants the registered wording to survive in part. **Confirmed 22 September by v7 (F34):**
+both controls held, so the title needs no qualification. A stays true whether v7 confirms the second student or not,
 because it names the task and not the number of students. If v7's prediction 1 fails, the subtitle
 changes to *More Unlabelled Text Helps at Matched Compute Only Partly*, or the title moves to D.
 

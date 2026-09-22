@@ -4,13 +4,14 @@ Every number here is read from a `results.json` or an `eval_*.json` produced by 
 Nothing is typed from memory and nothing is rounded in our favour. Where a result contradicts what we
 set out to show, it is reported in the same voice as the results that support it.
 
-The tweet-corpus grid is complete: 170 student runs over five students, three seeds per
+The tweet-corpus grid is complete: 179 student runs over five students, three seeds per
 configuration, a homogeneous and a heterogeneous committee on every student and a third committee,
 which adds an implicit-abuse specialist, on the headline student, plus ablations, controls,
-hyper-parameter sweeps, five out-of-sample distillation arms and the eight arms of a transfer-set
-size curve with its controls. The first 120 runs took 8.2 GPU-hours; a further 1.4 added the
-specialist, its committee, two controls and the three sharpest weighting temperatures, a further 2.1
-the out-of-sample arms, and a further 3.5 the size curve. The Wikipedia benchmark and the
+hyper-parameter sweeps, five out-of-sample distillation arms, the eight arms of a transfer-set size
+curve with its controls, and the largest set on two more students. The first 120 runs took 8.2
+GPU-hours; a further 1.4 added the specialist, its committee, two controls and the three sharpest
+weighting temperatures, a further 2.1 the out-of-sample arms, a further 3.5 the size curve, and a
+further 3.2 its last two controls. The Wikipedia benchmark and the
 student grid on the implicit benchmark are in progress and their sections are marked as such.
 
 **One rule constrains what may appear in these tables.** The same code, data and seeds produce
@@ -322,32 +323,49 @@ value, which makes the recipe cheaper than we assumed: the unlabelled text need 
 only in the register the student will meet. Returns diminish, as predicted: the abuse-domain rows
 added 1.7 points of macro-F1 per 10,000, the generic rows appended beyond them 0.4.
 
-Optimisation length explains a part, and not the whole. Fine-tuning for the 42k arm's number of
-updates gains +0.0027, above the 0.002 we allowed; its best validation epoch is the sixth for two
-seeds and the eleventh for the third, so the extra epochs buy a longer search over checkpoints rather
-than a better optimum. Against this control the 42k arm keeps +0.0043 [-0.0032, +0.0122] and the 168k
-arm +0.0096 [+0.0000, +0.0191]. The control matches the 42k arm only; the 168k arm takes 2.7 times its
-updates, and a fine-tune-only run of that length has not been run. Its validation curve argues
-against steps as the explanation (the control peaks at 0.853 to 0.854, the 168k arm at 0.858 to
-0.861) without measuring it, and we list it as the first thing to run next.
+Optimisation length does not explain the curve. Fine-tuning for the 42k arm's number of updates (13
+epochs) gains +0.0027; fine-tuning for the 168k arm's number of updates (35 epochs) gains nothing,
+-0.0013 [-0.0106, +0.0072], with the validation score peaking between epochs 6 and 13 and declining
+afterwards (0.855 to 0.844 by the last epoch): the extra updates are spent overfitting. The 13-epoch
+control's small gain was a longer search over checkpoints rather than a better optimum, and 35 epochs
+is its ceiling. Against these controls the 42k arm keeps +0.0043 [-0.0032, +0.0122] and the 168k arm
++0.0136 [+0.0023, +0.0240], the latter with an interval clear of zero.
 
 Where the gain lands is the same along the whole curve: between fine-tuning and the 168k arm, F1 on
 `not_cyberbullying` rises from 0.644 to 0.671 and on `other_cyberbullying` from 0.707 to 0.720,
 `gender` by 0.016, and the three remaining targeted classes by at most 0.007. The unlabelled text
 teaches the boundary the labelled split draws worst.
 
+**The curve's endpoint holds on two more students.** The largest set was run on BERT-small (28.8M,
+the same family) and on BiLSTM (10.4M, the heterogeneous student), one teacher labelling, three
+seeds, beside their in-sample fine-tuning and single-teacher runs:
+
+| Student | Fine-tune only | Single teacher, in sample | + 168k transfer rows | Gain over fine-tuning | Gain over the same teacher in sample |
+|---|---|---|---|---|---|
+| BERT-mini (11.2M) | 0.8393 +- 0.0003 | 0.8405 +- 0.0017 | 0.8516 +- 0.0012 | +0.0123 [+0.0035, +0.0211] | +0.0111 |
+| BERT-small (28.8M) | 0.8469 +- 0.0040 | 0.8488 +- 0.0044 | 0.8526 +- 0.0016 | +0.0057 [-0.0063, +0.0171] | +0.0038 [-0.0049, +0.0137] |
+| BiLSTM (10.4M) | 0.8693 +- 0.0043 | 0.8748 +- 0.0018 | 0.8856 +- 0.0003 | +0.0163 [+0.0063, +0.0271] | +0.0108 [+0.0023, +0.0200] |
+
+BiLSTM gains most, every seed above every baseline seed, and at 10.4M parameters now clears the
+classical floor of Section 5.1 (0.8798) and sits within 0.005 of DistilBERT's fine-tuning (0.8907)
+with a sixth of the parameters. BERT-small gains on the mean, with two of three seeds above every
+fine-tuning seed, but its fine-tuning seeds vary by 0.008 and its interval includes zero, which we
+report as it is. On both students the gain lands where it landed on BERT-mini: BiLSTM's F1 on
+`not_cyberbullying` rises from 0.690 to 0.734 and on `other_cyberbullying` from 0.719 to 0.747.
+
 **Still a task gain, not an implication gain.** Along the curve the first seed's
 sarcasm-discrimination AUC is 0.758, 0.764, 0.752, 0.765, 0.771 and 0.761, inside the band of
-Section 5.8, and the generic control's is 0.760. What moves is the operating point: at the 0.5 cut,
+Section 5.8, and the generic control's is 0.760; the 35-epoch control's is 0.774. What moves is the operating point: at the 0.5 cut,
 recall on ironic abuse falls from 0.74 to 0.57 and the false-positive rate on benign sarcasm from
 0.35 to 0.25 as the set grows, the student firing less on sarcasm of both kinds, which is Section
 5.7's trade-off traced along one axis. Two of the eight new models are the first in the grid to hold
 the false-positive rate under 10 per cent at the 0.90 cut, at recall 0.389 (the 84k arm) and 0.338
 (the 13-epoch control), which is where Section 5.6 said the safe operating point would cost.
 
-The constructive sentence of this paper is therefore measured on three axes: the gain exists, it
-grows with the unlabelled text, and it comes from any tweets. What it needs before it can be stated
-for more than one student and one corpus is listed in Section 5.10.
+The constructive sentence of this paper is therefore measured on four axes: the gain exists, it grows
+with the unlabelled text, it comes from any tweets, and it holds on three compact students of two
+families while fine-tuning for the same number of updates gains nothing. What it does not yet have is
+a second corpus, which Section 5.10 lists.
 
 ## 5.4 Ablations and controls: only pre-training matters
 
@@ -553,10 +571,10 @@ each configuration.
 
 **The out-of-sample arms take more optimisation steps.** With the transfer set an epoch covers
 76,620 rows against 34,607, and 202,607 at 168k, so those students see 2.2 to 5.9 times the updates
-of every other run. Fine-tuning alone for the 42k arm's number of updates gains +0.0027 (Section
-5.3d), so a part of the out-of-sample gain is optimisation length; the 42k and 168k arms keep +0.0043
-and +0.0096 over that control. No fine-tune-only run matches the 168k arm's length, and one is the
-first item of further work, with the curve on a second student the second.
+of every other run. Both lengths were run as fine-tune-only controls (Section 5.3d): 13 epochs gain
++0.0027 and 35 epochs gain -0.0013, so optimisation length does not explain the curve. What remains
+unmeasured is a second corpus, and the curve on DistilBERT and DeBERTa-v3-xsmall, which the GPU
+budget did not reach.
 
 **Teacher variance is not estimated.** Each teacher is trained once.
 

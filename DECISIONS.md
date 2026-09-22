@@ -420,6 +420,30 @@ arm against fine-tuning and against the same teacher in sample; `tables.py` writ
    from the table, and the title returns to the audit-led candidate (Decision 3, option D). Only
    prediction 2 or 3 fails: the result is stated for the students where it holds, by name.
 
+**Outcome, 22 September (Kaggle v7, 3.16 h, 9 new runs, 179 finished).** Scored by
+`scripts/scaling_verdict.py` items 5 and 6; intervals from `dmthd.significance`.
+
+| Arm | Macro-F1 | Against fine-tuning | Against the same teacher in sample |
+|---|---|---|---|
+| BERT-mini, fine-tuning alone for 35 epochs | 0.8380 ± 0.0033 | -0.0013 [-0.0106, +0.0072] | -- |
+| BERT-mini, 168k arm against that control | 0.8516 ± 0.0012 | +0.0136 [+0.0023, +0.0240] | -- |
+| BERT-small, 168k arm | 0.8526 ± 0.0016 | +0.0057 [-0.0063, +0.0171] | +0.0038 [-0.0049, +0.0137] |
+| BiLSTM, 168k arm | 0.8856 ± 0.0003 | +0.0163 [+0.0063, +0.0271] | +0.0108 [+0.0023, +0.0200] |
+
+1. **Held.** Fine-tuning for the 168k arm's number of updates does not help at all: -0.0013, with the
+   validation score peaking at epochs 6, 13 and 10 and then declining (0.855 to 0.844 by the last
+   epoch). Optimisation length is not the explanation of the curve; the 168k arm keeps +0.0136 over
+   the control with an interval that excludes zero.
+2. **Held on the mean, not on the interval.** BERT-small gains +0.0057 over its fine-tuning and
+   +0.0038 over the same teacher in sample; two of three seeds sit above every fine-tuning seed. Its
+   fine-tuning seeds vary by 0.008, so the interval includes zero and the paper says so.
+3. **Held, and by more.** BiLSTM gains +0.0163 over fine-tuning and +0.0108 over the same teacher in
+   sample, every seed above every baseline seed, both intervals clear of zero. At 10.4M parameters it
+   now clears the classical floor (0.8798) and sits within 0.005 of DistilBERT's fine-tuning (0.8907)
+   with a sixth of the parameters.
+4. **The rule fires the plural.** Both controls hold: the thesis states the result for compact students
+   in the plural, with BERT-small's interval reported as it is, and the title stands as filed.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.
@@ -1015,6 +1039,25 @@ range measured, that it needs one teacher and no weighting, and that it is a tas
 claim that the text must be abuse-domain, that the gain is free of an optimisation-length component,
 or that it holds beyond BERT-mini and this corpus until v7 and a second student are run.
 
+### F34. Longer fine-tuning does not explain the curve, and the curve holds on two more students
+Kaggle v7 (D21). BERT-mini fine-tuned alone for 35 epochs, the 168k arm's number of updates, scores
+0.8380 ± 0.0033, -0.0013 [-0.0106, +0.0072] against six epochs; its validation score peaks between
+epochs 6 and 13 and declines afterwards, so the extra updates are spent overfitting, and the 168k arm
+keeps +0.0136 [+0.0023, +0.0240] over it. The 13-epoch control's +0.0027 (F33) was a longer search
+over checkpoints, not a better optimum, and this is its ceiling. On the other students the largest
+set does what it did on BERT-mini: BERT-small 0.8526 ± 0.0016, +0.0057 [-0.0063, +0.0171] over
+fine-tuning and +0.0038 [-0.0049, +0.0137] over the same teacher in sample, two of three seeds above
+every fine-tuning seed; BiLSTM 0.8856 ± 0.0003, +0.0163 [+0.0063, +0.0271] over fine-tuning and
++0.0108 [+0.0023, +0.0200] over the same teacher in sample, every seed above every baseline seed. The
+heterogeneous student gains most, as F3 hinted in sample (+0.0055), and now clears the TF-IDF floor
+(0.8798) at 10.4M parameters. The gain lands where it landed on BERT-mini: BiLSTM's F1 on
+`not_cyberbullying` 0.690 to 0.734 and on `other_cyberbullying` 0.719 to 0.747. The operating point
+moves the same way too: BiLSTM's false-positive rate on benign sarcasm falls from 0.40 to 0.18 and
+its recall on ironic abuse from 0.62 to 0.50; BERT-small's from 0.40 to 0.29 and 0.74 to 0.61.
+Licenses: the paper may state the out-of-sample result for compact students in the plural (three
+students, two families), may say that optimisation length does not explain it, and must report
+BERT-small's interval as including zero. It may not claim a second corpus.
+
 ## 5. What the paper may and may not claim
 
 **May claim, with the evidence above:**
@@ -1061,6 +1104,10 @@ or that it holds beyond BERT-mini and this corpus until v7 and a second student 
 - That the gain grows with the transfer set: monotone over six sizes from 5,000 to 168,000 rows,
   +0.0123 [+0.0035, +0.0211] at the largest, from generic tweets nearly as well as from abuse-domain
   ones, and +0.0096 [+0.0000, +0.0191] over fine-tuning run for the 42k arm's number of updates (F33).
+- That longer fine-tuning does not explain it: 35 epochs alone score -0.0013 against six, and the 168k
+  arm keeps +0.0136 [+0.0023, +0.0240] over that control (F34).
+- That it holds on compact students in the plural: BiLSTM +0.0163 [+0.0063, +0.0271] and BERT-small
+  +0.0057 [-0.0063, +0.0171] over their fine-tuning, with BERT-small's interval including zero (F34).
 
 **May not claim:**
 - That D-MTHD beats uniform averaging. It does not, at any tau from 0.05 to 5 (F22).
@@ -1068,8 +1115,9 @@ or that it holds beyond BERT-mini and this corpus until v7 and a second student 
   intervals, all containing zero (F3, F23).
 - That in-sample distillation improves any student. It raises every one, within test-set noise
   (F27). Out of sample it does, on the headline student, by 0.7 of a point at 42k and 1.2 at 168k
-  (F31, F33); that it holds on the other students, or survives a fine-tune-only control run for the
-  168k arm's number of updates, has not been measured (proposed v7).
+  (F31, F33, F34). It holds on BiLSTM with the interval clear of zero and on BERT-small on the mean
+  only; it survives a fine-tune-only control at the 168k arm's number of updates (F34). A second
+  corpus has not been measured.
 - That the transfer text must be in-domain. Generic tweets of the same size gain within 0.002 of the
   abuse-domain set (F33); what the text must be is unlabelled, from the platform, and unseen by the
   teachers.
@@ -1121,8 +1169,8 @@ or that it holds beyond BERT-mini and this corpus until v7 and a second student 
    whether the constructive result can lead the paper or closes it. About three GPU-hours.
    **Answered 21 September: yes.** Monotone over 5,000 to 168,000 rows, +0.0123 [+0.0035, +0.0211] at
    168,000, from generic tweets nearly as well as from abuse-domain ones; the constructive result
-   leads (F33, D20). Still open: a fine-tune-only control at the 168k arm's length, and a second
-   student (v7).
+   leads (F33, D20). **Closed 22 September (v7, F34):** the 168k-length control scores -0.0013, the
+   curve holds on BiLSTM (+0.0163) and on BERT-small (+0.0057, interval including zero).
 
 ---
 
@@ -1174,6 +1222,11 @@ Worth keeping because the paper's framing came out of these turns, and because a
    moves for the last time, from "here is what distillation does not transfer" to "distil where the
    teacher is uncertain: the gain is in the unlabelled text, it grows with it, and nothing about the
    committee is needed", with the audit as the evidence that every other lever was tried and measured.
+11. **"It is not the steps, and it is not one student."** 22 September. The last run closed the two
+   objections left: fine-tuning for the 168k arm's length gains nothing (-0.0013, overfitting from
+   epoch 13), and the curve's endpoint holds on BiLSTM (+0.0163) and BERT-small (+0.0057), the
+   heterogeneous student gaining most. The constructive sentence is now stated for compact students in
+   the plural, and the title filed on 21 September needs no word taken back.
 
 ---
 
@@ -1202,3 +1255,4 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | Teacher agreement and oracle with the implicit specialist | `paper/complementarity_with_specialist.json` |
 | Per-model sarcasm analysis, first seed, Kaggle v6 (42 models) | `paper/results_tweets_implicit_seed1.csv` |
 | The size curve, and D20's predictions scored against it | `paper/tables/scaling.csv`, `scripts/scaling_verdict.py` |
+| The largest set on the other students (D21) | `paper/tables/scaling_students.csv` |

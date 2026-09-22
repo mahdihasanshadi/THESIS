@@ -8,6 +8,7 @@ Arm & Transfer rows & Composition & Epochs & Seeds & Macro-F1 & $\Delta$ vs fine
 \midrule
 Fine-tune only & 0 & -- & 6 & 3 & 0.8393 $\pm$ 0.0003 & -- \\
 Fine-tune only, matched optimisation steps & 0 & -- & 13 & 3 & 0.8420 $\pm$ 0.0021 & +0.0027 \\
+Fine-tune only, matched to the 168k arm's steps & 0 & -- & 35 & 3 & 0.8380 $\pm$ 0.0033 & -0.0013 \\
 Single-teacher KD + 42k generic tweets & 42013 & generic tweets & 6 & 3 & 0.8445 $\pm$ 0.0044 & +0.0053 \\
 Single-teacher KD + 5k transfer rows & 5000 & abuse-domain tweets & 6 & 3 & 0.8402 $\pm$ 0.0015 & +0.0010 \\
 Single-teacher KD + 10k transfer rows & 10000 & abuse-domain tweets & 6 & 3 & 0.8428 $\pm$ 0.0003 & +0.0035 \\

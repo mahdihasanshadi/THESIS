@@ -1,0 +1,7 @@
+Student,Arm,Transfer rows,Seeds,Macro-F1,$\Delta$ vs fine-tune only,$\Delta$ vs single teacher in sample
+BERT-small,Fine-tune only,0,3,0.8469 $\pm$ 0.0040,--,--
+BERT-small,Single-teacher KD,0,3,0.8488 $\pm$ 0.0044,+0.0019,--
+BERT-small,Single-teacher KD + 168k transfer rows,168000,3,0.8526 $\pm$ 0.0016,+0.0057,+0.0038
+BiLSTM,Fine-tune only,0,3,0.8693 $\pm$ 0.0043,--,--
+BiLSTM,Single-teacher KD,0,3,0.8748 $\pm$ 0.0018,+0.0055,--
+BiLSTM,Single-teacher KD + 168k transfer rows,168000,3,0.8856 $\pm$ 0.0003,+0.0163,+0.0108

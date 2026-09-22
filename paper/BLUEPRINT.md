@@ -20,7 +20,7 @@ Four pillars, each with its own evidence and its own section:
 
 | Pillar | Claim | Evidence | Section |
 |---|---|---|---|
-| P1 constructive | Out-of-sample distillation helps and grows with the text | F31, F33 (+ D21) | 5.7, 5.8 |
+| P1 constructive | Out-of-sample distillation helps, grows with the text, survives matched compute, and holds on three compact students | F31, F33, F34 | 5.7, 5.8 |
 | P2 audit | In sample nothing helps; committees, weighting, specialist add nothing; the reason is measured | F3, F6, F22, F23, F27, F28, F29 | 5.2 to 5.6 |
 | P3 implication | Discrimination of implied abuse is fixed by pre-training; methods differ only in firing rate | F10, F19, F25, F26, F32 | 5.9 |
 | P4 protocol | Threshold-free probes, single-source implicit benchmark, manifests, pre-registered predictions, paired bootstrap | F13 to F16, D19 to D21, 4.6 | 4, statements |
@@ -58,7 +58,7 @@ Every sentence the paper asserts, with what licenses it. Nothing else is claimed
 | C5 | Why: on the training split the teachers' soft labels are the gold labels (train loss 0.03 to 0.08), so the reliability signal is saturated and distillation reduces to fine-tuning | F28 | Fig 1 (schematic), T3 |
 | C6 | Out of sample, one teacher's soft labels on 42,013 unlabelled tweets raise the 11M student by +0.007, every seed above every fine-tuning seed; committee, corrected weighting and hard pseudo-labels add nothing | F31 | T8 |
 | C7 | The gain grows with the text: monotone over six sizes, +0.0123 [+0.0035, +0.0211] at 168,000 rows; generic tweets work nearly as well; part of it is optimisation length (+0.0027 at matched steps), the rest is the text | F33 | T9, Fig 4 |
-| C7b (V7) | The 168k arm keeps its gain over fine-tuning at its own number of updates; the curve holds on BERT-small and BiLSTM | D21 | T9b |
+| C7b | Fine-tuning for the 168k arm's number of updates gains nothing (-0.0013); the 168k arm keeps +0.0136 [+0.0023, +0.0240] over it; the endpoint holds on BiLSTM (+0.0163, interval clear of zero) and BERT-small (+0.0057, interval including zero) | F34 | T9b |
 | C8 | Implication does not transfer: sarcasm-discrimination AUC stays within 0.75 to 0.78 across every variant; recall and false positives move together across the whole grid (r = 0.71); tweet-trained students rank implied hate at 0.60 AUC against 0.82 trained in domain | F10, F19, F25, F26, F32 | T10, Fig 5, Fig 6 |
 | C9 | Pooling implicit-hate corpora rewards source recognition; the two corpora agree on hate (99.7%) and not on implication (48.2%) | F14 to F16 | T1 |
 | C10 | Deployment: a 67M student within 0.001 of a 335M teacher at a fifth of the latency; INT8 gains depend on shape; obfuscation costs 10 to 15 points and distillation does not protect against it | F4, F7, F8, F11 | T11 |
@@ -194,7 +194,7 @@ contributions are listed once, in the introduction, and answered once, in the co
 ## 7. Defense questions, with the answer's evidence
 
 1. Why did the multi-teacher method not work? F28 and F20: memorised labels, no diversity to weight.
-2. Is +0.012 just longer training? F33's matched control (+0.0027) and V7's 35-epoch control.
+2. Is +0.012 just longer training? No: 13 epochs alone gain +0.0027, 35 epochs alone gain -0.0013 (F33, F34).
 3. Why "out of sample" and not "out of domain"? Generic tweets gain within 0.002 of abuse-domain ones.
 4. Is out-of-sample distillation new? No: Hinton's transfer set, Turc, Tang. New: the controls, the curve, the domain, the implication result.
 5. What does the student learn, then? The boundary between not-cyberbullying and other-cyberbullying (F33 per-class).
@@ -210,7 +210,7 @@ contributions are listed once, in the introduction, and answered once, in the co
 
 | Date | Deliverable |
 |---|---|
-| 22 Sep | V7 analysed; tables regenerated; 5.8 and T9b final; Fig 4 drawn |
+| 22 Sep | V7 analysed (done); tables regenerated (done); 5.8 and T9b final (done); Fig 4 to draw |
 | 23 Sep | Sections 1, 2, 3 assembled from the drafts under Version C |
 | 24 Sep | Sections 4 and 5 assembled; every table placed; coverage matrix ticked |
 | 25 Sep | Sections 6 to 8, abstract, statements, figures; the redundancy pass |
