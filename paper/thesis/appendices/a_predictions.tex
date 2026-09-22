@@ -1,0 +1,49 @@
+\chapter{Pre-Registered Predictions and Their Outcomes}
+
+\label{app:predictions}
+
+Decisions D19, D20 and D21 in the repository's decision log state, before each of the three
+out-of-sample runs, the predictions and the decision rule that would follow from them.
+\texttt{scripts/transfer\_verdict.py} and \texttt{scripts/scaling\_verdict.py} score them against
+the generated tables. Of the eleven predictions, six held, two held in part (one of their two
+clauses each), and three failed as written, and both decision rules fired in favour of the
+constructive framing. The three failures: the committee was predicted to be the better labeller for
+the student out of sample and was not; the pre-registered committee arm was predicted to gain at
+least 0.010 and gained 0.007; and the sarcasm-discrimination AUC was predicted to stay in its
+in-sample band on every out-of-sample arm and fell below it on three of the five. All three failures
+are reported in Sections~\ref{sec:5.7} to~\ref{sec:5.9}.
+
+Table~\ref{tab:predictions} lists every prediction with the number that decided it. The session
+column refers to Table~\ref{tab:sessions}.
+
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{p{0.8cm}p{0.9cm}p{7.0cm}p{3.6cm}p{1.2cm}}
+\caption{Every prediction written before the out-of-sample runs, and its outcome.}
+\label{tab:predictions}\\
+\toprule
+No. & Session & Prediction & Measured & Outcome \\
+\midrule
+\endfirsthead
+\toprule
+No. & Session & Prediction & Measured & Outcome \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+1 & 5 & The committee with the transfer set beats fine-tuning by at least 0.010, interval excluding zero & +0.0070 [$-$0.0001, +0.0144] & failed \\
+2 & 5 & The committee is a better labeller for the student than one teacher & $-$0.0003 [$-$0.0061, +0.0056] & failed \\
+3 & 5 & Out-of-sample reliability weighting adds at most 0.003 over averaging & +0.0021 & held \\
+4 & 5 & Hard pseudo-labels gain less than soft labels & +0.0020 against +0.0070 & held \\
+5 & 5 & Sarcasm-discrimination AUC stays within 0.756 to 0.777 on every transfer arm & 0.727 to 0.765; three arms below & failed \\
+6 & 6 & The gain rises with size at fixed composition, and 42k reproduces +0.006 to +0.009 & +0.0010, +0.0035, +0.0043, +0.0070 & held \\
+7 & 6 & 42k generic tweets gain at least 0.003 less than 42k abuse-domain tweets, and generic rows beyond 42k add less per row & 0.0017 less; 0.4 against 1.7 per 10k & in part \\
+8 & 6 & Fine-tuning for the 42k arm's updates gains at most 0.002, and the 42k arm beats it by at least 0.004 & +0.0027; +0.0043 & in part \\
+rule & 6 & If the 168k arm gains at least 0.012 with the interval clear of zero and still rising, the constructive result leads & +0.0123 [+0.0035, +0.0211], rising & fired \\
+9 & 7 & Fine-tuning for the 168k arm's updates gains at most 0.004, and the 168k arm keeps at least 0.006 over it with the interval clear of zero & $-$0.0013; +0.0136 [+0.0023, +0.0240] & held \\
+10 & 7 & BERT-small's 168k arm gains at least 0.005 over fine-tuning and beats its in-sample single teacher & +0.0057; +0.0038, interval includes zero & held \\
+11 & 7 & The BiLSTM's 168k arm gains at least 0.010 over fine-tuning & +0.0163 [+0.0063, +0.0271] & held \\
+rule & 7 & If both controls hold, the result is stated for compact students in the plural & both held & fired \\
+\end{longtable}
+}

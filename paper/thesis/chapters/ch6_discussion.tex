@@ -1,0 +1,115 @@
+\chapter{Discussion}
+\label{ch:6}
+
+\section{Answers to the Research Questions}
+\label{sec:6.1}
+\begin{description}
+  \item[RQ1. Does multi-teacher distillation with per-instance weighting improve the compact student?]
+    Not in sample. Across five students, three committees and every weighting temperature from 0.05 to 5,
+    no distilled student beats the same student fine-tuned without teachers by more than the test set can
+    resolve, and per-instance weighting never differs from uniform averaging (Sections~\ref{sec:5.2}
+    and~\ref{sec:5.3}). A teacher trained on labelled implication changes nothing either
+    (Section~\ref{sec:5.5}).
+  \item[RQ2. Why not?] The student is distilled on the split the teachers were fine-tuned on, where they
+    have memorised the labels. There their soft labels are the gold labels, the reliability signal that
+    weights them is saturated, and task adaptation has made them agree on more than nine tweets in ten
+    (Sections~\ref{sec:5.4} and~\ref{sec:5.6}).
+  \item[RQ3. Does distillation on unlabelled text help, and on what does the gain depend?] Yes. On
+    BERT-mini the gain grows monotonically with the amount of unlabelled text, from +0.0010 at 5,000
+    tweets to +0.0123 [+0.0035, +0.0211] at 168,000. Generic tweets from the same platform work nearly as
+    well as abuse-related ones, fine-tuning for the same number of updates gains nothing, and the gain
+    holds on the BiLSTM (+0.0163) and on BERT-small (+0.0057, with an interval that includes zero). One
+    teacher is enough: the committee, its weighting and hard pseudo-labels add nothing
+    (Sections~\ref{sec:5.7} and~\ref{sec:5.8}).
+  \item[RQ4. Does any of it improve the discrimination of implied abuse from harmless sarcasm?] No. Every
+    pre-trained variant of the student, in sample or out, ranks ironic abuse above benign sarcasm with an
+    AUC between 0.73 and 0.78. The interventions change how readily the student fires, not what it can
+    tell apart (Section~\ref{sec:5.9}).
+\end{description}
+
+\section{What the Findings Mean}
+\label{sec:6.2}
+
+\textbf{What the audit says about error-weighted multi-teacher distillation.} The family's weighting
+rule scores each teacher's reliability against the gold label on the training set. For teachers
+fine-tuned on that set the score is saturated, and the weights it produces are uniform whatever the
+temperature. Correcting the estimate, by scoring reliability out of sample as Section~\ref{sec:3.5}
+does or by fitting a gate on held-out data, is necessary for the rule to mean anything, and on a
+committee assembled in the usual way it is not sufficient: the teachers' outputs do not carry the
+information needed to pick the right one where they disagree, so the reachable gain over uniform
+averaging is a few tenths of a point, in sample and out. The five-point oracle gap is real, and it
+is made of instances on which the teachers, and very likely the annotators, are uncertain.
+
+\textbf{What it says about the committee.} Assembling specialists for complementary expertise and
+then fine-tuning them on one corpus produces teachers that agree at kappa 0.9 and share their
+errors. The adaptation cannot be skipped, because it is what makes the specialists' outputs
+comparable; it can only be paid for. A committee that keeps its diversity needs at least one member
+whose knowledge was not obtained by fitting the target training set. Out of sample, where the
+committee does hold a better label than any of its members, the student still receives no more from
+three teachers than from one: on this task a single large teacher's soft labels on unseen text are
+the whole of what distillation transfers, and the cost of a committee is three times the caching for
+nothing.
+
+\textbf{What it says about where distillation's gain is.} In sample the teachers' soft labels are
+the gold labels and distillation reduces to fine-tuning; out of sample they carry information the
+gold labels do not, and a compact student receives it in proportion to how much such text it sees.
+The recipes that report large gains for small students distil on transfer sets larger than the
+labelled data \cite{tang2019distilling, jiao2020tinybert, turc2019wellread}, and Beyer et al.'s
+account of distillation as function matching says why: a function is learned where it is sampled,
+and sampling it only where it equals the label teaches the label \cite{beyer2022knowledge}. What our
+measurements add is the domain-specific shape. The curve is monotone over a 34-fold range of size
+and has not saturated at 168,000 rows; generic tweets carry most of the value, so the text need not
+be abuse-related, only in the register the student will meet; the gain is not optimisation length,
+which on its own overfits from the thirteenth epoch; and the heterogeneous student, which cannot
+share the teacher's representation, gains most, which places the effect in the soft labels rather
+than in the hidden-state term. The cost is one forward pass of one teacher over the unlabelled text
+and a longer student run; the deployed model is unchanged.
+
+\textbf{What it says about implication.} The gain lands on the two classes the labelled split draws
+worst, not\_cyberbullying and other\_cyberbullying, and nowhere else. Recall at a fixed threshold
+and the false-positive rate on harmless sarcasm move together across 184 models; a method that
+reports only the first can claim progress on implication by lowering its threshold, and the
+out-of-sample students do the opposite, firing less on sarcasm of both kinds while discriminating no
+better. The threshold-free measure shows the ability to be fixed by pre-training and unmoved by
+every objective, committee, teacher and transfer set we tried. If unlabelled text is to teach
+implication, its composition is the variable, not its size: nothing in 205,593 tweets of offence and
+sentiment carries the distinction the probes measure, and a transfer set that did would have to be
+built from text in which implication is present and marked, which is the corpus of
+Section~\ref{sec:4.2} and not the platform's ordinary stream.
+
+\textbf{What it says about reporting.} Every out-of-sample result in this paper was predicted in
+writing before the run that tested it, with thresholds and a decision rule, and scored by a script
+against the generated tables; three of the eleven predictions failed as written and are reported as
+such. A test set of 4,326 posts cannot resolve differences under 0.007 macro-F1, which is larger
+than every in-sample distillation effect in the grid and than most differences reported in this
+literature. The multi-teacher results the field has published for this task were obtained without
+the fine-tuning control, the teachers' own scores, seeds or intervals; under those conditions our
+in-sample grid would also have read as a success.
+
+\section{How the Study Changed}
+\label{sec:6.3}
+The design of this thesis changed four times, and each change was forced by a measurement rather than
+chosen in advance. Every change is recorded, with the evidence that forced it, in the decision log of
+the project's repository.
+\begin{enumerate}
+  \item \textbf{From the Phase-2 method to a controlled grid.} The Pre-Thesis II report distilled two
+    teachers into DistilBERT on the Wikipedia corpus and reported the student above its teachers from one
+    run, without a student trained without teachers. On the cleaned tweet corpus we added that control,
+    three seeds and paired bootstrap intervals, and distillation then raised every student by less than
+    the test set can resolve.
+  \item \textbf{From dynamic weighting to its mechanism.} The per-instance weights sat close to uniform at
+    the default temperature and barely sharpened at a twentieth of it, and the score did not move.
+    Measuring the teachers explained why: they had memorised the training split and agreed with one
+    another on more than nine tweets in ten.
+  \item \textbf{From a specialist teacher to the implication audit.} A teacher trained on labelled
+    implication was added to supply the missing expertise. After task adaptation it behaved almost exactly
+    like HateBERT, and no student became better at telling implied abuse from harmless sarcasm; the
+    threshold-free measure showed that ability fixed by pre-training.
+  \item \textbf{From the audit to out-of-sample distillation.} If the teachers' soft labels equal the gold
+    labels on the training split, the lever is text the teachers have not fitted. Three runs, each with
+    its predictions written down beforehand, then measured the gain, its growth with the amount of text,
+    and its survival under the matched-compute and second-student controls.
+\end{enumerate}
+The title changed with the evidence. The registered title named a dynamic, multi-teacher, homogeneous
+and robust framework. The grid measured each of those four properties and found none of them to be the
+source of the gain, so the final title names what is.

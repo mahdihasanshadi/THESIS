@@ -1,0 +1,33 @@
+
+\chapter{Hyper-Parameters and Training Settings}
+\label{app:hyper}
+The distillation hyper-parameters ($\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$,
+$\tau = 1$) are carried over from the Phase-2 report's Table 3.1 unchanged, so that the audit tests
+the method as proposed; Section~\ref{sec:5.3} sweeps each of them. Students train for 6 epochs at $3
+\times 10^{-5}$ ($10^{-3}$ for the BiLSTM), batch 32, 10 per cent warm-up, linear decay, gradient
+clipping at 1.0, early stopping with patience 2 on validation macro-F1; the matched-steps controls
+disable early stopping and run 13 and 35 epochs. Teachers train for 5 epochs at $2 \times 10^{-5}$,
+batch 32. Maximum sequence length 128.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Training settings of the teachers and the students.}
+\label{tab:hyper}
+\begin{tabular}{p{3.6cm}p{4.2cm}p{5.8cm}}
+\toprule
+Setting & Teachers & Students \\
+\midrule
+Epochs & 5 & 6; 13 and 35 for the matched-steps controls \\
+Learning rate & $2 \times 10^{-5}$ & $3 \times 10^{-5}$; $10^{-3}$ for the BiLSTM \\
+Batch size & 32 & 32 \\
+Schedule & 10\% warm-up, linear decay & 10\% warm-up, linear decay \\
+Gradient clipping & 1.0 & 1.0 \\
+Model selection & best validation macro-F1 epoch & best validation macro-F1 epoch; early stopping with patience 2, off for the matched-steps controls \\
+Maximum length & 128 tokens & 128 tokens \\
+Precision & mixed, on GPU & mixed, on GPU \\
+Distillation & -- & $\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$, $\tau = 1$ \\
+Seeds & one run per teacher & 3; 1 for ablations, sweeps and controls \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,16 @@
+\chapter{Data and Reproducibility Statements}
+\label{app:statements}
+\textbf{Data.} English social-media text throughout; author demographics are not available and were
+not inferred. Neither the implicit benchmark nor the transfer set is redistributed: no source is
+ours to re-host. Both are released as build scripts plus per-row manifests (split, label or source,
+SHA-1 of the normalised text) that let a reader verify a rebuild against ours without either party
+redistributing text; the transfer-set reports record every count at every screen.
+
+\textbf{Reproducibility.} Code, configuration, seeds and one-command drivers are public
+(\url{https://github.com/mahdihasanshadi/THESIS}). Every reported number is produced by a script
+that writes a results file; the decision log records every design decision with the evidence behind
+it and every pre-registered prediction with its score; the lab notebook records each run; every
+table and every interval in this paper is generated. Data preparation is deterministic (seed 42) and
+reports every removal count. Checkpoints and cached teacher outputs will be released on acceptance.
+Compute: 18.4 GPU-hours on Kaggle T4 accelerators for the 179 runs of the tweet grid, over the five
+sessions that ran to completion.

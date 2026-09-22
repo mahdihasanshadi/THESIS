@@ -1,0 +1,7 @@
+\chapter{The Transfer Set}
+\label{app:transfer}
+\texttt{transfer\_report.json} and \texttt{transfer\_big\_report.json} record, for each source, the
+rows read, the rows dropped as too short, as duplicates, and as overlapping each split, probe file
+and implicit benchmark file, and the rows written. The base set of 42,013 rows is shuffled once with
+seed 42; the extended set appends 163,580 generic rows after it, so that the size curve's arms are
+the prefixes of one file.

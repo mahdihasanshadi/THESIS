@@ -23,9 +23,9 @@ monotonically over six sizes, from generic tweets nearly as well as from abuse-r
 gains 0.016 and a 29M BERT gains 0.006 from the same text, and the committee, its weighting and hard
 pseudo-labels add nothing to any of it. The gain is in the task: measured without a threshold, the
 ability to tell ironic abuse from harmless sarcasm stays where pre-training put it, between 0.73 and
-0.78 AUC across every variant of the student, while the operating point slides towards caution, and
-across 151 models recall on ironic abuse and false positives on harmless sarcasm rise together
-(r = 0.72). We release the protocol, the transfer-set construction with its provenance screens, and a
+0.78 AUC across every pre-trained variant of the student, while the operating point slides towards
+caution, and across 184 models recall on ironic abuse and false positives on harmless sarcasm rise
+together (r = 0.77). We release the protocol, the transfer-set construction with its provenance screens, and a
 single-source implicit-abuse benchmark with per-row manifests.
 
 **Keywords:** knowledge distillation, transfer set, compact models, cyberbullying detection, implicit
@@ -83,7 +83,7 @@ reference is where detectors and annotators both fail \cite{elsherief2021latent,
 hartvigsen2022toxigen}, every survey of cyberbullying detection names it as the open case
 \cite{rosa2019automatic, salawu2020approaches, emmery2021current}, and no widely used benchmark labels
 it \cite{wang2020sosnet, wulczyn2017exmachina}. We measured it with a threshold-free metric on held-out
-probes of ironic abuse and harmless sarcasm, and with a corpus that labels implication. Across 151
+probes of ironic abuse and harmless sarcasm, and with a corpus that labels implication. Across 184
 models in the grid, recall on ironic abuse and the false-positive rate on harmless sarcasm rise
 together; the ability to tell them apart is set by pre-training and unmoved by every objective,
 committee, teacher and transfer set we tried. The out-of-sample gain is a task gain. What the student
@@ -442,8 +442,8 @@ expected calibration error \cite{guo2017calibration}, and per-class F1.
 Three seeds per main configuration, one for ablations, controls and sweeps. Every difference the paper
 states is a paired bootstrap over the test set \cite{koehn2004statistical, dror2018hitchhiker}: seeds
 paired by index, 1,000 resamples per seed, the 95 per cent interval of the pooled differences. The grid
-makes 100 such comparisons and they are generated as a table, not transcribed; five intervals exclude
-zero. A paired interval on 4,326 posts is about 0.014 wide, so the minimum detectable difference is
+makes 100 such comparisons and they are generated as a table, not transcribed; nine intervals exclude
+zero, one for removing pre-training and eight for out-of-sample distillation. A paired interval on 4,326 posts is about 0.014 wide, so the minimum detectable difference is
 about 0.007 macro-F1 \cite{card2020power}, and we say so wherever a difference is smaller. A
 pre-registered stop rule required at least one task-adapted teacher to beat the fine-tune-only student
 on the clean test split before any distillation ran, and the predictions for the three out-of-sample
@@ -453,7 +453,7 @@ runs were written into the decision log before each ran and scored by a script a
 results on a laptop CPU and on a Kaggle T4 (Section 7), so every number comes from the Kaggle grid
 alone. Comparisons within it are valid because everything in it was trained identically; numbers
 produced elsewhere are excluded rather than reconciled. The tweet grid is complete: 179 student runs
-in 18.4 GPU-hours over seven resumed sessions. The Wikipedia grid and the student grid on the implicit
+in 18.4 GPU-hours over the five Kaggle sessions that ran to completion. The Wikipedia grid and the student grid on the implicit
 benchmark are not run and are named where they would bear on a claim.
 ## 5. Results
 
@@ -710,7 +710,8 @@ because the teachers' local accuracies on the transfer set differ by 0.03. Hard 
 same text, with the same number of optimisation steps, gain +0.0020, so most of the gain is carried by
 the soft labels (their share against hard labels, +0.0050 [-0.0016, +0.0118], has an interval that
 includes zero). It lands where the in-sample runs never moved: F1 on other_cyberbullying rises from
-0.707 to 0.710 to 0.720 and on not_cyberbullying from 0.644 to 0.655 to 0.663, the two classes that
+0.707 to between 0.710 and 0.720 and on not_cyberbullying from 0.644 to between 0.655 and 0.663, the
+two classes that
 confuse each other.
 
 We pre-registered a threshold of 0.010 for the committee arm and it was not met; the two arms that
@@ -810,34 +811,36 @@ every ablation and both controls, sarcasm-discrimination AUC has mean 0.771 and 
 0.004, from 0.756 to 0.777. The randomly initialised student scores 0.613. The auxiliary irony head,
 the component built for this measurement, is inside the band: without it 0.775, with it 0.773. Along
 the whole out-of-sample curve the first seed's AUC is 0.758, 0.764, 0.752, 0.765, 0.771 and 0.761, the
-generic control's 0.760, the 35-epoch control's 0.774 and the hard-label arm's 0.727: every trained
-variant of the student lies between 0.73 and 0.78, and every soft-label variant between 0.75 and 0.78.
+generic control's 0.760, the 35-epoch control's 0.774 and the hard-label arm's 0.727: every
+pre-trained variant of the student lies between 0.73 and 0.78, and every soft-label variant between 0.75 and 0.78.
 What moves is the operating point. Over the in-sample variants, recall at 0.5 ranges from 0.758 to
 0.821 and the false-positive rate from 0.343 to 0.448, correlated at +0.87; along the out-of-sample
 curve both fall together, recall from 0.74 to 0.57 and the false-positive rate from 0.35 to 0.25 as the
 set grows to 168,000 rows, and on the BiLSTM to 0.50 and 0.18. The out-of-sample student fires less on
 sarcasm of both kinds; it does not tell them apart any better.
 
-**Across the grid, methods differ only in how readily they fire.** Across all 151 evaluated models in
-the grid through the fifth run, teachers and students, every mode and seed, the false-positive rate on
-benign sarcasm and the recall on ironic abuse correlate at +0.724. Recall minus false-positive rate has
-mean 0.358 and standard deviation 0.049, while its components range over 0.14 to 0.59 and 0.54 to 0.81.
+**Across the grid, methods differ only in how readily they fire.** Across all 184 evaluated models in
+the grid, teachers and students, every mode and seed, the false-positive rate on benign sarcasm and
+the recall on ironic abuse correlate at +0.772. Recall minus false-positive rate has mean 0.357 and
+standard deviation 0.046, while its components range over 0.15 to 0.59 and 0.48 to 0.81. The 42
+out-of-sample models do not leave the curve, they slide along it: among themselves they correlate at
++0.922, with the same mean margin, 0.355.
 
 | Model family | n | Benign FPR | Ironic recall | Margin |
 |---|---|---|---|---|
 | DeBERTa-v3-xsmall | 21 | 0.334 | 0.728 | 0.394 |
 | Teachers | 5 | 0.301 | 0.690 | 0.388 |
-| BERT-mini | 62 | 0.371 | 0.744 | 0.372 |
 | DistilBERT | 21 | 0.238 | 0.607 | 0.369 |
-| BERT-small | 21 | 0.380 | 0.713 | 0.333 |
-| BiLSTM | 21 | 0.336 | 0.623 | 0.287 |
+| BERT-mini | 89 | 0.350 | 0.718 | 0.368 |
+| BERT-small | 24 | 0.369 | 0.700 | 0.332 |
+| BiLSTM | 24 | 0.316 | 0.608 | 0.292 |
 
 Distillation mode does not appear in this ordering; architecture does. The models occupy different
 points on one trade-off curve rather than different curves, and the worst margin in the grid, 0.082,
 belongs to the randomly initialised student. Whatever ability these models have to tell implied abuse
 from harmless sarcasm comes from pre-training, and nothing added to the objective or to the data moves
 it. This is why the paper reports a threshold-free area: recall at a fixed cut measures how readily a
-model fires, and across a hundred and fifty models that is all it measures.
+model fires, and across 184 models that is all it measures.
 
 **The same failure on a corpus that labels implication.**
 
@@ -922,7 +925,7 @@ is unchanged.
 
 **What it says about implication.** The gain lands on the two classes the labelled split draws worst,
 not_cyberbullying and other_cyberbullying, and nowhere else. Recall at a fixed threshold and the
-false-positive rate on harmless sarcasm move together across 151 models; a method that reports only the
+false-positive rate on harmless sarcasm move together across 184 models; a method that reports only the
 first can claim progress on implication by lowering its threshold, and the out-of-sample students do
 the opposite, firing less on sarcasm of both kinds while discriminating no better. The threshold-free
 measure shows the ability to be fixed by pre-training and unmoved by every objective, committee,
@@ -931,9 +934,9 @@ variable, not its size: nothing in 205,593 tweets of offence and sentiment carri
 probes measure, and a transfer set that did would have to be built from text in which implication is
 present and marked, which is the corpus of Section 4.2 and not the platform's ordinary stream.
 
-**What it says about reporting.** Every positive claim in this paper was written down as a prediction
-before the run that tested it, with a threshold and a decision rule, and scored by a script against the
-generated tables; two of the seven predictions failed as written and are reported as such. A test set of
+**What it says about reporting.** Every out-of-sample result in this paper was predicted in writing
+before the run that tested it, with thresholds and a decision rule, and scored by a script against the
+generated tables; three of the eleven predictions failed as written and are reported as such. A test set of
 4,326 posts cannot resolve differences under 0.007 macro-F1, which is larger than every in-sample
 distillation effect in the grid and than most differences reported in this literature. The
 multi-teacher results the field has published for this task were obtained without the fine-tuning
@@ -1030,7 +1033,8 @@ results file; the decision log records every design decision with the evidence b
 pre-registered prediction with its score; the lab notebook records each run; every table and every
 interval in this paper is generated. Data preparation is deterministic (seed 42) and reports every
 removal count. Checkpoints and cached teacher outputs will be released on acceptance. Compute: 18.4
-GPU-hours on Kaggle T4 accelerators for the 179 runs of the tweet grid, over seven resumed sessions.
+GPU-hours on Kaggle T4 accelerators for the 179 runs of the tweet grid, over the five sessions that ran
+to completion.
 
 **Author contributions.** To be completed (CRediT). Supervision: Dr. Muhammad Iqbal Hossain, Sheikh
 Araf Noshin.
@@ -1067,8 +1071,8 @@ length 128.
 Decisions D19, D20 and D21 in the repository's decision log state, before each of the three
 out-of-sample runs, the predictions and the decision rule that would follow from them.
 `scripts/transfer_verdict.py` and `scripts/scaling_verdict.py` score them against the generated tables.
-Of the twelve predictions, six held, three held in part (on the mean but not on the interval, or on one
-of two clauses), and three failed as written: the committee was predicted to be the better labeller for
+Of the eleven predictions, six held, two held in part (one of their two clauses each), and three failed
+as written, and both decision rules fired in favour of the constructive framing. The three failures: the committee was predicted to be the better labeller for
 the student out of sample and was not; the pre-registered committee arm was predicted to gain at least
 0.010 and gained 0.007; and the sarcasm-discrimination AUC was predicted to stay in its in-sample band
 on every out-of-sample arm and fell below it on three of the five. All three failures are reported in

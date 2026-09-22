@@ -1,0 +1,69 @@
+\chapter{Limitations and Future Work}
+\label{ch:7}
+\section{Limitations}
+\label{sec:7.1}
+\textbf{One corpus.} Every claim about the out-of-sample curve rests on one benchmark, one platform
+and one language. The Wikipedia grid and the student grid on the implicit benchmark were built and
+not run within the compute available; the curve on DistilBERT and DeBERTa-v3-xsmall was not run
+either. The claim is stated for compact students on this corpus, in the plural because it holds on
+three students of two families, and for nothing wider.
+
+\textbf{BERT-small's interval includes zero.} Its fine-tuning seeds vary by 0.008, and its
+out-of-sample gain of +0.0057 sits inside that variance; the direction agrees with the other two
+students and the per-class pattern is the same, but the number is a mean and is reported as one.
+
+\textbf{Two machines disagree about the same configuration.} BERT-mini fine-tune-only scores 0.8779
+on a laptop CPU and 0.8393 on a Kaggle T4 with identical code, data, seeds and hyper-parameters.
+Mixed precision accounts for 0.0014 (full-precision Kaggle: 0.8407); the gold-label sequences match
+row for row; re-running the current code on the laptop reproduces its result to sixteen significant
+figures. The Kaggle run learns more slowly from the first epoch (training loss 1.02 against 0.87,
+validation macro-F1 0.80 against 0.84), which points at the software stack, since the library
+versions differ, rather than at the accelerator. Every table therefore comes from one environment
+and comparisons are made only within it; the ranking of methods is unaffected because every run
+shares the condition, and the discrimination AUC of the two environments' models differs by 0.003.
+Absolute BERT-mini and BERT-small numbers may be under-trained by up to four points, which is also
+why both sit below the classical floor in sample.
+
+\textbf{Test-set size and seeds.} 4,326 test posts give paired intervals about 0.014 wide; three
+seeds per main configuration and one for ablations, controls and sweeps. Differences are read from
+intervals, not from seed variance, and single-seed rows are indicative only. The threshold-free
+probe analysis covers the first seed of each configuration.
+
+\textbf{The transfer set's provenance.} Its sources are public abusive-language and sentiment
+corpora whose labels we discard; their texts were collected by other researchers under their own
+sampling, and the generic portion is dominated by the emoji-prediction corpus. The screens against
+every evaluation set are exact-match on normalised text; near-duplicates that differ by more than
+punctuation, casing or mentions would pass them.
+
+\textbf{Teacher variance is not estimated}; each teacher is trained once. \textbf{The heterogeneous
+comparison is confounded}: DeBERTa-v3-xsmall is a weaker model on this task than the BERT-lineage
+students, so the student swap mixes family with quality; the hidden-state term is the controlled
+version of that question. \textbf{The probes are rule-built}, about 1,000 items each, with a
+300-item human annotation in progress; probe metrics are reported only for models trained on
+Twitter-domain data. \textbf{The label is contested}: the two corpora that annotate implication
+agree on 48.2 per cent of shared hateful texts about whether the hate is implied, and every result
+on that class is bounded by it. \textbf{Robustness} was measured with synthetic character edits.
+\textbf{Distillation on an unlabelled transfer set is not new}; the contribution is the controlled
+measurement in this domain, and a reader should not take the title's first clause as a method claim.
+
+\section{Future Work}
+\label{sec:7.2}
+\begin{enumerate}
+  \item \textbf{Transfer text that carries implication.} The out-of-sample gain is a task gain because
+    nothing in the transfer text marks implication. Composing the transfer set from text in which implied
+    abuse is present and labelled, such as the Implicit Hate Corpus used here as a benchmark, is the
+    direct test of whether distillation can teach it.
+  \item \textbf{A second corpus and the remaining students.} The Wikipedia personal-attacks pipeline is
+    built and was not run within the compute available; the size curve on DistilBERT and
+    DeBERTa-v3-xsmall was not run either.
+  \item \textbf{Where the curve saturates.} The gain was still rising at 168,000 tweets. Larger transfer
+    sets would locate its ceiling and its cost.
+  \item \textbf{Human validation of the probes.} A 300-item annotation of sarcastic abuse by four
+    annotators, with Fleiss' kappa, would replace rule-built probes with verified ones.
+  \item \textbf{A teacher that keeps its diversity.} A committee member whose knowledge was not obtained
+    by fitting the training split, such as a large language model used zero-shot, is the one committee
+    for which per-instance reliability could have something to express.
+  \item \textbf{Bengali.} The work was motivated by abuse in Bengali social media, for which no sarcasm
+    teacher is available; the out-of-sample recipe needs only unlabelled text and one teacher, which makes
+    it the natural first step there.
+\end{enumerate}
