@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>From Phase 2 to the defense: the project in two pages</title>
+<style>
+  @page { size: A4; margin: 12mm 14mm 14mm 14mm; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 9.3pt; line-height: 1.28; color: #111; }
+  h1 { font-size: 15pt; margin: 0 0 2pt 0; letter-spacing: -0.01em; }
+  .sub { color: #444; margin: 0 0 6pt 0; font-size: 9pt; }
+  h2 { font-size: 10.6pt; margin: 8pt 0 2pt 0; padding-bottom: 1pt; border-bottom: 1px solid #999; }
+  p { margin: 0 0 4pt 0; text-align: justify; }
+  ul { margin: 0 0 4pt 14pt; padding: 0; }
+  li { margin: 0 0 1.5pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 3pt 0 5pt 0; font-size: 8.7pt; }
+  th, td { border-bottom: 1px solid #ccc; padding: 1.6pt 4pt; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; border-bottom: 1px solid #888; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .thesis { border-left: 3px solid #333; padding: 3pt 7pt; margin: 4pt 0 6pt 0; background: #f6f6f6; }
+  .small { font-size: 8.6pt; color: #333; }
+  .two { display: flex; gap: 10pt; }
+  .two > div { flex: 1; }
+  .pb { page-break-before: always; }
+  b.k { color: #000; }
+</style>
+</head>
+<body>
+
+<h1>From Phase 2 to the defense: the project in two pages</h1>
+<p class="sub">D-MTHD thesis, BRAC University CSE. Written 22 September 2026 after Kaggle run V7. Draft due 26 September, slides 29 September, defense 3 October. Every number below is read from a results file in the repository; nothing is estimated.</p>
+
+<div class="thesis"><b>Title filed:</b> <i>Out-of-Sample Knowledge Distillation for Compact Cyberbullying Detection: More Unlabelled Text Helps, More Teachers Do Not.</i><br>
+<b>Thesis sentence:</b> distilling a compact student from large teachers on the labelled split the teachers were fine-tuned on adds nothing over plain fine-tuning, because there the teachers' soft labels are the gold labels; distilling on unlabelled tweets the teachers have never seen improves the student monotonically with the amount of text; teacher committees, reliability weighting and specialist teachers add nothing at any point; and none of it transfers the ability to tell implied abuse from harmless sarcasm.</div>
+
+<h2>1. Where we started</h2>
+<p>The Phase 2 report (February 2026) distilled two teachers into DistilBERT on the Wikipedia personal-attacks corpus with per-batch dynamic weighting and reported the student at 0.8947 macro-F1 against teachers at 0.8936 and 0.8904, one seed, no fine-tuning-only control. The team's Phase 3 work moved to the fine-grained cyberbullying tweet corpus, where DistilBERT <i>without</i> distillation scored 0.859 and the D-MTHD student 0.830, the dynamic weights sat frozen near [0.08, 0.64, 0.28], and the data carried 3,168 conflicting-label rows and 507 duplicates. That is the point from which the current work began on 10 September.</p>
+
+<h2>2. What was rebuilt (10 to 12 September)</h2>
+<ul>
+  <li><b>Data.</b> Clean corpus of 43,259 tweets (34,607 / 4,326 / 4,326), conflicting labels and duplicates removed; classical TF-IDF floor 0.8798 macro-F1. A third benchmark that labels implication, built from the Implicit Hate Corpus alone (20,637 rows) after finding that pooling it with ISHate lets a model recognise the <i>source</i> at 0.91 macro-F1; ISHate (27,096 rows) held out whole. Per-row manifests so any rebuild is verifiable.</li>
+  <li><b>Models.</b> Teachers BERT-large (0.8973), RoBERTa-irony (0.8926), HateBERT (0.8887), plus DeBERTa-v3-base and an implicit-abuse specialist; five students from 10M to 71M parameters (BERT-mini headline, BERT-small, DistilBERT, DeBERTa-v3-xsmall, BiLSTM).</li>
+  <li><b>Measurement.</b> Probe sets of 883 benign-sarcasm and 1,560 ironic-abuse tweets, with a threshold-free sarcasm-discrimination AUC replacing recall at 0.5; three seeds per configuration; every comparison a paired bootstrap with 1,000 resamples; a Kaggle driver that resumes across 12-hour sessions; every decision and finding numbered in <span class="small">DECISIONS.md</span>.</li>
+</ul>
+
+<h2>3. What the grid found (V1 to V4, 13 to 17 September): nothing in sample moves the student</h2>
+<table>
+  <tr><th>BERT-mini, test macro-F1 (3 seeds)</th><th class="num">Score</th><th>What it tests</th><th>Verdict</th></tr>
+  <tr><td>Fine-tune only (no teacher)</td><td class="num">0.8393</td><td>the control every claim is measured against</td><td>--</td></tr>
+  <tr><td>Single teacher (BERT-large)</td><td class="num">0.8405</td><td>does one teacher help</td><td>+0.0012, interval includes zero</td></tr>
+  <tr><td>Uniform three-teacher committee</td><td class="num">0.8385</td><td>does a committee help</td><td>no</td></tr>
+  <tr><td>D-MTHD per-instance weighting</td><td class="num">0.8378</td><td>does dynamic weighting beat averaging</td><td>no, at any &tau; from 0.05 to 5</td></tr>
+  <tr><td>Committee + implicit specialist</td><td class="num">0.8390 / 0.8373</td><td>does a teacher that knows implication help</td><td>no; after adaptation it copies HateBERT (&kappa; 0.962)</td></tr>
+  <tr><td>Randomly initialised student</td><td class="num">0.7905</td><td>what pre-training is worth</td><td>&minus;0.049, the only significant difference of 51</td></tr>
+</table>
+<p>The same pattern held on all five students and three committees (131 runs): distillation raised every student by 0.001 to 0.007 and no interval excluded zero. <b>Why</b> (findings F20 and F28): the task-adapted teachers agree at Cohen's &kappa; 0.89 to 0.96, and on their own training split their loss is 0.03 to 0.08, so their soft labels <i>are</i> the gold labels. A per-instance weighting has nothing to express, and distillation on that split reduces to fine-tuning. The committee's own averaged prediction does beat its best member by 0.5 to 0.8 points, but the student receives none of it.</p>
+<p><b>Implication</b> (F10, F19, F26): across 151 models, recall on ironic abuse and false positives on harmless sarcasm rise together (r = 0.72); no method discriminates better than another, they only fire more or less readily; the threshold-free AUC stays between 0.75 and 0.78 for every pre-trained variant; and tweet-trained students rank implied hate on the implicit benchmark at 0.60 AUC against 0.82 for the same architecture trained there.</p>
+
+<h2>4. The turn (V5, 21 September): the gain is in the data the student imitates on</h2>
+<p>If soft labels are gold labels in sample, the lever is text the teachers have <i>not</i> fitted. A transfer set of 42,013 unlabelled tweets (OLID, Davidson, HatEval, plus the corpus's own conflicting-label rows), screened against every split, probe and the implicit benchmark, was added to training with no labels: the student imitates the teacher's soft labels there. BERT-mini rose to 0.8466 (+0.007), every one of twelve soft-label seeds above every fine-tuning seed. One teacher labelled as well as three (committee &minus;0.0003), the corrected out-of-sample weighting added +0.002, hard pseudo-labels +0.002, and the sarcasm AUC did not rise: a task gain, not an implication gain.</p>
+
+<h2>5. The curve and its controls (V6 and V7, 21 to 22 September)</h2>
+<table>
+  <tr><th>Arm (BERT-mini unless stated, one teacher, 3 seeds)</th><th class="num">Macro-F1</th><th class="num">Gain over fine-tuning</th><th>95% interval</th></tr>
+  <tr><td>5k / 10k / 21k / 42k abuse-domain tweets</td><td class="num">0.8402 / 0.8428 / 0.8436 / 0.8463</td><td class="num">+0.0010 / +0.0035 / +0.0043 / +0.0070</td><td>monotone, no inversion</td></tr>
+  <tr><td>84k / 168k (abuse-domain + generic TweetEval tweets)</td><td class="num">0.8474 / <b>0.8516</b></td><td class="num">+0.0081 / <b>+0.0123</b></td><td>168k: [+0.0035, +0.0211], excludes zero</td></tr>
+  <tr><td>42k generic tweets (composition control)</td><td class="num">0.8445</td><td class="num">+0.0053</td><td>within 0.002 of abuse-domain text</td></tr>
+  <tr><td>Fine-tune alone, 13 epochs (42k arm's updates)</td><td class="num">0.8420</td><td class="num">+0.0027</td><td>[&minus;0.0040, +0.0096]</td></tr>
+  <tr><td>Fine-tune alone, 35 epochs (168k arm's updates)</td><td class="num">0.8380</td><td class="num">&minus;0.0013</td><td>overfits from epoch 13; 168k arm keeps +0.0136 [+0.0023, +0.0240]</td></tr>
+  <tr><td>BERT-small (28.8M) + 168k</td><td class="num">0.8526</td><td class="num">+0.0057</td><td>[&minus;0.0063, +0.0171], mean only</td></tr>
+  <tr><td>BiLSTM (10.4M) + 168k</td><td class="num"><b>0.8856</b></td><td class="num"><b>+0.0163</b></td><td>[+0.0063, +0.0271]; above the 0.8798 floor</td></tr>
+</table>
+<p>Both runs had their predictions written down before they ran (decisions D20 and D21) and were scored by a script against the tables. Six sizes gave six ordered means; the endpoint clears zero; generic tweets work nearly as well as abuse-related ones, so the recipe needs only unlabelled text from the platform; longer fine-tuning explains none of it; and the endpoint holds on two more students, the heterogeneous BiLSTM gaining most. The gain lands on the two classes the labelled split draws worst (not-cyberbullying 0.644 to 0.671, other-cyberbullying 0.707 to 0.720 on BERT-mini), and the sarcasm-discrimination AUC stays in its band along the whole curve.</p>
+
+<h2>6. What the thesis claims, and what it does not</h2>
+<div class="two">
+<div><p><b>Claims.</b> (1) In sample, no distillation objective, committee, weighting temperature or specialist teacher beats fine-tuning by more than the test set can resolve, and the reason is measured. (2) Out of sample, one teacher's soft labels on unlabelled platform text raise compact students monotonically with the amount of text, +0.012 on BERT-mini at 168,000 tweets with the interval clear of zero, and this survives fine-tuning at matched compute. (3) The gain is a task gain: discrimination of implied abuse from sarcasm is set by pre-training and moves under nothing tried. (4) A protocol others can reuse: threshold-free probes, a single-source implicit benchmark, manifests, pre-registered predictions.</p></div>
+<div><p><b>Not claimed.</b> That out-of-sample distillation is a new method (it is Hinton's transfer set, measured here under controls the setting is rarely given). That the text must be abuse-related. That the result holds on a second corpus. That BERT-small's gain is individually significant. That the probes are human-validated (the annotation sheet is pending). Absolute BERT-mini scores across machines (a CPU-versus-Kaggle discrepancy is documented; all comparisons are within one environment).</p></div>
+</div>
+
+<h2>7. Where everything lives, and the road to 3 October</h2>
+<p>Repository <span class="small">github.com/mahdihasanshadi/THESIS</span>: <span class="small">DECISIONS.md</span> (21 decisions, 34 findings, what may and may not be claimed), <span class="small">LOG.md</span> (every run), <span class="small">paper/BLUEPRINT.md</span> (structure, claims ledger, coverage of every finding, tables, defense questions), <span class="small">paper/tables/</span> (all tables regenerated from the archives, 100-row significance table), <span class="small">paper/results_draft.md</span> and the other section drafts. Seven Kaggle versions, about 22 GPU-hours, 179 student runs in the tweet grid. <b>Plan:</b> 23 to 25 September the full draft is assembled from the section drafts under the filed title; 26 September the draft is submitted; 27 to 29 September the slides (fifteen slides following Sections 3, 5 and 6 above); 30 September to 2 October rehearsal against the twelve defense questions in the blueprint; 3 October the defense.</p>
+
+</body>
+</html>
