@@ -786,3 +786,12 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   predictions 1 and 3 held with intervals clear of zero, 2 held on the mean; the wording rule fires the
   plural (F34). Tables, run summary and the per-model sarcasm CSV (43 models) regenerated; the D21
   rows added to `significance.csv`. No further GPU runs before the defense.
+- **First full draft assembled (22 September, `paper/PAPER.md` on main).** Under the filed title, in the
+  blueprint's order: abstract (Version C), introduction with the four contributions, related work in
+  four themes, the audited method with the in-sample/out-of-sample definition and the label mask, data
+  and protocol including the transfer-set construction and the minimum detectable effect, results 5.1
+  to 5.10 with the size curve and the three-student table as the headline, discussion, threats,
+  conclusion, statements and five appendices. Every number is taken from the generated tables or the
+  results draft; the two-page team summary (`paper/briefing/project_summary_2026-09-22.pdf`) was made
+  the same day. References gained OLID and HatEval for the transfer set. Not yet done: figures, the
+  department template, and the coverage tick against F1 to F34.

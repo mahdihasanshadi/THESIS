@@ -211,8 +211,8 @@ contributions are listed once, in the introduction, and answered once, in the co
 | Date | Deliverable |
 |---|---|
 | 22 Sep | V7 analysed (done); tables regenerated (done); 5.8 and T9b final (done); Fig 4 to draw |
-| 23 Sep | Sections 1, 2, 3 assembled from the drafts under Version C |
-| 24 Sep | Sections 4 and 5 assembled; every table placed; coverage matrix ticked |
+| 22 to 23 Sep | Sections 1 to 8 assembled from the drafts under the filed title as `paper/PAPER.md` (first full draft done 22 Sep); figures to draw |
+| 24 Sep | Coverage matrix ticked against the draft; figures 1 to 6 drawn; conversion into the department's template |
 | 25 Sep | Sections 6 to 8, abstract, statements, figures; the redundancy pass |
 | 26 Sep | Thesis draft submitted in the department format (chapter map, Section 4) |
 | 27 to 29 Sep | Slides: 15 slides following Sections 0, 5.6, 5.8, 5.9; Q&A drill from Section 7 |
