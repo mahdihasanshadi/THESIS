@@ -795,3 +795,18 @@ copied from `results.json` / `report.json` files, never typed from memory. Times
   results draft; the two-page team summary (`paper/briefing/project_summary_2026-09-22.pdf`) was made
   the same day. References gained OLID and HatEval for the transfer set. Not yet done: figures, the
   department template, and the coverage tick against F1 to F34.
+- **The non-neural student wired up (23 September, D22, not yet run).** Reading Prasomphan (2025) in
+  full showed where its 92.5 per cent comes from: its own table has single-teacher distillation beating
+  the committee on Wisesight (0.879 against 0.854), and the jump of +2 to +7 points arrives with the
+  student, a gradient-boosted tree on sentence embeddings, not with the teachers. The row that would
+  separate the two, the same student on the gold labels alone, is the one it does not have, and our
+  grid cannot supply it either: every student in it fine-tunes its own representation. New stage
+  `trees` (`src/dmthd/tree_student.py`, `TREES=1`): frozen `all-MiniLM-L6-v2` embeddings, PCA to 128,
+  gradient-boosted trees, rounds chosen on validation macro-F1, three seeds, five arms differing in
+  the target alone (gold labels; gold plus one teacher; gold plus the committee; the committee alone;
+  the committee's argmax) at that paper's own alpha 0.7, beta 0.3, T 3. `tables.py` writes `trees` and
+  keeps the arm out of the neural grid's tables; `significance.py` adds its comparisons with the target
+  as the row label; `scripts/tree_verdict.py` scores D22's predictions; `scripts/smoke_driver.py`
+  asserts the five arms, the no-teacher control among them, and that it does not leak into `main`.
+  Smoke-tested locally end to end on 200 rows with a tiny encoder and a synthetic cache. Ten minutes of
+  GPU time on Kaggle, resumed from v7.

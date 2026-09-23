@@ -58,7 +58,12 @@ def mode_label(mode, default=None):
 
 
 STUDENT_LABEL = {"bert-mini": "BERT-mini", "bert-small": "BERT-small", "distilbert": "DistilBERT",
-                 "deberta-xsmall": "DeBERTa-v3-xsmall", "bilstm": "BiLSTM", "tiny": "BERT-tiny"}
+                 "deberta-xsmall": "DeBERTa-v3-xsmall", "bilstm": "BiLSTM", "tiny": "BERT-tiny",
+                 "xgb": "Gradient-boosted trees"}
+# The tree student's arms are named by what the trees fit, because that is all that differs (D22).
+TREE_TARGET = {"ft": "Gold labels only (no teacher)", "skd": "Gold labels + one teacher's soft labels",
+               "uniform": "Gold labels + the committee's soft labels", "soft": "The committee's soft labels alone",
+               "pseudo": "The committee's hard pseudo-labels"}
 ABLATION_LABEL = {"ablation_no_dynamic": "uniform weights instead of per-instance",
                   "ablation_no_hidden": "no hidden-state term", "ablation_no_aux": "no auxiliary irony head",
                   "ablation_per_batch": "per-batch instead of per-instance weights",
@@ -251,7 +256,27 @@ def main():
                          "Benign-sarcasm FPR": "--", "Ironic-abuse recall": "--"})
         write(pd.DataFrame(rows), args.out, "teachers", "Task-adapted teachers and the classical floor.", "teachers")
 
-    s = df[df["mode"] != "teacher"].copy()
+    # ---- the tree student (D22) ----
+    # It is not one of the neural students: frozen features, no fine-tuning, and its arms differ in the
+    # target alone, so it is reported on its own and kept out of the grid's tables.
+    tr = agg(df[df["student"] == "xgb"])
+    if not tr.empty:
+        tr["order"] = tr["mode"].map({k: i for i, k in enumerate(TREE_TARGET)})
+        tr = tr.sort_values("order")
+        base = tr.loc[tr["mode"] == "ft", "macro_f1_mean"]
+        base = float(base.iloc[0]) if len(base) else None
+        rows = [{"Target the trees fit": TREE_TARGET.get(r.mode, r.mode), "Seeds": int(r.n),
+                 "Macro-F1": fmt(r.macro_f1_mean, r.macro_f1_std),
+                 "Accuracy": fmt(r.accuracy_mean, r.accuracy_std),
+                 "Difference from the gold labels": "--" if base is None or r.mode == "ft"
+                 else f"{r.macro_f1_mean - base:+.4f}"}
+                for r in tr.itertuples()]
+        write(pd.DataFrame(rows), args.out, "trees",
+              "The non-neural student: frozen sentence embeddings, PCA and gradient-boosted trees, with the "
+              "target as the only difference between arms. Mean $\\pm$ standard deviation over seeds; the "
+              "paired intervals are in the significance table.", "trees")
+
+    s = df[(df["mode"] != "teacher") & (df["student"] != "xgb")].copy()
     s["is_ablation"] = s["mode"].str.startswith("ablation_")
     s["is_sweep"] = s["mode"].str.startswith("sweep_")
 

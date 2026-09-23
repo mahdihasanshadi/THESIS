@@ -37,7 +37,7 @@ def run(env, stage, root, dataset="tweets", raw=None):
          "COMMITTEES": "homo,hetero", "SPECIALIST": "0",
          "TEACHERS": f"{TINY}:tiny-a,google/bert_uncased_L-4_H-256_A-4:mini-b",
          "HETERO_TEACHER": "microsoft/deberta-v3-xsmall:deberta-xsmall",
-         "STUDENTS": f"{TINY}:tiny", "HETERO_STUDENTS": "bilstm:bilstm", **env}
+         "STUDENTS": f"{TINY}:tiny", "HETERO_STUDENTS": "bilstm:bilstm", "TREE_EMBEDDER": TINY, **env}
     cmd = [sys.executable, DRIVER, "--dataset", dataset, "--stage", stage] + (["--raw", raw] if raw else [])
     print("\n>>>", " ".join(cmd), {k: v for k, v in env.items()}, flush=True)
     if subprocess.run(cmd, env=e).returncode != 0:
@@ -83,6 +83,16 @@ r = os.path.join(a.root, "runs", "tweets", "tiny", "ft_matched_100", "seed1", "r
 assert os.path.exists(r) and json.load(open(r))["epochs_run"] == 2, "the control matched to the largest arm did not run"
 r = os.path.join(a.root, "runs", "tweets", "bilstm", "skd_transfer_100", "seed1", "results.json")
 assert os.path.exists(r) and json.load(open(r))["transfer_rows"] == 100, "the largest arm did not run on the second student"
+# the non-neural student (D22): five arms that differ in the target alone, the first with no teacher
+for arm in ("ft", "skd", "uniform", "soft", "pseudo"):
+    r = os.path.join(a.root, "runs", "tweets", "xgb", arm, "seed1", "results.json")
+    assert os.path.exists(r), f"the tree student's {arm} arm did not run"
+    res = json.load(open(r))
+    assert (res["teachers"] == []) == (arm == "ft"), f"the {arm} arm has the wrong teachers: {res['teachers']}"
+    assert os.path.exists(os.path.join(os.path.dirname(r), "test_probs.npy")), \
+        f"the {arm} arm wrote no test predictions for the paired bootstrap"
+print("trees stage: five arms on frozen features, including the no-teacher control")
+
 env = {**os.environ, "PYTHONPATH": SRC}
 tables_out = os.path.join(a.root, "tables_tweets")
 for mod in ("tables", "significance"):
@@ -100,6 +110,11 @@ sig = open(os.path.join(tables_out, "significance.csv"), encoding="utf-8").read(
 assert "matched steps" in sig and "does the gain grow" in sig, "the size-curve comparisons are missing from significance.csv"
 # the smoke grid trains no in-sample skd run for BiLSTM, so only the fine-tuning comparison exists for it
 assert "its own number of updates" in sig and "BiLSTM" in sig, "the D21 comparisons are missing from significance.csv"
+trees = open(os.path.join(tables_out, "trees.csv"), encoding="utf-8").read()
+assert "Gold labels only (no teacher)" in trees, "the tree student's control row is missing from trees.csv"
+assert "Gradient-boosted trees" in sig, "the tree student's comparisons are missing from significance.csv"
+assert "Gradient-boosted trees" not in open(os.path.join(tables_out, "main.csv"), encoding="utf-8").read(), \
+    "the tree student leaked into the neural grid's main table"
 print("transfer_scale stage: extended set built, nested sizes, composition control and matched-steps control trained, tabled and tested")
 
 # 2. every teacher collapses

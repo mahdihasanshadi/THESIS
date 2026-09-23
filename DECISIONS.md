@@ -444,6 +444,46 @@ arm against fine-tuning and against the same teacher in sample; `tables.py` writ
 4. **The rule fires the plural.** Both controls hold: the thesis states the result for compact students
    in the plural, with BERT-small's interval reported as it is, and the title stands as filed.
 
+### D22. The student the literature's largest gains are reported on
+*Decided 23 September, after reading Prasomphan (2025) in full; predictions written before the run
+(Kaggle v8). Ten minutes of GPU time, resumed from v7.*
+
+The paper Chapter 2 cites as the current instance of the family reports 92.5 / 90.5 / 91.0 per cent
+accuracy for multi-teacher distillation on three Thai corpora, which is far more than anything in our
+grid. Its own table says where that comes from: single-teacher distillation beats the committee on one
+of its three corpora (0.879 against 0.854 on Wisesight), and the jump of +2 to +7 points appears when
+the student changes from a neural model to gradient-boosted trees on sentence embeddings. The
+comparison that would separate the two, the same student and features trained on the gold labels
+alone, is the row the paper does not have. Our grid cannot answer it either: every student in it
+fine-tunes its own representation, and a student on frozen features is where soft labels have the most
+room to act, because the trees can only place a boundary on a representation someone else fixed.
+
+`trees` stage (`TREES=1`), tweet benchmark, resumed from v7 so the teachers and their cached logits
+are reused. Frozen `all-MiniLM-L6-v2` embeddings (mean-pooled, L2-normalised; not one of the
+teachers), PCA to 128 dimensions, gradient-boosted trees with the number of rounds chosen on
+validation macro-F1, three seeds, and the paper's own blend, alpha 0.7 on the gold labels and beta 0.3
+on soft labels at temperature 3. Five arms differing in the target and nothing else: the gold labels
+alone (`ft`, the control that paper omits), gold labels plus one teacher (`skd`), plus the committee
+(`uniform`), the committee's soft labels alone (`soft`), and the committee's argmax as hard labels
+(`pseudo`). `scripts/tree_verdict.py` scores the predictions below against `trees.csv` and
+`significance.csv`.
+
+**Predictions.**
+1. No distilled target beats the gold-label arm by more than 0.010 macro-F1, and no interval excludes
+   zero. The mechanism of F28 does not depend on the student: the teachers memorised the split, so in
+   sample their soft labels are the gold labels whoever is listening.
+2. The committee beats one teacher by at most 0.005, as it fails to in the neural grid (F29) and as it
+   fails to in the cited paper's own Wisesight column.
+3. Every tree arm lands below BERT-mini fine-tuned alone (0.8393) and below the classical floor
+   (0.8798): frozen features cost more than any label can return.
+4. Decision rule for the wording, fixed now. If a distilled target beats the gold labels by at least
+   0.010 with an interval clear of zero, the thesis reports the tree student as the exception, states
+   that the audit's null is a claim about students that fine-tune their own representation, and softens
+   the related-work sentence accordingly. Otherwise the audit extends to the non-neural student, and
+   Chapter 2 names the confound in the papers that report otherwise instead of citing them in passing.
+
+**Outcome.** Pending the run.
+
 ## 4. Findings
 
 Numbered so the paper can cite them. Each states what was measured, on what, and what it licenses.
@@ -1256,3 +1296,4 @@ Worth keeping because the paper's framing came out of these turns, and because a
 | Per-model sarcasm analysis, first seed, Kaggle v6 (42 models) | `paper/results_tweets_implicit_seed1.csv` |
 | The size curve, and D20's predictions scored against it | `paper/tables/scaling.csv`, `scripts/scaling_verdict.py` |
 | The largest set on the other students (D21) | `paper/tables/scaling_students.csv` |
+| The non-neural student, and D22's predictions scored against it | `paper/tables/trees.csv`, `scripts/tree_verdict.py` |

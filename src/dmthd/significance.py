@@ -18,7 +18,7 @@ from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
 
 from .aggregate import paired_bootstrap
-from .tables import ABLATION_LABEL, MATCH_RE, SCALE_RE, STUDENT_LABEL, mode_label, write
+from .tables import ABLATION_LABEL, MATCH_RE, SCALE_RE, STUDENT_LABEL, TREE_TARGET, mode_label, write
 
 # baseline, candidate, and the question the row answers
 EVERY_STUDENT = [("ft", "skd", "does one teacher help"),
@@ -55,6 +55,11 @@ HEADLINE_ONLY = [("ft", "uniform_spec", "does a committee with the specialist he
                  ("uniform_transfer", "uniform_hetero_transfer", "does the DeBERTa teacher help as a labeller"),
                  ("uniform_transfer", "dmthd_knn_transfer", "does out-of-sample reliability beat averaging"),
                  ("uniform_transfer", "pseudo_transfer", "soft labels against hard pseudo-labels")]
+# The tree student (D22): its arms differ in the target alone, so the questions are about the target.
+TREE_ONLY = [("ft", "soft", "the committee's soft labels alone against the gold labels"),
+             ("ft", "pseudo", "the committee's hard pseudo-labels against the gold labels"),
+             ("uniform", "soft", "dropping the gold labels from the blended target")]
+TREE_STUDENT = "xgb"
 
 
 def label(mode):
@@ -125,8 +130,9 @@ def one(job):
         per_seed, (delta, lo, hi) = paired_bootstrap(a, b)
     except SystemExit:
         return None
-    return {"Student": STUDENT_LABEL.get(student, student), "Question": question, "Baseline": label(base),
-            "Candidate": label(cand), "Seeds": len(per_seed), "Difference": f"{delta:+.4f}",
+    name = (lambda m: TREE_TARGET.get(m, label(m))) if student == TREE_STUDENT else label
+    return {"Student": STUDENT_LABEL.get(student, student), "Question": question, "Baseline": name(base),
+            "Candidate": name(cand), "Seeds": len(per_seed), "Difference": f"{delta:+.4f}",
             "95 per cent interval": f"[{lo:+.4f}, {hi:+.4f}]",
             "Interval excludes zero": "yes" if lo > 0 or hi < 0 else "no"}
 
@@ -143,6 +149,7 @@ def main():
     students.sort(key=lambda s: s != args.headline)
     jobs = [(s, b, c, q, args.runs) for s in students for b, c, q in EVERY_STUDENT]
     jobs += [(args.headline, b, c, q, args.runs) for b, c, q in HEADLINE_ONLY]
+    jobs += [(TREE_STUDENT, b, c, q, args.runs) for b, c, q in TREE_ONLY]
     jobs += [(s, b, c, q, args.runs) for s, b, c, q in scaling_jobs(args.runs, args.headline)]
     jobs = [j for j in jobs if os.path.isdir(os.path.join(args.runs, j[0], j[1])) and os.path.isdir(os.path.join(args.runs, j[0], j[2]))]
     with ProcessPoolExecutor(max_workers=args.workers) as pool:

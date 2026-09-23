@@ -35,7 +35,8 @@ Environment overrides: ROOT, TEACHERS, HETERO_TEACHER, COMMITTEES, STUDENTS, HET
 MODES, GPU, RESUME_FROM, TEACHER_EPOCHS, STUDENT_EPOCHS, DISAGREEMENT, KAPPA, MIN_TEACHER_F1,
 SPECIALIST, SPECIALIST_BASE, SPEC_STUDENTS, IMPLICIT_RAW, LIMIT (debug); for the transfer stages
 TRANSFER, TRANSFER_SOURCES, TRANSFER_STUDENTS, TRANSFER_ARMS, KNN_K, TRANSFER_SCALE, TRANSFER_SIZES,
-TRANSFER_SCALE_SOURCES, TRANSFER_SCALE_COMMITTEE, TRANSFER_SCALE_MATCH_LARGEST, TRANSFER_SCALE_STUDENTS.
+TRANSFER_SCALE_SOURCES, TRANSFER_SCALE_COMMITTEE, TRANSFER_SCALE_MATCH_LARGEST, TRANSFER_SCALE_STUDENTS;
+for the tree student TREES, TREE_EMBEDDER, TREE_ARMS, TREE_SEEDS.
 """
 import argparse
 import atexit
@@ -126,6 +127,13 @@ TRANSFER_SCALE_COMMITTEE = os.environ.get("TRANSFER_SCALE_COMMITTEE", "0") == "1
 # updates as the LARGEST arm, and the largest arm on other students (tags; empty turns it off).
 TRANSFER_SCALE_MATCH_LARGEST = os.environ.get("TRANSFER_SCALE_MATCH_LARGEST", "1") == "1"
 TRANSFER_SCALE_STUDENTS = [s for s in os.environ.get("TRANSFER_SCALE_STUDENTS", "bert-small,bilstm").split(",") if s]
+# The non-neural student the multi-teacher papers with the largest reported gains use (DECISIONS D22):
+# frozen sentence embeddings, PCA, gradient-boosted trees, soft targets blended with the gold labels.
+# Its arms differ in the target alone, and one of them is the no-teacher control those papers omit.
+TREES = os.environ.get("TREES", "1") == "1"
+TREE_EMBEDDER = os.environ.get("TREE_EMBEDDER", "sentence-transformers/all-MiniLM-L6-v2")
+TREE_ARMS = [a for a in os.environ.get("TREE_ARMS", "ft,skd,uniform,soft,pseudo").split(",") if a]
+TREE_SEEDS = [int(s) for s in os.environ.get("TREE_SEEDS", "").split(",") if s]   # empty: SEEDS
 # Kaggle kills a session at 12 h and the packaging cell never runs. Stop launching new work
 # before that so the notebook finishes cleanly with a downloadable output.
 TIME_BUDGET_S = float(os.environ.get("TIME_BUDGET_S", "39600"))
@@ -780,6 +788,27 @@ class Bench:
                         check_budget(f"{stag2}/{arm}/seed{seed}")
                         sh(f"python -m dmthd.train_student {common2} --seed {seed} --out_dir {out} {flags} --tag {arm}")
 
+    def trees(self):
+        """The student the literature's largest multi-teacher gains are reported on: a frozen sentence
+        encoder, PCA and gradient-boosted trees, which cannot learn a representation and so gives soft
+        labels their best chance. Five arms differing in the target alone, including the no-teacher
+        control those papers omit. Predictions are written in DECISIONS D22 before this runs."""
+        if not TREES or self.name != "tweets":
+            return
+        homo = self.committee("homo")
+        if not homo:
+            print("no homogeneous teachers left: the tree student is skipped", flush=True)
+            return
+        for arm in TREE_ARMS:
+            for seed in (TREE_SEEDS or SEEDS):
+                out = f"{self.runs}/xgb/{arm}/seed{seed}"
+                if done(out):
+                    continue
+                check_budget(f"xgb/{arm}/seed{seed}")
+                sh(f"python -m dmthd.tree_student --data_dir {self.data} --out_dir {out} --mode {arm} "
+                   f"--cache {self.cache} --teachers {' '.join(homo)} --embedder {TREE_EMBEDDER} "
+                   f"--emb_cache {self.cache}_emb --seed {seed} {self.common} {self.limit}", check=False)
+
     def _run_dirs(self):
         dirs = [f"{self.runs}/teachers/{tag}" for _, tag in self.teacher_list if tag not in self.dropped]
         for _, stag in self.student_list:
@@ -934,8 +963,8 @@ if __name__ == "__main__":
     # probes after sweep: the implicit analysis covers every run of the headline student, and in the
     # other order the sweep runs finished after it had passed. Version 4 of the tweet run left its three
     # new tau values without a sarcasm-discrimination AUC that way.
-    order = ["prepare", "specialist", "teachers", "cache", "students", "transfer", "transfer_scale", "sweep", "probes",
-             "robustness", "quant", "bench", "aggregate"]
+    order = ["prepare", "specialist", "teachers", "cache", "students", "transfer", "transfer_scale", "trees", "sweep",
+             "probes", "robustness", "quant", "bench", "aggregate"]
     stages = order if a.stage == "all" else [a.stage]
     ran_out = None
     for st in stages:
