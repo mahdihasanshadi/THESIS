@@ -95,7 +95,7 @@ The contributions are as follows.
 1. **A controlled audit of multi-teacher distillation for abusive language** (Sections 5.2 to 5.6).
    Five students across three architecture families, three committees, four objectives, a specialist
    teacher trained on labelled implication, weighting temperatures over a hundredfold range, three
-   seeds, 100 paired comparisons with bootstrap intervals. In sample, nothing beats fine-tuning by more
+   seeds, 99 paired comparisons with bootstrap intervals. In sample, nothing beats fine-tuning by more
    than the test set can resolve, and the mechanism is measured: memorised labels, saturated
    reliability, and diversity spent by the task adaptation that makes teachers comparable.
 2. **The out-of-sample result and its curve** (Sections 5.7 and 5.8). Soft labels on unlabelled tweets
@@ -246,11 +246,15 @@ nothing else.
 ### 3.3 Objective
 
 $$
-\bar p(i) = \sum_k w_k(i)\, \mathrm{softmax}\!\big(z_k(x_i)/T\big), \qquad
+\bar p(i) = \sum_k w_k(i)\, \mathrm{softmax}\!\big(z_k(x_i)/T\big),
+$$
+$$
 \mathcal{L}_{\mathrm{KL}}(i) = T^2\, \mathrm{KL}\!\big(\bar p(i)\,\|\,\mathrm{softmax}(z_s(x_i)/T)\big),
 $$
 $$
-\mathcal{L}_{\mathrm{hid}}(i) = \sum_k w_k(i)\, \big\| W_k h_s(x_i) - h_k(x_i) \big\|_2^2, \qquad
+\mathcal{L}_{\mathrm{hid}}(i) = \sum_k w_k(i)\, \big\| W_k h_s(x_i) - h_k(x_i) \big\|_2^2,
+$$
+$$
 \mathcal{L}_{\mathrm{irony}}(i) = T^2\, \mathrm{KL}\!\big(\mathrm{softmax}(z_{\text{irony}}(x_i)/T)\,\|\,\mathrm{softmax}(z_s^{\text{irony}}(x_i)/T)\big),
 $$
 $$
@@ -442,7 +446,7 @@ expected calibration error \cite{guo2017calibration}, and per-class F1.
 Three seeds per main configuration, one for ablations, controls and sweeps. Every difference the paper
 states is a paired bootstrap over the test set \cite{koehn2004statistical, dror2018hitchhiker}: seeds
 paired by index, 1,000 resamples per seed, the 95 per cent interval of the pooled differences. The grid
-makes 100 such comparisons and they are generated as a table, not transcribed; nine intervals exclude
+makes 99 such comparisons and they are generated as a table, not transcribed; nine intervals exclude
 zero, one for removing pre-training and eight for out-of-sample distillation. A paired interval on 4,326 posts is about 0.014 wide, so the minimum detectable difference is
 about 0.007 macro-F1 \cite{card2020power}, and we say so wherever a difference is smaller. A
 pre-registered stop rule required at least one task-adapted teacher to beat the fine-tune-only student
@@ -1043,7 +1047,7 @@ Araf Noshin.
 
 The complete tables are in `paper/tables/`: `main`, `teachers`, `implicit`, `scaling`,
 `scaling_students`, `routing`, `ablations`, `sweeps`, `committee`, `homogeneity`, `robustness`,
-`efficiency`, `significance` (all 100 paired comparisons), `dataset`, and the raw per-run collection
+`efficiency`, `significance` (all 99 paired comparisons), `dataset`, and the raw per-run collection
 `all_runs.csv`. The per-model sarcasm analysis for the first seed of each configuration is
 `results_tweets_implicit_seed1.csv` (43 models); teacher agreement with and without the specialist is
 `complementarity.json` and `complementarity_with_specialist.json`.

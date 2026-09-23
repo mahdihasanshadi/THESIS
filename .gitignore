@@ -13,6 +13,9 @@ hf-cache/
 *.log
 *.err
 
+# the thesis PDF rendered without TeX (paper/thesis/render_pdf.py)
+paper/thesis/build/
+
 # python
 __pycache__/
 *.pyc

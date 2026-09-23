@@ -25,6 +25,9 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
+% natbib's bibliography heading, listed in the contents like the other unnumbered chapters
+\renewcommand{\bibsection}{\chapter*{\bibname}\phantomsection\addcontentsline{toc}{chapter}{\bibname}}
+
 \newcommand{\thesisdate}{October 2026}
 \newcommand{\thesissemester}{Fall, 2026}    % CHECK: the semester the department records for this defense
 \newcommand{\defensedate}{October 03, 2026}

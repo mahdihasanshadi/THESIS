@@ -16,6 +16,20 @@ pdflatex main
 pdflatex main
 ```
 
+## A PDF without TeX
+
+`render_pdf.py` makes a circulation copy of the thesis on a machine with Edge or Chrome and no TeX:
+
+```
+python paper/thesis/render_pdf.py --out paper/thesis/build --name thesis.pdf
+```
+
+It converts `main.tex` and everything it inputs to one HTML page (equations as MathML, figures as vector
+SVG, numbered chapters, sections, figures, tables and equations, resolved references, natbib citations
+and an unsrtnat bibliography) and prints it, repeating until the contents, the lists and the page
+numbers stop moving. It understands the LaTeX that `build_tex.py` writes and warns about anything else.
+The typeset thesis for submission is still the pdfLaTeX build.
+
 ## Change the text
 
 The chapters are generated, so edit the sources and rebuild rather than editing `chapters/*.tex`:

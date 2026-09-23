@@ -334,38 +334,25 @@ degree of B.Sc. in Computer Science and Engineering on \defensedate.
 \vspace{0.6cm}
 \noindent\textbf{Examining Committee:}
 
-\vspace{0.8cm}
-\noindent Supervisor:\\
-(Member)
-
-\vspace{1.3cm}
-\noindent\rule{7cm}{0.4pt}\\
-Dr. Muhammad Iqbal Hossain\\
-Associate Professor\\
-Department of Computer Science and Engineering\\
-BRAC University
-
-\vspace{0.8cm}
-\noindent Co-Supervisor:\\
-(Member)
-
-\vspace{1.3cm}
-\noindent\rule{7cm}{0.4pt}\\
-Sheikh Araf Noshin\\
-Lecturer\\
-Department of Computer Science and Engineering\\
-BRAC University
-
-\vspace{0.8cm}
-\noindent Head of Department:\\
-(Chair)
-
-\vspace{1.3cm}
-\noindent\rule{7cm}{0.4pt}\\
-Dr. Sadia Hamid Kazi\\
-Associate Professor and Chairperson\\
-Department of Computer Science and Engineering\\
-BRAC University
+% each role beside its signature line, so that the page holds all three with room to sign
+\vspace{1.2cm}
+\noindent\begin{tabular}{@{}p{4.6cm}l@{}}
+Supervisor: & \rule{7cm}{0.4pt}\\
+(Member) & Dr. Muhammad Iqbal Hossain\\
+ & Associate Professor\\
+ & Department of Computer Science and Engineering\\
+ & BRAC University\\[1.4cm]
+Co-Supervisor: & \rule{7cm}{0.4pt}\\
+(Member) & Sheikh Araf Noshin\\
+ & Lecturer\\
+ & Department of Computer Science and Engineering\\
+ & BRAC University\\[1.4cm]
+Head of Department: & \rule{7cm}{0.4pt}\\
+(Chair) & Dr. Sadia Hamid Kazi\\
+ & Associate Professor and Chairperson\\
+ & Department of Computer Science and Engineering\\
+ & BRAC University
+\end{tabular}
 
 \chapter*{Ethics Statement}
 \phantomsection\addcontentsline{toc}{chapter}{Ethics Statement}
@@ -1079,7 +1066,7 @@ APP_SIG = "\n\n".join([
     r"""
 {\scriptsize
 \setlength{\tabcolsep}{3pt}
-\begin{longtable}{p{1.3cm}p{3.5cm}p{2.7cm}p{3.0cm}cp{1.0cm}p{2.0cm}c}
+\begin{longtable}{p{1.5cm}p{2.9cm}p{2.5cm}p{2.6cm}cp{1.0cm}p{1.8cm}c}
 \caption{Every paired comparison in the grid: candidate minus baseline test macro-F1.}
 \label{tab:significance}\\
 \toprule
@@ -1131,6 +1118,9 @@ MAIN = r"""
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
+% natbib's bibliography heading, listed in the contents like the other unnumbered chapters
+\renewcommand{\bibsection}{\chapter*{\bibname}\phantomsection\addcontentsline{toc}{chapter}{\bibname}}
+
 \newcommand{\thesisdate}{October 2026}
 \newcommand{\thesissemester}{Fall, 2026}    % CHECK: the semester the department records for this defense
 \newcommand{\defensedate}{October 03, 2026}
@@ -1169,6 +1159,35 @@ MAIN = r"""
 bib = io.open(os.path.join(REPO, "paper", "references.bib"), encoding="utf-8").read()
 bib = bib.replace("\u00f6", "{\\\"o}")
 bib = re.sub(r"\n\s*note\s*=\s*\{Open access\. Reviewed[^\n]*\}\n", "\n", bib)
+
+# unsrtnat sets titles in sentence case, lowercasing every letter BibTeX is not told to keep: brace the
+# words that carry capitals of their own (BERT, HateBERT, SemEval, AI) and the proper nouns.
+PROPER_NOUNS = {"English", "Arabic", "Twitter"}
+
+
+def protect_title(t):
+    out, depth, i = [], 0, 0
+    while i < len(t):
+        c = t[i]
+        if c in "{}":
+            depth += 1 if c == "{" else -1
+            out.append(c)
+            i += 1
+        elif depth == 0 and c.isalnum():
+            j = i
+            while j < len(t) and (t[j].isalnum() or t[j] == "'"):
+                j += 1
+            word = t[i:j]
+            keep = any(ch.isupper() for ch in word[1:]) or word in PROPER_NOUNS
+            out.append("{%s}" % word if keep else word)
+            i = j
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+bib = re.sub(r"(?m)^(\s*title\s*=\s*\{)(.*)(\},?)\s*$", lambda m: m.group(1) + protect_title(m.group(2)) + m.group(3), bib)
 assert all(ord(c) < 128 for c in bib), "non-ASCII left in the bibliography"
 assert "Reviewed 21 September" not in bib
 
