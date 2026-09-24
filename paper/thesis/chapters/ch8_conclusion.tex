@@ -1,18 +1,33 @@
 \chapter{Conclusion}
 \label{ch:8}
 We built the multi-teacher distillation method the abusive-language literature keeps proposing, gave
-it the teacher it was missing, and measured it under the controls it is rarely given. In sample it
-does not beat a compact student trained with no teacher, its per-instance weighting does not differ
-from averaging at any temperature, and a teacher trained on labelled implication adds nothing, for a
-reason we could measure: the student is distilled where every teacher has memorised the label, so
-the soft labels are the gold labels and the reliability that weights them is saturated. Out of
-sample the same teacher's soft labels on unlabelled tweets raise the student, monotonically with the
-amount of text, to +0.012 macro-F1 at 168,000 tweets on an 11M student, +0.016 on a 10M BiLSTM and
-+0.006 on a 29M BERT, from generic tweets nearly as well as from abuse-related ones, while
-fine-tuning for the same number of updates gains nothing; the committee, its weighting and hard
-pseudo-labels add nothing at any point. Measured without a threshold, the ability to tell implied
-abuse from harmless sarcasm is set by pre-training and unmoved by every component and every transfer
-set we tested, and recall at a fixed cut measures readiness to fire. More unlabelled text helps;
-more teachers do not; and neither teaches implication. What stands for practice is the oldest recipe
-in distillation, measured: one teacher, its soft labels on as much unlabelled text from the platform
-as can be screened, and a compact student that is unchanged at inference.
+it the teacher it was missing, and measured it under the controls it is rarely given.
+
+In sample the method fails its own test. It does not beat a compact student trained with no teacher
+on any of five students; its per-instance weighting does not differ from averaging at any
+temperature; and a teacher trained on labelled implication adds nothing, in a committee, alone, or
+as pre-training. The reason is measurable. The student is distilled on the split the teachers were
+fine-tuned on, where they have memorised the labels, so their soft labels are the gold labels and
+the reliability signal that weights them has nothing left to express.
+
+Out of sample the same teacher earns its place. Its soft labels on unlabelled tweets raise the
+headline 11M student by 0.012 macro-F1 at 168,000 tweets, with an interval clear of zero, and the
+gain grows monotonically over six sizes. Generic tweets of the platform work nearly as well as
+abuse-related ones. Fine-tuning alone for the same number of updates gains nothing. The 10M BiLSTM
+gains 0.016, also clear of zero, and a 29M BERT gains 0.006 on the mean, with an interval that
+includes it. At no point does the committee, its weighting or its hard pseudo-labels add anything to
+what one teacher does.
+
+What does not move is the part of the task the thesis set out to reach. Measured without a
+threshold, the ability to tell implied abuse from harmless sarcasm is set by pre-training; no
+objective, committee, teacher or transfer set we tried raises it, and recall at a fixed cut measures
+only how readily a model fires. More unlabelled text helps, more teachers do not, and neither
+teaches implication.
+
+For practice, the recipe that survives is the oldest one in distillation, now measured in this
+domain: one teacher, its soft labels on unlabelled text from the platform the student will serve,
+screened against every evaluation set, and a compact student that is unchanged at inference. Two
+caveats travel with it. The measurements run to 168,000 unlabelled tweets on one corpus in one
+language, and the curve had not flattened there, so the ceiling is unknown. And the recipe buys its
+gain by firing less: on the probes, recall on ironic abuse falls as the transfer set grows, which a
+deployment must decide about knowingly.

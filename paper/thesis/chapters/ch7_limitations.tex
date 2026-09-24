@@ -2,11 +2,13 @@
 \label{ch:7}
 \section{Limitations}
 \label{sec:7.1}
-\textbf{One corpus.} Every claim about the out-of-sample curve rests on one benchmark, one platform
-and one language. The Wikipedia grid and the student grid on the implicit benchmark were built and
-not run within the compute available; the curve on DistilBERT and DeBERTa-v3-xsmall was not run
-either. The claim is stated for compact students on this corpus, in the plural because it holds on
-three students of two families, and for nothing wider.
+\textbf{One corpus.} Every claim here, the audit and the curve alike, rests on one benchmark, one
+platform and one language. Three evaluations were built and not run within the compute available:
+the Wikipedia grid, the student grid on the implicit benchmark, and the 27,096-row held-out ISHate
+set, which exists as an out-of-domain test set and is screened against throughout but carries no
+result in this thesis. The curve on DistilBERT and DeBERTa-v3-xsmall was not run either. The claim
+is stated for compact students on this corpus, in the plural because it holds on three students of
+two families, and for nothing wider.
 
 \textbf{BERT-small's interval includes zero.} Its fine-tuning seeds vary by 0.008, and its
 out-of-sample gain of +0.0057 sits inside that variance; the direction agrees with the other two
@@ -25,9 +27,21 @@ Absolute BERT-mini and BERT-small numbers may be under-trained by up to four poi
 why both sit below the classical floor in sample.
 
 \textbf{Test-set size and seeds.} 4,326 test posts give paired intervals about 0.014 wide; three
-seeds per main configuration and one for ablations, controls and sweeps. Differences are read from
-intervals, not from seed variance, and single-seed rows are indicative only. The threshold-free
-probe analysis covers the first seed of each configuration.
+seeds for the main configurations and for every control of Sections~\ref{sec:5.7} and~\ref{sec:5.8},
+one seed for the ablations and the temperature sweeps. Differences are read from intervals, not from
+seed variance, and single-seed rows are indicative only. The threshold-free probe analysis covers
+the first seed of each configuration.
+
+\textbf{The in-sample result is an absence, not a zero.} A test set of this size cannot separate
+``no effect'' from ``an effect below 0.007 macro-F1''. Every one of the five students moved in the
+same direction, and the consistent sign is worth stating; what the design licenses is that no
+in-sample effect is large enough for this test set to resolve, not that the effect is zero.
+
+\textbf{The gain is measured against a baseline this environment may under-train.} The +0.0123 sits
+inside a four-point deficit that the environment note below describes, so part of it could be
+optimisation the stack lost rather than knowledge the transfer set added. The 35-epoch
+matched-updates control, which gains nothing on its own, is the evidence against that reading, and
+it is not decisive.
 
 \textbf{The transfer set's provenance.} Its sources are public abusive-language and sentiment
 corpora whose labels we discard; their texts were collected by other researchers under their own
@@ -35,15 +49,32 @@ sampling, and the generic portion is dominated by the emoji-prediction corpus. T
 every evaluation set are exact-match on normalised text; near-duplicates that differ by more than
 punctuation, casing or mentions would pass them.
 
-\textbf{Teacher variance is not estimated}; each teacher is trained once. \textbf{The heterogeneous
-comparison is confounded}: DeBERTa-v3-xsmall is a weaker model on this task than the BERT-lineage
-students, so the student swap mixes family with quality; the hidden-state term is the controlled
-version of that question. \textbf{The probes are rule-built}, about 1,000 items each, with a
-300-item human annotation in progress; probe metrics are reported only for models trained on
-Twitter-domain data. \textbf{The label is contested}: the two corpora that annotate implication
-agree on 48.2 per cent of shared hateful texts about whether the hate is implied, and every result
-on that class is bounded by it. \textbf{Robustness} was measured with synthetic character edits.
-\textbf{Distillation on an unlabelled transfer set is not new}; the contribution is the controlled
+\textbf{Teacher variance is not estimated.} Each teacher is trained once, so the committee's
+behaviour is measured at one draw of teacher weights.
+
+\textbf{The heterogeneous comparisons are confounded.} DeBERTa-v3-xsmall is a weaker model on this
+task than the BERT-lineage students, so the student swap mixes family with quality; the BiLSTM
+differs from the teachers in family, capacity and starting score at once. The hidden-state ablation
+is the controlled version of the question both are used to raise.
+
+\textbf{The probes are rule-built}: 883 benign-sarcasm, 1,560 ironic-abuse and 763 implicit-abuse
+items, with a 300-item human annotation in progress. Probe metrics are reported only for models
+trained on Twitter-domain data.
+
+\textbf{The recommended recipe costs recall.} As the transfer set grows, recall on ironic abuse at a
+0.5 threshold falls from 0.74 to 0.57 on BERT-mini and to 0.50 on the BiLSTM, against false-positive
+rates on harmless sarcasm that fall with it. A deployment that cares about catching ironic abuse
+more than about false alarms should set its threshold accordingly, and know that the discrimination
+behind both numbers has not improved.
+
+\textbf{The label is contested.} The two corpora that annotate implication agree on 48.2 per cent of
+shared hateful texts about whether the hate is implied, and every result on that class is bounded by
+it.
+
+\textbf{Robustness was not measured.} What was measured is degradation under synthetic character
+edits, which is not evasion by people trying to evade.
+
+\textbf{Distillation on an unlabelled transfer set is not new.} The contribution is the controlled
 measurement in this domain, and a reader should not take the title's first clause as a method claim.
 
 \section{Future Work}

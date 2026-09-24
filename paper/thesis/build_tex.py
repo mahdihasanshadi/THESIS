@@ -251,9 +251,13 @@ FIG = {
                        "False-positive rate on benign sarcasm against recall on ironic abuse for all 184 evaluated models. "
                        "Every family and objective lies along one trade-off line; the out-of-sample students slide along it "
                        "rather than rising above it.", "fig:tradeoff"),
+    "agreement": figure("fig_agreement",
+                        "Cohen's kappa between the task-adapted teachers' test predictions. Every pair agrees above "
+                        "0.88, and the implicit specialist agrees with HateBERT, the checkpoint it was trained from, "
+                        "at 0.962. A per-instance weighting has to work inside what is left.", "fig:agreement"),
     "auc": figure("fig_auc",
                   "Sarcasm-discrimination AUC of every analysed BERT-mini variant, first seed. Every pre-trained variant lies "
-                  "between 0.73 and 0.78, in sample or out; only removing pre-training moves the measure.", "fig:auc"),
+                  "between 0.72 and 0.78, in sample or out; only removing pre-training moves the measure.", "fig:auc"),
 }
 
 # --------------------------------------------------------------------------------- front matter
@@ -385,7 +389,7 @@ AUC & Area under the receiver operating characteristic curve\\
 BERT & Bidirectional Encoder Representations from Transformers\\
 BiLSTM & Bidirectional long short-term memory network\\
 CE & Cross-entropy\\
-D-MTHD & Dynamic Multi-Teacher Homogeneous Distillation, the method audited here\\
+D-MTHD & Dynamic Multi-Teacher Homogeneous Knowledge Distillation, the method audited here\\
 ECE & Expected calibration error\\
 F1 & Harmonic mean of precision and recall; macro-F1 averages it over classes\\
 FLOPs & Floating-point operations\\
@@ -410,9 +414,10 @@ IB = parse_blocks(body("1. Introduction"))
 assert " ".join(IB[0]).startswith("Detectors of abusive language")
 assert " ".join(IB[1]).startswith("We tested that promise")
 assert " ".join(IB[2]).startswith("The second half follows")
-assert " ".join(IB[3]).startswith("The knowledge that matters most")
-assert " ".join(IB[4]).startswith("The contributions are as follows")
-assert " ".join(IB[6]).startswith("We do not claim a new method")
+assert " ".join(IB[3]).startswith("The gain exists and grows")
+assert " ".join(IB[4]).startswith("The knowledge that matters most")
+assert " ".join(IB[5]).startswith("The contributions are as follows")
+assert " ".join(IB[7]).startswith("We do not claim a new method")
 bt = lambda k: block_tex(IB[k], [])  # noqa: E731
 
 CH1 = r"""
@@ -440,12 +445,11 @@ competitive. Two facts make the question worth a thesis. The first is that the a
 most is the abuse that is implied rather than stated: every survey of cyberbullying detection names
 sarcastic and indirect abuse as the open case \cite{rosa2019automatic, salawu2020approaches,
 emmery2021current}, and implicit hate has needed benchmarks of its own \cite{elsherief2021latent,
-ocampo2023indepth}. The second is that the distillation methods proposed for this task, and the
-Pre-Thesis II version of this one, have been reported without the controls that would show whether
-the teachers help at all. A practitioner choosing how to train a compact detector needs to know
-whether distillation moves it, where the gain comes from, and whether any of it reaches implied
-abuse. This thesis sets out to answer those three questions with measurements rather than
-assumptions.
+ocampo2023indepth}. The second is that the methods proposed for this task have not been given the
+controls that would show whether the teachers help at all (Section~\ref{sec:1.3}). A practitioner
+choosing how to train a compact detector needs to know whether distillation moves it, where the gain
+comes from, and whether any of it reaches implied abuse. Those questions become the four of
+Section~\ref{sec:1.4}, the first splitting into an in-sample and an out-of-sample form.
 
 \section{Problem Statement}
 \label{sec:1.3}
@@ -465,7 +469,7 @@ The thesis asks four questions.
 \begin{description}
   \item[RQ1.] Does multi-teacher distillation with per-instance reliability weighting improve a compact
     cyberbullying detector over the same student fine-tuned without teachers?
-  \item[RQ2.] If it does not, why not?
+  \item[RQ2.] What mechanism explains the answer to RQ1?
   \item[RQ3.] Does distillation on unlabelled text the teachers have never seen improve the student, and
     how does the gain depend on the amount and composition of that text, on the number of optimisation
     updates, and on the student?
@@ -493,13 +497,15 @@ To answer them, the thesis sets four objectives.
 
 <<P3>>
 
-\section{Contributions}
-\label{sec:1.6}
 <<P4>>
 
+\section{Contributions}
+\label{sec:1.6}
 <<P5>>
 
 <<P6>>
+
+<<P7>>
 
 \section{Thesis Organisation}
 \label{sec:1.7}
@@ -511,7 +517,7 @@ Chapter~\ref{ch:6} answers the research questions, discusses what the findings m
 study changed. Chapter~\ref{ch:7} states the limitations and future work, and Chapter~\ref{ch:8}
 concludes.
 """
-for k in range(7):
+for k in range(8):
     CH1 = CH1.replace("<<P%d>>" % k, bt(k))
 
 # --------------------------------------------------------------------------------- chapter 2
@@ -614,19 +620,25 @@ alone.
 \caption{Distillation in and out of sample.}
 \label{alg:training}
 \begin{algorithmic}[1]
-\Require labelled split $\mathcal{D}$; unlabelled transfer set $\mathcal{U}$, empty in sample; teacher
-  checkpoints $M_1, \dots, M_K$; irony teacher $M_{\mathrm{irony}}$; pre-trained student $S$
+\Require labelled split $\mathcal{D}$; validation split $\mathcal{V}$; unlabelled transfer set
+  $\mathcal{U}$, empty in sample; teacher checkpoints $M_1, \dots, M_K$; unadapted irony checkpoint
+  $M_{\mathrm{irony}}$; pre-trained student $S$
 \For{$k = 1, \dots, K$}
   \State fine-tune $M_k$ on $\mathcal{D}$, keep its best validation epoch, and freeze it \Comment{task adaptation}
 \EndFor
 \For{each text $x \in \mathcal{D} \cup \mathcal{U}$}
-  \State cache $z_k(x)$ and $h_k(x)$ for every teacher $k$, and $z_{\mathrm{irony}}(x)$
+  \State cache $z_k(x)$ and $h_k(x)$ for every teacher $k$, and $z_{\mathrm{irony}}(x)$ from $M_{\mathrm{irony}}$
 \EndFor
+\If{the run weights out of sample}
+  \State cache $h_k(v)$ and the correctness $c_k(v)$ for every $v \in \mathcal{V}$, and build each
+    teacher's neighbour index \Comment{for equation (3.7)}
+\EndIf
 \State set the label mask $m_x = 1$ for $x \in \mathcal{D}$ and $m_x = 0$ for $x \in \mathcal{U}$
 \For{epoch $= 1, \dots, E$}
-  \For{each minibatch $B$ drawn from $\mathcal{D} \cup \mathcal{U}$}
-    \State compute $z_s(x)$, $h_s(x)$ and $z^{\mathrm{irony}}_s(x)$ for $x \in B$
-    \State compute the weights $w_k(x)$ of Section~\ref{sec:3.2}, or of Section~\ref{sec:3.5} out of sample
+  \For{each minibatch drawn from $\mathcal{D} \cup \mathcal{U}$}
+    \State compute $z_s(x)$, $h_s(x)$ and $z^{\mathrm{irony}}_s(x)$ for every $x$ in the minibatch
+    \State weight the teachers by $w_k(x)$ of Section~\ref{sec:3.2} in sample, and by
+      $w_k^{\mathrm{knn}}(x)$ of Section~\ref{sec:3.5} on every row of an out-of-sample run
     \State compute the loss of Section~\ref{sec:3.3} with the mask $m_x$ and update $S$ and $W_1, \dots, W_K$
   \EndFor
   \State evaluate macro-F1 on the validation split and keep the best epoch
@@ -636,6 +648,12 @@ alone.
 \end{algorithm}
 """
 
+# thesis-only pointers: the paper has no appendix of training settings to send the reader to
+CH3_SUBS = {
+    3: [("implemented in PyTorch and Transformers \\cite{paszke2019pytorch, wolf2020transformers}.",
+         "implemented in PyTorch and Transformers \\cite{paszke2019pytorch, wolf2020transformers}; the "
+         "remaining settings are collected in [[Appendix:app:hyper]].")],
+}
 CH3 = "\n".join([
     "\\chapter{Methodology}", "\\label{ch:3}",
     wrap("This chapter describes the method the thesis set out to evaluate, D-MTHD, and the change of setting "
@@ -647,7 +665,8 @@ CH3 = "\n".join([
          "Section~\\ref{sec:3.6} states what is measured about the weighting; and Section~\\ref{sec:3.7} gives the "
          "training procedure as an algorithm."),
     FIG["schematic"],
-] + ["\\section{%s}\n\\label{sec:3.%d}\n%s" % (heading("3.%d " % k), k, convert(body("3.%d " % k)))
+] + ["\\section{%s}\n\\label{sec:3.%d}\n%s" % (heading("3.%d " % k), k,
+                                             convert(body("3.%d " % k), (), (), CH3_SUBS.get(k, ())))
      for k in range(1, 7)] + [ALGORITHM])
 
 # --------------------------------------------------------------------------------- chapter 4
@@ -690,6 +709,7 @@ Implicit Hate Corpus, single source & implicit benchmark & 16,509 & 2,064 & 2,06
 ISHate, held out whole & out-of-domain test & -- & -- & 27,096 & 3 classes \\
 Benign sarcasm probe & inference only & -- & -- & 883 & -- \\
 Ironic abuse probe & inference only & -- & -- & 1,560 & -- \\
+Implicit abuse probe, a subset of it & inference only & -- & -- & 763 & -- \\
 Transfer set, abuse-domain base & training, unlabelled & 42,013 & -- & -- & none \\
 Transfer set, extended & training, unlabelled & 205,593 & -- & -- & none \\
 \bottomrule
@@ -811,7 +831,12 @@ CH4 = "\n".join([
                                                   wrap("Table~\\ref{tab:classes} gives the class distribution of the cleaned splits.") + "\n" + CLASS_TABLE),
     "\\section{%s}\n\\label{sec:4.2}\n%s" % (heading("4.2 "), convert(body("4.2 "))),
     "\\section{%s}\n\\label{sec:4.3}\n%s" % (heading("4.3 "), convert(body("4.3 "))),
-    "\\section{%s}\n\\label{sec:4.4}\n%s\n\n%s" % (heading("4.4 "), convert(body("4.4 ")),
+    "\\section{%s}\n\\label{sec:4.4}\n%s\n\n%s" % (
+        heading("4.4 "),
+        convert(body("4.4 "), (), (),
+                [("is regenerated by the run itself, with the\nsame seed, from the same public sources.",
+                  "is regenerated by the run itself, with the same seed, from the same public sources; "
+                  "[[Appendix:app:transfer]] says what each file records.")]),
                                                   wrap("Table~\\ref{tab:transfer} records every count.") + "\n" + TRANSFER_TABLE),
     "\\section{%s}\n\\label{sec:4.5}\n%s" % (heading("4.5 "), convert(body("4.5 "))),
     "\\section{%s}\n\\label{sec:4.6}\n%s" % (heading("4.6 "), convert(body("4.6 "))),
@@ -821,33 +846,66 @@ CH4 = "\n".join([
 
 # --------------------------------------------------------------------------------- chapter 5
 R = {
-    "5.1 ": dict(tables=[("Teachers after task adaptation, with the classical floor. The training loss is the last "
-                          "epoch's cross-entropy on the split the students are distilled on; the probe columns are "
-                          "measured at the 0.5 threshold.", "tab:teachers")]),
-    "5.2 ": dict(tables=[("In-sample distillation: test macro-F1 of the five students under each objective and "
-                          "committee, mean over three seeds. The classical floor is 0.8798.", "tab:main")]),
+    "5.1 ": dict(subs=[("Three of the original four teachers beat the fine-tune-only headline student",
+                        "[[Table:tab:teachers]] reports the teachers after task adaptation. Three of the original "
+                        "four beat the fine-tune-only headline student")],
+                 tables=[("Teachers after task adaptation, with the classical floor. The training loss is the last "
+                          "epoch's cross-entropy on the split the students are distilled on; the probe columns are the "
+                          "share of each probe the model assigns to any abusive class, which is its argmax "
+                          "decision rather than a threshold on $p(\\text{abusive})$.", "tab:teachers")]),
+    "5.2 ": dict(subs=[("Test macro-F1, mean over three seeds; classical floor 0.8798.",
+                        "[[Table:tab:main]] gives the in-sample grid: test macro-F1 of every student under every "
+                        "objective and committee, against a classical floor of 0.8798.")],
+                 tables=[("In-sample distillation: test macro-F1 of the five students under each objective and "
+                          "committee, mean over three seeds. The classical floor is 0.8798. Standard deviations "
+                          "over seeds run from 0.0002 to 0.0078 and are in the generated table "
+                          "\\texttt{paper/tables/main.csv}; the paired intervals are in "
+                          "Appendix~\\ref{app:significance}.", "tab:main")]),
     "5.3 ": dict(tables=[("Per-instance weighting minus uniform averaging, with and without the DeBERTa teacher; "
                           "paired bootstrap 95\\% intervals.", "tab:dmthd-uniform"),
                          ("The weighting-temperature sweep on BERT-mini: mean weight of each teacher over the "
                           "training split, and test macro-F1 of the first seed.", "tab:tau")],
-                 subs=[("The sweep therefore reaches $\\tau = 0.05$.",
+                 subs=[("Without the DeBERTa teacher four differences are negative and one is a tie;",
+                        "[[Table:tab:dmthd-uniform]] sets the weighting against averaging on every student. Without "
+                        "the DeBERTa teacher four differences are negative and one is a tie;"),
+                       ("The sweep therefore reaches $\\tau = 0.05$.",
                         "The sweep therefore reaches $\\tau = 0.05$ ([[Table:tab:tau]], [[Figure:fig:tau]]).")],
                  inserts=[("| $\\tau$ |", FIG["tau"])]),
-    "5.4 ": dict(tables=[("Combining the teachers directly on the test set, before any student is trained: macro-F1 "
+    "5.4 ": dict(subs=[("Scored directly from the teachers' saved test probabilities, before any student is involved:",
+                        "[[Table:tab:committee]] scores the teachers' saved test probabilities directly, before any "
+                        "student is involved."),
+                       ("The teachers are not diverse enough for a weighting to have work to do, and adaptation is what made\nthem so.",
+                        "The teachers are not diverse enough for a weighting to have work to do, and adaptation is "
+                        "what made them so ([[Table:tab:agreement]], [[Figure:fig:agreement]]).")],
+                 inserts=[("| Teacher pair |", FIG["agreement"])],
+                 tables=[("Combining the teachers directly on the test set, before any student is trained: macro-F1 "
                           "of each combination rule and the oracle's accuracy.", "tab:committee"),
                          ("Agreement between the task-adapted teachers on the test set.", "tab:agreement")]),
-    "5.5 ": dict(tables=[("The implicit specialist and its controls on BERT-mini.", "tab:specialist"),
+    "5.5 ": dict(subs=[("committee only from 0.9526 to 0.9552. BERT-mini:",
+                        "committee only from 0.9526 to 0.9552. [[Table:tab:specialist]] gives the specialist and its "
+                        "two controls on the headline student."),
+                       ("minus mean weight on the four targeted classes (uniform weight 0.25):",
+                        "minus mean weight on the four targeted classes, against a uniform weight of 0.25 "
+                        "([[Table:tab:routing]]).")],
+                 tables=[("The implicit specialist and its controls on BERT-mini.", "tab:specialist"),
                          ("Routing contrast in the committee with the specialist: mean weight on "
                           "other\\_cyberbullying minus mean weight on the four targeted classes, with 95\\% bootstrap "
                           "intervals. The uniform weight is 0.25.", "tab:routing")]),
     "5.6 ": dict(),
-    "5.7 ": dict(tables=[("Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same "
-                          "objectives with and without the unlabelled rows, three seeds each.", "tab:oos")]),
+    "5.7 ": dict(subs=[("Five arms\non BERT-mini, three seeds each, beside the in-sample runs of the same objectives; predictions written\nbefore the run (decision D19 in the repository's decision log):",
+                        "[[Table:tab:oos]] reports five arms on BERT-mini, three seeds each, beside the in-sample runs "
+                        "of the same objectives; the predictions were written before the run and are scored in "
+                        "[[Appendix:app:predictions]].")],
+                 tables=[("Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same "
+                          "objectives with and without the unlabelled rows, three seeds each. The labelled-split "
+                          "column gives each objective's in-sample twin; for the out-of-sample-weighted arm that "
+                          "twin is D-MTHD, because the weighting differs only where there are no labels.",
+                          "tab:oos")]),
     "5.8 ": dict(tables=[("The size curve and its controls on BERT-mini, one teacher labelling, three seeds per arm. "
                           "Gains are paired bootstrap 95\\% intervals against fine-tuning.", "tab:size-curve"),
                          ("The largest transfer set on three students, three seeds each.", "tab:students")],
                  subs=[("**The curve rises at every step.**",
-                        "**The curve rises at every step** ([[Figure:fig:size-curve]])."),
+                        "**The curve rises at every step** ([[Table:tab:size-curve]], [[Figure:fig:size-curve]])."),
                        ("**Optimisation length does not explain the curve.**",
                         "**Optimisation length does not explain the curve** ([[Figure:fig:validation]])."),
                        ("**The endpoint holds on two more students.**",
@@ -855,17 +913,28 @@ R = {
                  inserts=[("| Arm | Transfer rows |", FIG["size"]),
                           ("**Optimisation length does not explain", FIG["validation"]),
                           ("| Student | Fine-tune only |", FIG["students"])]),
-    "5.9 ": dict(tables=[("Probe metrics by model family, averaged over all 184 evaluated models, at the 0.5 "
-                          "threshold. The margin is recall minus false-positive rate.", "tab:families"),
+    "5.9 ": dict(tables=[("Probe metrics by model family, averaged over all 184 evaluated models, at each model's "
+                          "argmax decision. The margin is recall minus false-positive rate.", "tab:families"),
                          ("The implicit benchmark: the compact student, the specialist and the classical floor, "
                           "one seed.", "tab:implicit")],
-                 subs=[("**Across the grid, methods differ only in how readily they fire.**",
-                        "**Across the grid, methods differ only in how readily they fire** ([[Figure:fig:tradeoff]])."),
-                       ("**Nothing moves the discrimination.**",
-                        "**Nothing moves the discrimination** ([[Figure:fig:auc]]).")],
+                 subs=[("**The same failure on a corpus that labels implication.**",
+                        "**The same failure on a corpus that labels implication** ([[Table:tab:implicit]])."),
+                       ("**Across the grid, methods differ only in how readily they fire.**",
+                        "**Across the grid, methods differ only in how readily they fire** ([[Figure:fig:tradeoff]], [[Table:tab:families]])."),
+                       ("**Nothing raises the discrimination.**",
+                        "**Nothing raises the discrimination** ([[Figure:fig:auc]]).")],
                  inserts=[("**Across the grid, methods differ", FIG["tradeoff"]),
-                          ("**Nothing moves the discrimination", FIG["auc"])]),
-    "5.10 ": dict(tables=[("Deployment profile of the students and the largest teacher: parameters, latency at "
+                          ("**Nothing raises the discrimination", FIG["auc"])]),
+    "5.10 ": dict(subs=[("Synthetic obfuscation of the abusive test rows, BERT-mini, seed 1, macro-F1:",
+                         "[[Table:tab:robustness]] gives macro-F1 under synthetic obfuscation of the abusive test "
+                         "rows, on BERT-mini, seed 1."),
+                        ("Median of five timed passes after warm-up on an idle machine:",
+                         "[[Table:tab:efficiency]] gives the median of five timed passes after warm-up on an idle "
+                         "machine.")],
+                  tables=[("Macro-F1 under synthetic character-level obfuscation of the abusive test rows: "
+                           "letters replaced by digits, adjacent characters swapped, spaces inserted, and all "
+                           "three together. BERT-mini, seed 1.", "tab:robustness"),
+                          ("Deployment profile of the students and the largest teacher: parameters, latency at "
                            "batch sizes 1 and 32, FLOPs per sequence, model size, and macro-F1 after INT8 dynamic "
                            "quantisation.", "tab:efficiency")]),
 }
@@ -882,27 +951,29 @@ CH6_RQ = r"""
 \section{Answers to the Research Questions}
 \label{sec:6.1}
 \begin{description}
-  \item[RQ1. Does multi-teacher distillation with per-instance weighting improve the compact student?]
-    Not in sample. Across five students, three committees and every weighting temperature from 0.05 to 5,
+  \item[RQ1. Does multi-teacher distillation with per-instance reliability weighting improve a compact
+    cyberbullying detector over the same student fine-tuned without teachers?]
+    Not in sample. Across five students, three committees and seven weighting temperatures from 0.05 to 5,
     no distilled student beats the same student fine-tuned without teachers by more than the test set can
     resolve, and per-instance weighting never differs from uniform averaging (Sections~\ref{sec:5.2}
     and~\ref{sec:5.3}). A teacher trained on labelled implication changes nothing either
     (Section~\ref{sec:5.5}).
-  \item[RQ2. Why not?] The student is distilled on the split the teachers were fine-tuned on, where they
-    have memorised the labels. There their soft labels are the gold labels, the reliability signal that
-    weights them is saturated, and task adaptation has made them agree on more than nine tweets in ten
-    (Sections~\ref{sec:5.4} and~\ref{sec:5.6}).
-  \item[RQ3. Does distillation on unlabelled text help, and on what does the gain depend?] Yes. On
-    BERT-mini the gain grows monotonically with the amount of unlabelled text, from +0.0010 at 5,000
-    tweets to +0.0123 [+0.0035, +0.0211] at 168,000. Generic tweets from the same platform work nearly as
-    well as abuse-related ones, fine-tuning for the same number of updates gains nothing, and the gain
-    holds on the BiLSTM (+0.0163) and on BERT-small (+0.0057, with an interval that includes zero). One
-    teacher is enough: the committee, its weighting and hard pseudo-labels add nothing
-    (Sections~\ref{sec:5.7} and~\ref{sec:5.8}).
-  \item[RQ4. Does any of it improve the discrimination of implied abuse from harmless sarcasm?] No. Every
-    pre-trained variant of the student, in sample or out, ranks ironic abuse above benign sarcasm with an
-    AUC between 0.73 and 0.78. The interventions change how readily the student fires, not what it can
-    tell apart (Section~\ref{sec:5.9}).
+  \item[RQ2. What mechanism explains the answer to RQ1?] The student imitates its teachers on the one
+    split they were themselves fine-tuned on, and they have memorised it. There their soft labels are
+    the gold labels, the reliability signal that weights them is saturated, and task adaptation has made them
+    agree on more than nine tweets in ten (Sections~\ref{sec:5.4} and~\ref{sec:5.6}).
+  \item[RQ3. Does distillation on unlabelled text the teachers have never seen improve the student, and
+    how does the gain depend on the amount and composition of that text, on the number of optimisation
+    updates, and on the student?] Yes. On BERT-mini the gain grows monotonically with the amount of
+    unlabelled text, from +0.0010 at 5,000 tweets to +0.0123 [+0.0035, +0.0211] at 168,000. Generic
+    tweets from the same platform work nearly as well as abuse-related ones, fine-tuning for the same
+    number of updates gains nothing, and the gain holds on the BiLSTM (+0.0163) and on BERT-small
+    (+0.0057, with an interval that includes zero). One teacher is enough: the committee, its weighting
+    and hard pseudo-labels add nothing (Sections~\ref{sec:5.7} and~\ref{sec:5.8}).
+  \item[RQ4. Does any of these interventions improve the student's ability to tell implied abuse from
+    harmless sarcasm?] No. Every pre-trained variant of the student, in sample or out, ranks ironic abuse
+    above benign sarcasm with an AUC between 0.73 and 0.78, and none rises above the in-sample band. The
+    interventions change how readily the student fires, not what it can tell apart (Section~\ref{sec:5.9}).
 \end{description}
 
 \section{What the Findings Mean}
@@ -916,7 +987,7 @@ The design of this thesis changed four times, and each change was forced by a me
 chosen in advance. Every change is recorded, with the evidence that forced it, in the decision log of
 the project's repository.
 \begin{enumerate}
-  \item \textbf{From the Phase-2 method to a controlled grid.} The Pre-Thesis II report distilled two
+  \item \textbf{From the Pre-Thesis II method to a controlled grid.} The Pre-Thesis II report distilled two
     teachers into DistilBERT on the Wikipedia corpus and reported the student above its teachers from one
     run, without a student trained without teachers. On the cleaned tweet corpus we added that control,
     three seeds and paired bootstrap intervals, and distillation then raised every student by less than
@@ -935,8 +1006,9 @@ the project's repository.
     and its survival under the matched-compute and second-student controls.
 \end{enumerate}
 The title changed with the evidence. The registered title named a dynamic, multi-teacher, homogeneous
-and robust framework. The grid measured each of those four properties and found none of them to be the
-source of the gain, so the final title names what is.
+and robust framework. The grid measured the first three of those properties and found none of them to
+be the source of the gain; the fourth was tested only under synthetic character edits, which this
+thesis does not call robustness. The final title names what the evidence supports.
 """
 
 CH6 = "\n".join(["\\chapter{Discussion}", "\\label{ch:6}", CH6_RQ, convert(body("6. Discussion")), CH6_HISTORY])
@@ -1027,6 +1099,8 @@ APP_HYPER = r"""
 \label{app:hyper}
 <<TEXT>>
 
+Table~\ref{tab:hyper} collects them.
+
 \begin{table}[htbp]
 \centering
 \small
@@ -1045,7 +1119,8 @@ Model selection & best validation macro-F1 epoch & best validation macro-F1 epoc
 Maximum length & 128 tokens & 128 tokens \\
 Precision & mixed, on GPU & mixed, on GPU \\
 Distillation & -- & $\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$, $\tau = 1$ \\
-Seeds & one run per teacher & 3; 1 for ablations, sweeps and controls \\
+Seeds & one run per teacher & 1, 2, 3; seed 1 alone for ablations and sweeps \\
+Weight decay & 0.01 (AdamW) & 0.01 (AdamW) \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -2,12 +2,12 @@
 \chapter{Hyper-Parameters and Training Settings}
 \label{app:hyper}
 The distillation hyper-parameters ($\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$,
-$\tau = 1$) are carried over from the Phase-2 report's Table 3.1 unchanged, so that the audit tests
-the method as proposed; Section~\ref{sec:5.3} sweeps each of them. Students train for 6 epochs at $3
-\times 10^{-5}$ ($10^{-3}$ for the BiLSTM), batch 32, 10 per cent warm-up, linear decay, gradient
-clipping at 1.0, early stopping with patience 2 on validation macro-F1; the matched-steps controls
-disable early stopping and run 13 and 35 epochs. Teachers train for 5 epochs at $2 \times 10^{-5}$,
-batch 32. Maximum sequence length 128.
+$\tau = 1$) are carried over from the Pre-Thesis II report's Table 3.1 unchanged, so that the audit
+tests the method as proposed; Section~\ref{sec:5.3} sweeps each of them around those defaults. Every
+other setting, for the teachers and for the students, is in the table below, which is the single
+source for all of them.
+
+Table~\ref{tab:hyper} collects them.
 
 \begin{table}[htbp]
 \centering
@@ -27,7 +27,8 @@ Model selection & best validation macro-F1 epoch & best validation macro-F1 epoc
 Maximum length & 128 tokens & 128 tokens \\
 Precision & mixed, on GPU & mixed, on GPU \\
 Distillation & -- & $\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$, $\tau = 1$ \\
-Seeds & one run per teacher & 3; 1 for ablations, sweeps and controls \\
+Seeds & one run per teacher & 1, 2, 3; seed 1 alone for ablations and sweeps \\
+Weight decay & 0.01 (AdamW) & 0.01 (AdamW) \\
 \bottomrule
 \end{tabular}
 \end{table}

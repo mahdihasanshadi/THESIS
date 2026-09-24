@@ -9,7 +9,7 @@ interval; single-seed rows are marked and treated as indicative.
 \begin{table}[htbp]
 \centering
 \small
-\caption{Teachers after task adaptation, with the classical floor. The training loss is the last epoch's cross-entropy on the split the students are distilled on; the probe columns are measured at the 0.5 threshold.}
+\caption{Teachers after task adaptation, with the classical floor. The training loss is the last epoch's cross-entropy on the split the students are distilled on; the probe columns are the share of each probe the model assigns to any abusive class, which is its argmax decision rather than a threshold on $p(\text{abusive})$.}
 \label{tab:teachers}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcccccc}
@@ -27,23 +27,25 @@ TF-IDF + logistic regression & 0.8798 & 0.8930 & -- & -- & -- & -- \\
 \end{adjustbox}
 \end{table}
 
-Three of the original four teachers beat the fine-tune-only student and the classical floor, so the
-pre-registered stop rule passes. DeBERTa-v3-base sits below the floor and is retained only as the
-heterogeneous committee member, which is what it is there to test. The implicit specialist, trained
-on different data under a different label scheme, lands within 0.009 of the other three after
-adaptation. Two columns of this table carry the rest of the paper. The training losses say that
-every task-adapted teacher has, by its last epoch, assigned the gold label a probability near one on
-the split the student will be distilled on (Section~\ref{sec:5.6}). And the probe columns already
-show the pattern Section~\ref{sec:5.9} makes precise: ordered by false-positive rate on harmless
-sarcasm, the teachers are almost exactly ordered by recall on ironic abuse.
+Table~\ref{tab:teachers} reports the teachers after task adaptation. Three of the original four beat
+the fine-tune-only headline student and the classical floor, so the pre-registered stop rule passes.
+DeBERTa-v3-base sits below the floor and is retained only as the heterogeneous committee member,
+which is what it is there to test. The implicit specialist, trained on different data under a
+different label scheme, lands within 0.005 of the other three after adaptation. Two columns of this
+table carry the rest of the paper. The training losses say that every task-adapted teacher has, by
+its last epoch, assigned the gold label a probability near one on the split the student will be
+distilled on (Section~\ref{sec:5.6}). And the probe columns already show the pattern
+Section~\ref{sec:5.9} makes precise: ordered by false-positive rate on harmless sarcasm, the
+teachers are almost exactly ordered by recall on ironic abuse.
 \section{In Sample, Distillation Raises Every Student by Less Than the Test Set Can Resolve}
 \label{sec:5.2}
-Test macro-F1, mean over three seeds; classical floor 0.8798.
+Table~\ref{tab:main} gives the in-sample grid: test macro-F1 of every student under every objective
+and committee, against a classical floor of 0.8798.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{In-sample distillation: test macro-F1 of the five students under each objective and committee, mean over three seeds. The classical floor is 0.8798.}
+\caption{In-sample distillation: test macro-F1 of the five students under each objective and committee, mean over three seeds. The classical floor is 0.8798. Standard deviations over seeds run from 0.0002 to 0.0078 and are in the generated table \texttt{paper/tables/main.csv}; the paired intervals are in Appendix~\ref{app:significance}.}
 \label{tab:main}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccccccc}
@@ -63,8 +65,8 @@ BiLSTM & 10.4M & 0.8693 & 0.8748 & 0.8761 & 0.8732 & 0.8760 & 0.8764 \\
 Best distilled configuration against fine-tune-only: BERT-mini +0.0012 [$-$0.0057, +0.0079],
 BERT-small +0.0040 [$-$0.0058, +0.0126], DistilBERT +0.0068 [$-$0.0013, +0.0139], DeBERTa-v3-xsmall
 +0.0040 [$-$0.0024, +0.0109], BiLSTM +0.0071 [$-$0.0039, +0.0195]. Five of five positive, which is
-the result the control was added to test and which the Phase-2 version of this work failed; and none
-of the five intervals excludes zero, nor does any of the 27 in-sample
+the result the control was added to test and which the Pre-Thesis II version of this work failed;
+and none of the five intervals excludes zero, nor does any of the 27 in-sample
 distillation-against-fine-tuning comparisons in the grid. Taking the best of six configurations per
 student also flatters the difference. The supportable claim is the modest one: in sample,
 distillation moves every student in the same direction, by 0.001 to 0.007 macro-F1, which a test set
@@ -74,11 +76,11 @@ Two students deserve a remark. The most heterogeneous student, the BiLSTM, gains
 student that shares the teachers' architecture most closely, BERT-mini, gains the least; the
 hidden-state term, the only part of the objective that architectural similarity could help, is worth
 +0.0009 on BERT-mini. Nothing in this grid supports a preference for homogeneous student and
-teachers. And on BERT-mini nothing beats the no-teacher control at all: candidate minus
-fine-tune-only is $-$0.0015 [$-$0.0076, +0.0048] for D-MTHD, $-$0.0007 [$-$0.0074, +0.0058] for
-uniform, +0.0012 [$-$0.0057, +0.0079] for single-teacher, $-$0.0019 [$-$0.0082, +0.0041] with the
-DeBERTa committee, $-$0.0003 [$-$0.0080, +0.0075] and $-$0.0019 [$-$0.0093, +0.0049] with the
-specialist committee under averaging and weighting.
+teachers. And on BERT-mini no distilled configuration beats the no-teacher control by more than the
+seeds' own spread: candidate minus fine-tune-only is $-$0.0015 [$-$0.0076, +0.0048] for D-MTHD,
+$-$0.0007 [$-$0.0074, +0.0058] for uniform, +0.0012 [$-$0.0057, +0.0079] for single-teacher,
+$-$0.0019 [$-$0.0082, +0.0041] with the DeBERTa committee, $-$0.0003 [$-$0.0080, +0.0075] and
+$-$0.0019 [$-$0.0093, +0.0049] with the specialist committee under averaging and weighting.
 
 The efficiency claim sits in this table. DistilBERT with a uniform heterogeneous committee reaches
 0.8975 against BERT-large's 0.8973 at a fifth of the parameters and latency
@@ -105,8 +107,10 @@ BiLSTM & $-$0.0029 [$-$0.0116, +0.0056] & +0.0004 [$-$0.0072, +0.0081] \\
 \end{adjustbox}
 \end{table}
 
-Four negative, one tie, every interval containing zero. On the headline student the ablation that
-removes the weighting altogether scores 0.8386 against 0.8385 for full D-MTHD on the same seed.
+Table~\ref{tab:dmthd-uniform} sets the weighting against averaging on every student. Without the
+DeBERTa teacher four differences are negative and one is a tie; with it, four are negative and one
+positive. Every interval contains zero. On the headline student the ablation that removes the
+weighting altogether scores 0.8386 against 0.8385 for full D-MTHD on the same seed.
 
 The obvious objection is that at $\tau = 1$ the weights are nearly uniform, 0.332 / 0.337 / 0.331
 against 0.333, so the two objectives coincide by arithmetic. The sweep therefore reaches $\tau =
@@ -152,16 +156,18 @@ the heaviest teacher averages 0.356.
 randomly initialised student 0.7905 ($-$0.0473); no auxiliary irony head 0.8364 ($-$0.0014); no
 hidden-state term 0.8369 ($-$0.0009); uniform weights 0.8386 (+0.0008); per-batch weights 0.8389
 (+0.0011); the specialist alone 0.8392 (+0.0014); pre-trained on the implicit corpus 0.8377
-($-$0.0001). Removing components of the method costs at most 0.0014 and in two cases improves the
+($-$0.0001). Removing components of the method costs at most 0.0014 and in three cases improves the
 score; removing pre-training costs 0.047, and against fine-tune-only on the same seed it is the one
 in-sample difference in the grid whose interval excludes zero, $-$0.0488 [$-$0.0603, $-$0.0376].
-Hyper-parameters behave the same way: $T \in \{1, 2, 8\}$ gives 0.8386 / 0.8402 / 0.8391, $\alpha
-\in \{0.2, 0.6\}$ 0.8386 / 0.8394, $\delta \in \{0.1, 0.5\}$ 0.8389 / 0.8399. The objective is flat
-in every direction we can move it, and adding a DeBERTa-v3 teacher to the homogeneous committee
-changes the five students by $-$0.0005, +0.0006, +0.0032, $-$0.0005 and +0.0006.
+Hyper-parameters behave the same way, against 0.8385 at the defaults on the same seed: $T \in \{1,
+2, 8\}$ gives 0.8386 / 0.8402 / 0.8391, $\alpha \in \{0.2, 0.6\}$ 0.8386 / 0.8394, $\delta \in
+\{0.1, 0.5\}$ 0.8389 / 0.8399. The objective is flat in every direction we can move it, and adding a
+DeBERTa-v3 teacher to the homogeneous committee changes the five students by $-$0.0005, +0.0006,
++0.0032, $-$0.0005 and +0.0006.
 \section{The Committee Is Worth More Than Its Best Member, and the Student Receives None of It}
 \label{sec:5.4}
-Scored directly from the teachers' saved test probabilities, before any student is involved:
+Table~\ref{tab:committee} scores the teachers' saved test probabilities directly, before any student
+is involved.
 
 \begin{table}[htbp]
 \centering
@@ -183,7 +189,7 @@ All five & 0.8973 & 0.9036 & 0.9046 & 0.9030 & 0.9000 & 0.9041 & 0.9552 \\
 \end{table}
 
 Uniform averaging of the committee beats the best teacher by 0.3 to 0.8 macro-F1. No combination
-that needs no gold label at inference improves on the uniform mean by more than 0.003, and neither
+that needs no gold label at inference improves on the uniform mean by more than 0.005, and neither
 does a stacked logistic-regression gate fitted to the concatenated teacher probabilities by
 five-fold cross-validation over the test set, which is as favourable a test of learned routing as
 can be made without touching the training data. The oracle that picks a correct teacher whenever one
@@ -191,10 +197,10 @@ exists sits at 0.945 to 0.955 accuracy, against 0.9075 for BERT-large. That head
 is unreachable from the teachers' outputs: where the teachers disagree, 10 to 14 per cent of the
 test set, some teacher is right on about 90 per cent of items and the uniform mean on 55 to 62, and
 their probabilities do not say which. A corrected reliability signal therefore has a ceiling of
-roughly +0.3 points over uniform averaging on this committee, in or out of sample.
+under half a point of macro-F1 over uniform averaging on this committee, in or out of sample.
 
 The teachers are not diverse enough for a weighting to have work to do, and adaptation is what made
-them so.
+them so (Table~\ref{tab:agreement}, Figure~\ref{fig:agreement}).
 
 \begin{table}[htbp]
 \centering
@@ -221,14 +227,21 @@ implicit specialist, DeBERTa-v3 & 0.889 & 9.2\% & 0.691 \\
 \end{adjustbox}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_agreement.pdf}
+\caption{Cohen's kappa between the task-adapted teachers' test predictions. Every pair agrees above 0.88, and the implicit specialist agrees with HateBERT, the checkpoint it was trained from, at 0.962. A per-instance weighting has to work inside what is left.}
+\label{fig:agreement}
+\end{figure}
+
 The original four teachers are all right on 83.2 per cent of the test set and all wrong on the same
 4.7 per cent. A per-instance weighting can only express a preference where its members disagree, at
-most one instance in eleven here, and on two-thirds of the errors there is no correct teacher to
-prefer. The committee was chosen for complementary expertise, and after task adaptation on the same
-corpus its members converged to near-identical behaviour. Task adaptation is what makes a sarcasm
-model's logits comparable with an abuse model's, and it is also what removes the diversity the
-combination was meant to exploit. \textbf{Task adaptation buys comparability and spends diversity},
-and any cross-task committee faces the trade.
+most one instance in seven here, and on about half of the best teacher's errors no member is right
+to prefer. The committee was chosen for complementary expertise, and after task adaptation on the
+same corpus its members converged to near-identical behaviour. Task adaptation is what makes a
+sarcasm model's logits comparable with an abuse model's, and it is also what removes the diversity
+the combination was meant to exploit. \textbf{Task adaptation buys comparability and spends
+diversity}, and any cross-task committee faces the trade.
 
 The students do not receive even the 0.3 to 0.8 that the committee has. Uniform multi-teacher
 against single-teacher distillation is $-$0.0019 [$-$0.0077, +0.0038], +0.0017 [$-$0.0070, +0.0115],
@@ -241,7 +254,8 @@ The implicit specialist is the sharpest case of the previous section. It learned
 corpus under a different label scheme, and it comes back from adaptation as the closest thing in the
 committee to HateBERT, the model it started from: kappa 0.962, disagreement on 3.1 per cent of the
 test set, 84 per cent of HateBERT's errors made by the specialist as well. It raises the oracle over
-the committee only from 0.9526 to 0.9552. BERT-mini:
+the committee only from 0.9526 to 0.9552. Table~\ref{tab:specialist} gives the specialist and its
+two controls on the headline student.
 
 \begin{table}[htbp]
 \centering
@@ -273,7 +287,8 @@ pre-training on it, gives the lowest discrimination AUC of the in-sample models 
 
 The weights do lean towards the specialist, a little, and less than towards HateBERT. Measured in
 the committee the students trained with, on the training split, as mean weight on
-other\_cyberbullying minus mean weight on the four targeted classes (uniform weight 0.25):
+other\_cyberbullying minus mean weight on the four targeted classes, against a uniform weight of
+0.25 (Table~\ref{tab:routing}).
 
 \begin{table}[htbp]
 \centering
@@ -329,13 +344,14 @@ teacher has never fitted. The rest of the results test that sentence.
 \label{sec:5.7}
 A transfer set of 42,013 unlabelled tweets (Section~\ref{sec:4.4}) was appended to training; on
 those rows the student has no gold label and trains on the committee's soft labels and hidden states
-alone. Five arms on BERT-mini, three seeds each, beside the in-sample runs of the same objectives;
-predictions written before the run (decision D19 in the repository's decision log):
+alone. Table~\ref{tab:oos} reports five arms on BERT-mini, three seeds each, beside the in-sample
+runs of the same objectives; the predictions were written before the run and are scored in
+Appendix~\ref{app:predictions}.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same objectives with and without the unlabelled rows, three seeds each.}
+\caption{Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same objectives with and without the unlabelled rows, three seeds each. The labelled-split column gives each objective's in-sample twin; for the out-of-sample-weighted arm that twin is D-MTHD, because the weighting differs only where there are no labels.}
 \label{tab:oos}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccc}
@@ -417,12 +433,12 @@ Fine-tune only, 35 epochs (168k arm's updates) & 0 & 0.8380 $\pm$ 0.0033 & $-$0.
 \label{fig:size-curve}
 \end{figure}
 
-\textbf{The curve rises at every step} (Figure~\ref{fig:size-curve}). Six sizes give six ordered
-means with no inversion, the 42k arm reproduces Section~\ref{sec:5.7}'s to within 0.0003, and at
-168k the gain is +0.0123 with an interval that excludes zero: the first distillation arm in the grid
-that beats fine-tuning on the headline student by more than the test set can resolve. No single step
-of the curve is significant on its own (the largest, 84k to 168k, is +0.0042 [$-$0.0047, +0.0134]);
-the evidence is the ordering, and the endpoint.
+\textbf{The curve rises at every step} (Table~\ref{tab:size-curve}, Figure~\ref{fig:size-curve}).
+Six sizes give six ordered means with no inversion, the 42k arm reproduces Section~\ref{sec:5.7}'s
+to within 0.0003, and at 168k the gain is +0.0123 with an interval that excludes zero: the largest
+gain in the grid on the headline student, and one of three arms that beat fine-tuning by more than
+the test set can resolve. No single step of the curve is significant on its own (the largest, 84k to
+168k, is +0.0042 [$-$0.0047, +0.0134]); the evidence is the ordering, and the endpoint.
 
 \textbf{Composition matters less than we predicted.} We expected generic tweets of the same size to
 gain at least 0.003 less than the abuse-domain set; they gain 0.0017 less (+0.0017 [$-$0.0066,
@@ -438,8 +454,8 @@ gains nothing, $-$0.0013 [$-$0.0106, +0.0072], with the validation score peaking
 and 13 and declining afterwards (0.855 to 0.844 by the last epoch): the extra updates are spent
 overfitting. The 13-epoch control's small gain was a longer search over checkpoints rather than a
 better optimum, and 35 epochs is its ceiling. Against these controls the 42k arm keeps +0.0043
-[$-$0.0032, +0.0122] and the 168k arm +0.0136 [+0.0023, +0.0240], the latter with an interval clear
-of zero.
+[$-$0.0032, +0.0122]; the 168k arm keeps +0.0096 [+0.0000, +0.0191] over the 13-epoch control and
++0.0136 [+0.0023, +0.0240], the latter with an interval clear of zero.
 
 \begin{figure}[htbp]
 \centering
@@ -479,7 +495,7 @@ BiLSTM (10.4M) & 0.8693 $\pm$ 0.0043 & 0.8748 $\pm$ 0.0018 & 0.8856 $\pm$ 0.0003
 \end{figure}
 
 The BiLSTM gains most, every seed above every baseline seed, and at 10.4M parameters now clears the
-classical floor (0.8798) and sits within 0.005 of DistilBERT's fine-tuning (0.8907) with a sixth of
+classical floor (0.8798) and sits within 0.006 of DistilBERT's fine-tuning (0.8907) with a sixth of
 the parameters. BERT-small gains on the mean, with two of three seeds above every fine-tuning seed,
 but its fine-tuning seeds vary by 0.008 and its interval includes zero, which we report as it is. On
 every student the gain lands in the same place: between fine-tuning and the 168k arm, F1 on
@@ -507,34 +523,39 @@ three of the 14 out-of-sample and matched-steps models reach it at 0.90, at a re
 of its errors going to not\_cyberbullying, and not\_cyberbullying recall 0.648 with 126 going the
 other way.
 
-\textbf{Nothing moves the discrimination} (Figure~\ref{fig:auc}). Over the 28 in-sample pre-trained
+\textbf{Nothing raises the discrimination} (Figure~\ref{fig:auc}). Over the 28 in-sample pre-trained
 variants of BERT-mini analysed, which cover every objective and committee, seven temperatures, the
 $T$, $\alpha$ and $\delta$ sweeps, every ablation and both controls, sarcasm-discrimination AUC has
 mean 0.771 and standard deviation 0.004, from 0.756 to 0.777. The randomly initialised student
 scores 0.613. The auxiliary irony head, the component built for this measurement, is inside the
 band: without it 0.775, with it 0.773. Along the whole out-of-sample curve the first seed's AUC is
 0.758, 0.764, 0.752, 0.765, 0.771 and 0.761, the generic control's 0.760, the 35-epoch control's
-0.774 and the hard-label arm's 0.727: every pre-trained variant of the student lies between 0.73 and
-0.78, and every soft-label variant between 0.75 and 0.78. What moves is the operating point. Over
-the in-sample variants, recall at 0.5 ranges from 0.758 to 0.821 and the false-positive rate from
-0.343 to 0.448, correlated at +0.87; along the out-of-sample curve both fall together, recall from
-0.74 to 0.57 and the false-positive rate from 0.35 to 0.25 as the set grows to 168,000 rows, and on
-the BiLSTM to 0.50 and 0.18. The out-of-sample student fires less on sarcasm of both kinds; it does
-not tell them apart any better.
+0.774 and the hard-label arm's 0.727: every pre-trained variant of the student lies between 0.72 and
+0.78, and every soft-label variant between 0.75 and 0.78. This is where a pre-registered prediction
+failed as written: the transfer run's predictions included the claim that the AUC would stay inside
+the in-sample band of 0.756 to 0.777 on every arm, and three of the five arms fall below that band,
+the hard-label arm furthest at 0.727. Nothing rises above it.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_auc.pdf}
-\caption{Sarcasm-discrimination AUC of every analysed BERT-mini variant, first seed. Every pre-trained variant lies between 0.73 and 0.78, in sample or out; only removing pre-training moves the measure.}
+\caption{Sarcasm-discrimination AUC of every analysed BERT-mini variant, first seed. Every pre-trained variant lies between 0.72 and 0.78, in sample or out; only removing pre-training moves the measure.}
 \label{fig:auc}
 \end{figure}
 
-\textbf{Across the grid, methods differ only in how readily they fire} (Figure~\ref{fig:tradeoff}).
-Across all 184 evaluated models in the grid, teachers and students, every mode and seed, the
-false-positive rate on benign sarcasm and the recall on ironic abuse correlate at +0.772. Recall
-minus false-positive rate has mean 0.357 and standard deviation 0.046, while its components range
-over 0.15 to 0.59 and 0.48 to 0.81. The 42 out-of-sample models do not leave the curve, they slide
-along it: among themselves they correlate at +0.922, with the same mean margin, 0.355.
+What moves is the operating point. Over the 28 pre-trained in-sample variants, recall at 0.5 ranges
+from 0.758 to 0.821 and the false-positive rate from 0.343 to 0.448, correlated at +0.87; along the
+out-of-sample curve both fall together, recall from 0.74 to 0.57 and the false-positive rate from
+0.35 to 0.25 as the set grows to 168,000 rows, and on the BiLSTM to 0.50 and 0.18. The out-of-sample
+student fires less on sarcasm of both kinds; it does not tell them apart any better.
+
+\textbf{Across the grid, methods differ only in how readily they fire} (Figure~\ref{fig:tradeoff},
+Table~\ref{tab:families}). Across all 184 evaluated models in the grid, teachers and students, every
+mode and seed, the false-positive rate on benign sarcasm and the recall on ironic abuse correlate at
++0.772. Recall minus false-positive rate has mean 0.357 and standard deviation 0.046, while its
+components range over 0.14 to 0.59 and 0.48 to 0.81. The 42 out-of-sample models do not leave the
+curve, they slide along it: among themselves they correlate at +0.922, with the same mean margin,
+0.355.
 
 \begin{figure}[htbp]
 \centering
@@ -546,7 +567,7 @@ along it: among themselves they correlate at +0.922, with the same mean margin, 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Probe metrics by model family, averaged over all 184 evaluated models, at the 0.5 threshold. The margin is recall minus false-positive rate.}
+\caption{Probe metrics by model family, averaged over all 184 evaluated models, at each model's argmax decision. The margin is recall minus false-positive rate.}
 \label{tab:families}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcccc}
@@ -571,7 +592,7 @@ abuse from harmless sarcasm comes from pre-training, and nothing added to the ob
 data moves it. This is why the paper reports a threshold-free area: recall at a fixed cut measures
 how readily a model fires, and across 184 models that is all it measures.
 
-\textbf{The same failure on a corpus that labels implication.}
+\textbf{The same failure on a corpus that labels implication} (Table~\ref{tab:implicit}).
 
 \begin{table}[htbp]
 \centering
@@ -594,25 +615,43 @@ HateBERT specialist & 0.6029 & 0.8352 & 0.3662 & 0.6072 & 0.8247 \\
 The compact student loses to a bag of n-grams on F1 and beats it decisively on ranking: it separates
 implied abuse from benign text at 0.8196 AUC against 0.7610 while scoring below the floor on the
 implicit class itself. The two measures disagree in direction, not degree, which is the argument of
-this section made on other people's labels. Both neural models score 0.29 to 0.37 on the 864-row
+this section made on other people's labels. Both neural models score 0.29 to 0.37 on the 108-row
 explicit class, which is why macro-F1 is not the headline here; these are single-seed results.
 Applied without further training to the benchmark's 2,064 test posts, the tweet-trained BERT-mini
 calls 81.0 per cent of them abusive against a true rate of 35.7 per cent (binary macro-F1 0.423,
-ROC-AUC 0.608); on implicit hate against posts that are not hateful it catches 85.1 per cent at a
-78.8 per cent false-positive rate and ranks the two at an AUC of 0.600, barely above chance, against
-0.820 for the same architecture trained on the corpus. D-MTHD transfers no better (0.411, 0.600).
-Whatever the tweet students have learned about abuse, in sample or out, does not include what makes
-an implication hateful; there was little of that knowledge in the committee to receive, and none in
-the transfer text.
-\section{Robustness and Efficiency}
+ROC-AUC 0.608). On implicit hate against posts that are not hateful it catches 85.1 per cent at a
+78.8 per cent false-positive rate. It ranks the two at an AUC of 0.600, barely above chance, against
+0.820 for the same architecture trained on the corpus. D-MTHD transfers no better: binary macro-F1
+0.411, the same two AUCs at 0.609 and 0.600. Whatever the tweet students have learned about abuse,
+in sample or out, does not include what makes an implication hateful; there was little of that
+knowledge in the committee to receive, and none in the transfer text.
+\section{Character-Level Obfuscation and Deployment Cost}
 \label{sec:5.10}
-Synthetic obfuscation of the abusive rows, BERT-mini, seed 1, macro-F1: fine-tune only 0.8394 clean,
-0.7475 leetspeak, 0.7417 character swap, 0.7275 inserted spaces, 0.7116 mixed; D-MTHD 0.8385,
-0.7460, 0.7361, 0.7250, 0.7077. Twelve to thirteen points lost on short text, and distillation does
-not help. These are character edits, not evasion by people trying to evade, and we do not call the
-result robustness.
+Table~\ref{tab:robustness} gives macro-F1 under synthetic obfuscation of the abusive test rows, on
+BERT-mini, seed 1.
 
-Median of five timed passes after warm-up on an idle machine:
+\begin{table}[htbp]
+\centering
+\small
+\caption{Macro-F1 under synthetic character-level obfuscation of the abusive test rows: letters replaced by digits, adjacent characters swapped, spaces inserted, and all three together. BERT-mini, seed 1.}
+\label{tab:robustness}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lccccc}
+\toprule
+Objective & Clean & Leetspeak & Character swap & Inserted spaces & Mixed \\
+\midrule
+Fine-tune only & 0.8394 & 0.7475 & 0.7417 & 0.7275 & 0.7116 \\
+D-MTHD & 0.8385 & 0.7460 & 0.7361 & 0.7250 & 0.7077 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Nine to thirteen points lost on short text, and distillation does not help: the two objectives are
+within 0.006 of each other under every edit. These are character edits, not evasion by people trying
+to evade, and we do not call the result robustness.
+
+Table~\ref{tab:efficiency} gives the median of five timed passes after warm-up on an idle machine.
 
 \begin{table}[htbp]
 \centering
@@ -635,7 +674,7 @@ BERT-large (teacher) & 335.1M & 26.56 ms & 21.65 ms & 78.92 & 1,279 MB & -- & --
 \end{adjustbox}
 \end{table}
 
-DistilBERT matches BERT-large at 5.1 times fewer parameters and 5.8 times lower batch-32 latency;
+DistilBERT matches BERT-large at 5.0 times fewer parameters and 5.8 times lower batch-32 latency;
 INT8 dynamic quantisation halves its size for 0.003 macro-F1. BERT-mini's size falls only from 43 to
 33 MB because 7.8M of its 11.2M parameters are the embedding table, which dynamic quantisation does
 not touch. The out-of-sample recipe adds nothing to inference: the transfer set is used once, in

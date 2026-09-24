@@ -27,3 +27,6 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# local fixture for scripts/smoke_tables.py, run metadata only
+tables_fixture/

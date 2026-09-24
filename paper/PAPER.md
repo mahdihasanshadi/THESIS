@@ -10,23 +10,25 @@ Dr. Muhammad Iqbal Hossain and Sheikh Araf Noshin.*
 
 Compact detectors of abusive language are usually trained by distillation from one or more large
 teachers on the labelled split the teachers were fine-tuned on. We show, under controls the setting is
-rarely given, that this teaches the student nothing the labels do not. Across five students from 10M to
-71M parameters, three teacher committees, per-instance reliability weighting at every temperature from
-0.05 to 5 and an implicit-abuse specialist teacher, no distilled student beats fine-tuning by more than
-the test set can resolve (179 runs, three seeds, paired bootstrap), and the reason is measured: teachers
-adapted to one split agree at Cohen's kappa 0.89 to 0.96 and assign the gold label a probability near
-one, so their soft labels are the gold labels and a reliability weighting has nothing to express. The
-gain is elsewhere. On unlabelled tweets the teachers have not fitted, a single teacher's soft labels
-raise an 11M student by 0.007 macro-F1 with 42,013 tweets and by 0.012 with 168,000 ([+0.004, +0.021]),
-monotonically over six sizes, from generic tweets nearly as well as from abuse-related ones, and by
-0.014 over fine-tuning run for the same number of updates, which gains nothing on its own; a 10M BiLSTM
-gains 0.016 and a 29M BERT gains 0.006 from the same text, and the committee, its weighting and hard
-pseudo-labels add nothing to any of it. The gain is in the task: measured without a threshold, the
-ability to tell ironic abuse from harmless sarcasm stays where pre-training put it, between 0.73 and
-0.78 AUC across every pre-trained variant of the student, while the operating point slides towards
-caution, and across 184 models recall on ironic abuse and false positives on harmless sarcasm rise
-together (r = 0.77). We release the protocol, the transfer-set construction with its provenance screens, and a
-single-source implicit-abuse benchmark with per-row manifests.
+rarely given, that this adds nothing the labels do not, to within what the test set can resolve. Across
+five students from 10M to 71M parameters, three teacher committees, per-instance reliability weighting
+at seven temperatures spanning 0.05 to 5, and an implicit-abuse specialist teacher, no distilled student
+beats fine-tuning by a margin this test set can detect (131 in-sample runs, three seeds, paired
+bootstrap). The reason is measured: task adaptation leaves the teachers agreeing at Cohen's kappa 0.89
+to 0.96, and the four that memorise the split assign the gold label a probability near one, so their
+soft labels are the gold labels and a reliability weighting has nothing to express. The gain is
+elsewhere. On unlabelled tweets the teachers have not fitted, a single teacher's soft labels raise an
+11M student by 0.007 macro-F1 with 42,013 tweets and by 0.012 with 168,000 ([+0.004, +0.021]),
+monotonically over six sizes, and from generic tweets nearly as well as from abuse-related ones. That
+gain survives a fine-tuning control run for the same number of updates, which gains nothing on its own;
+a 10M BiLSTM gains 0.016 on the same text, a 29M BERT 0.006 on the mean with an interval that includes
+zero, and the committee, its weighting and hard pseudo-labels add nothing to any of it. What the student
+gains is task score, not the reading of implication. Measured without a threshold, the ability to
+tell ironic abuse from harmless sarcasm never rises above where pre-training put it, staying between
+0.73 and 0.78 AUC across every pre-trained variant of the student, while the operating point slides
+towards caution. Across 184 models, recall on ironic abuse and false positives on harmless sarcasm
+rise together (r = 0.77). We release the protocol, the transfer-set construction with its provenance screens,
+and build scripts with per-row manifests for a single-source implicit-abuse benchmark.
 
 **Keywords:** knowledge distillation, transfer set, compact models, cyberbullying detection, implicit
 hate speech, sarcasm, evaluation methodology.
@@ -39,54 +41,62 @@ Knowledge distillation is the standard response \cite{hinton2015distilling, buci
 compact student is trained to imitate a large teacher's softened outputs, and in the multi-teacher
 variants this literature increasingly favours, the outputs of several teachers combined by a weighting
 that trusts each where it is reliable \cite{you2017learning, wu2021one, zhang2022confidence,
-yuan2021reinforced}. In abusive-language detection the recipe is almost always applied in one way: the
+yuan2021reinforced}. In abusive-language detection the published multi-teacher work applies the recipe in one way: the
 teachers are fine-tuned on the task's labelled training split, and the student is distilled on that
 same split \cite{wu2021one, prasomphan2025mtkd}. The promise is that a committee of teachers with
 complementary expertise holds more of what the task requires than any one of them, and that the
 student, small enough to run on a phone, receives it.
 
 We tested that promise under the controls it is rarely given, and then tested the alternative the
-controls pointed to. The first half of the paper is an audit. We built the method the literature
-suggests: a committee of task-adapted specialist teachers, a general encoder, an abusive-language
-specialist and an irony specialist, weighted per instance by reliability, with an auxiliary irony head
-and a fourth teacher trained on a corpus in which implication is a label. We measured it on a cleaned
-benchmark against the baseline these papers rarely include, the same student trained with no teacher
-at all, over five students, three committees, every weighting temperature from 0.05 to 5 and three
-seeds, with every difference tested by paired bootstrap. Nothing moved. Distillation raised every
-student by 0.001 to 0.007 macro-F1 and no interval excluded zero; per-instance weighting never differed
-from uniform averaging; the specialist added nothing in a committee, alone or as pre-training. And the
-reason is measurable rather than argued: on the split the teachers were fine-tuned on, their training
-losses end at 0.03 to 0.08, so their soft labels are the gold labels, the reliability signal that
-weights them is saturated, and distillation on that split reduces to fine-tuning with a smoothed target.
+controls pointed to. The first half of this thesis is an audit. We built the method the literature
+suggests: a committee of three task-adapted teachers, a general encoder, an abusive-language specialist
+and an irony specialist, weighted per instance by reliability, with an auxiliary irony head; a fourth
+teacher trained on a corpus in which implication is a label; and a fifth, DeBERTa-v3, as the
+heterogeneous member of a third committee. We measured it on a cleaned benchmark against the baseline
+these papers rarely include, the same student trained with no teacher at all, over five students and
+three committees at three seeds, with seven weighting temperatures from 0.05 to 5 and the ablations at
+one seed, and with every difference tested by paired bootstrap. Nothing moved by more than the test set
+can resolve. The best of six distilled configurations raised every student, by 0.001 to 0.007 macro-F1,
+a range that taking the best of six flatters; no interval excluded zero, and neither did any of the 27
+in-sample comparisons of distillation against fine-tuning. Per-instance weighting never differed from
+uniform averaging, and the specialist added nothing in a committee, alone or as pre-training. The reason
+is measurable rather than argued: on the split the teachers were fine-tuned on, four of the five end
+training at a loss between 0.03 and 0.08, so their soft labels are the gold labels, the reliability
+signal that weights them is saturated, and distillation on that split reduces to fine-tuning with a
+smoothed target.
 
-The second half follows from the first. If soft labels carry information only where the teacher is
-uncertain, the student should be distilled on text the teacher has never fitted. We added an
-unlabelled transfer set of tweets, screened against every split, probe and benchmark, on which the
-student trains from the teacher's soft labels alone, and measured its effect the way the audit had
-taught us to: with the committee against a single teacher, with a corrected out-of-sample reliability
-weighting against averaging, with hard pseudo-labels against soft, with the size of the set varied over
-six nested subsets from 5,000 to 168,000 tweets, with generic tweets against abuse-related ones at
-fixed size, with fine-tuning alone run for the same number of updates, and with the largest set on
-two more students. The predictions were written before each run and scored by a script against the
-tables. The gain exists, grows monotonically with the amount of text, reaches +0.012 macro-F1 on the
-11M student with an interval clear of zero, comes from generic tweets nearly as well as from
-abuse-related ones, survives fine-tuning at matched compute, which gains nothing on its own, and holds
-on a 10M BiLSTM (+0.016) and a 29M BERT (+0.006). One teacher does it as well as three; the weighting,
-the committee and the specialist add nothing here either. Distilling a compact student on an unlabelled
-transfer set is not new \cite{hinton2015distilling, turc2019wellread, tang2019distilling}; what is new
-is the controlled demonstration, in this application, that it is the only lever that moves the student,
-and the measurement of what it moves.
+The second half follows: the student should be distilled where the teacher is still uncertain. We added
+an unlabelled transfer set of tweets, text no teacher was fine-tuned on, screened against every split,
+probe and benchmark, on which the student trains from the teacher's soft labels alone. Its effect was
+measured the way the audit had taught us to. Three contrasts test the labeller: the committee against a
+single teacher, a corrected out-of-sample reliability weighting against averaging, and hard
+pseudo-labels against soft. Three test the data and the compute: six nested sizes from 5,000 to 168,000
+tweets, generic tweets against abuse-related ones at fixed size, and fine-tuning alone run for the same
+number of updates. The largest set was then run on two further students. The predictions were written
+before each run and scored by a script against the tables.
+
+The gain exists and grows monotonically with the amount of text, reaching +0.012 macro-F1 on the 11M
+student with an interval clear of zero. It comes from generic tweets nearly as well as from
+abuse-related ones, and it survives a fine-tuning control run for the same number of updates, a control
+that gains nothing on its own. It holds on a 10M BiLSTM (+0.016, interval clear of zero) and, on the
+mean only, on a 29M BERT (+0.006, interval including zero). With the largest transfer set the BiLSTM
+clears the classical TF-IDF floor of 0.8798; the two small BERT students do not, in sample or out
+(Section 7.1). One teacher does it as
+well as three; the weighting, the committee and the specialist add nothing here either. Distilling a
+compact student on an unlabelled transfer set is not new \cite{hinton2015distilling, turc2019wellread,
+tang2019distilling}; what is new is the controlled demonstration, in this application, that for a
+student that is already pre-trained it is the only lever in this grid whose effect on the student the
+test set can detect, and the measurement of what it moves.
 
 The knowledge that matters most in this task is also the one that does not move. Abuse that names its
 target is largely solved by lexical models; abuse carried by implication, stereotype, irony or coded
 reference is where detectors and annotators both fail \cite{elsherief2021latent, ocampo2023indepth,
-hartvigsen2022toxigen}, every survey of cyberbullying detection names it as the open case
-\cite{rosa2019automatic, salawu2020approaches, emmery2021current}, and no widely used benchmark labels
-it \cite{wang2020sosnet, wulczyn2017exmachina}. We measured it with a threshold-free metric on held-out
+hartvigsen2022toxigen}, and the cyberbullying benchmarks in general use do not label it
+\cite{wang2020sosnet, wulczyn2017exmachina}. We measured it with a threshold-free metric on held-out
 probes of ironic abuse and harmless sarcasm, and with a corpus that labels implication. Across 184
 models in the grid, recall on ironic abuse and the false-positive rate on harmless sarcasm rise
-together; the ability to tell them apart is set by pre-training and unmoved by every objective,
-committee, teacher and transfer set we tried. The out-of-sample gain is a task gain. What the student
+together; the ability to tell them apart is set by pre-training, and no objective, committee, teacher or
+transfer set we tried raises it. The out-of-sample gain is a task gain. What the student
 learns from the unlabelled text is the boundary between the two classes the labelled split draws worst,
 not the reading of implication.
 
@@ -94,14 +104,14 @@ The contributions are as follows.
 
 1. **A controlled audit of multi-teacher distillation for abusive language** (Sections 5.2 to 5.6).
    Five students across three architecture families, three committees, four objectives, a specialist
-   teacher trained on labelled implication, weighting temperatures over a hundredfold range, three
-   seeds, 99 paired comparisons with bootstrap intervals. In sample, nothing beats fine-tuning by more
-   than the test set can resolve, and the mechanism is measured: memorised labels, saturated
-   reliability, and diversity spent by the task adaptation that makes teachers comparable.
-2. **The out-of-sample result and its curve** (Sections 5.7 and 5.8). Soft labels on unlabelled tweets
-   the teachers have not fitted raise the student, monotonically over six sizes to +0.012 at 168,000
-   rows, from any tweets of the platform, with fine-tuning at matched compute gaining nothing, on three
-   compact students of two families; the committee, its weighting and hard pseudo-labels add nothing.
+   teacher trained on labelled implication, weighting temperatures over a hundredfold range and three
+   seeds, tested by the grid's 99 paired bootstrap comparisons, of which 27 set distillation against
+   fine-tuning in sample. No in-sample arm beats fine-tuning there by a detectable margin, and the
+   mechanism is measured: memorised labels, saturated reliability, and diversity spent by the task
+   adaptation that makes teachers comparable.
+2. **The out-of-sample result and its curve** (Sections 5.7 and 5.8): the size curve over six nested
+   subsets, the composition control at fixed size, the matched-compute control, and the largest set on
+   two further students.
 3. **A threshold-free protocol for implication** (Sections 4.6 and 5.9), which shows that recall at a
    fixed cut measures readiness to fire and that discrimination of implied abuse is fixed by
    pre-training, on the probes and on a corpus that labels implication.
@@ -132,7 +142,9 @@ abufarha2022semeval} and the SemEval-2018 irony task \cite{vanhee2018semeval}. D
 encoders include HateBERT \cite{caselli2021hatebert}, the TweetEval models \cite{barbieri2020tweeteval}
 and the ToxDect RoBERTa \cite{zhou2021challenges}. Earlier datasets and the pitfalls of duplicate-heavy
 corpora are documented in \cite{vanhee2018automatic, founta2018large, davidson2017automated,
-borkan2019nuanced}; the unlabelled transfer set of Section 4.4 draws its text from three of them.
+borkan2019nuanced}. The unlabelled transfer set of Section 4.4 takes its text from Davidson et
+al. \cite{davidson2017automated}, OLID \cite{zampieri2019olid} and HatEval \cite{basile2019hateval},
+and excludes Founta et al. under the provenance rule of Section 4.5.
 
 A separate line of work argues that the hard case is not offensive vocabulary but its absence.
 ElSherief et al. \cite{elsherief2021latent} build a taxonomy of implicit hate and a corpus in which
@@ -141,17 +153,20 @@ accuracy on it; Ocampo et al. \cite{ocampo2023indepth} separate hate speech into
 layers and show the implicit layer is where detectors and annotators both struggle. The annotation
 literature adds that the texts annotators disagree on are disproportionately the ones whose hostility
 is implied \cite{uma2021learning, davani2022dealing, plank2022problem, peterson2019human}. Two things
-follow for a paper about compact models. A corpus that does not label implication cannot be used to
+follow for a thesis about compact models. A corpus that does not label implication cannot be used to
 train for it, and the domain-specialised encoders a distillation committee would recruit were
-themselves trained on corpora of that kind. Whether the ability to read implication can be moved into a
-deployable model, and by what mechanism, had not been asked; Section 5.9 asks it and answers no, and
-Section 4.2 measures how far the label itself can be trusted.
+themselves trained on corpora of that kind. We are not aware of work that asks whether the ability to
+read implication can be moved into a deployable model, or by what mechanism; Section 5.9 asks it and
+finds no intervention in this grid that moves it, and Section 4.2 measures how far the label itself can
+be trusted.
 
 ### 2.2 Distilling compact language models, and the transfer set
 
-Distillation transfers a large model's softened outputs to a smaller one \cite{hinton2015distilling,
-bucilua2006model}; intermediate-feature transfer follows FitNets \cite{romero2015fitnets}; surveys
-organise response-, feature- and relation-based variants \cite{gou2021knowledge}. For BERT-style
+Language models have grown far past what a moderation pipeline can run on every post
+\cite{brown2020language}, which is the pressure distillation answers. It transfers a large model's
+softened outputs to a smaller one \cite{hinton2015distilling, bucilua2006model}; intermediate-feature
+transfer follows FitNets \cite{romero2015fitnets}; surveys organise response-, feature- and
+relation-based variants \cite{gou2021knowledge}. For BERT-style
 encoders the line runs through DistilBERT \cite{sanh2019distilbert}, Patient KD \cite{sun2019patient},
 TinyBERT \cite{jiao2020tinybert}, MiniLM \cite{wang2020minilm} and MobileBERT \cite{sun2020mobilebert}.
 
@@ -178,18 +193,20 @@ weights: adaptive multi-level weighting \cite{liu2020adaptive}, gradient-space a
 weighting \cite{zhang2022confidence}. For language models, MT-BERT co-fine-tunes several teachers and
 weights their soft labels by prediction error while aligning hidden states through learned projections
 \cite{wu2021one}; dynamic weighting by teacher confidence has been used for semantic parsing
-\cite{zou2025dynamic}. Heterogeneous distillation needs an explicit information-flow model
-\cite{passalis2020heterogeneous}.
+\cite{zou2025dynamic}. Passalis et al. model information flow explicitly when teacher and student
+architectures differ \cite{passalis2020heterogeneous}; the heterogeneous student here is trained
+without such a model (Section 3.3).
 
 The method we audit belongs to the error-weighted family: its per-instance weights follow
 \cite{wu2021one, zhang2022confidence}, and the combination of error-weighted soft labels with projected
 hidden-state alignment is MT-BERT's. We do not claim that combination as novel. What the family shares,
-and what none of its papers tests, is a pair of assumptions: that the teachers collectively know more
-than any one of them in a way their outputs reveal, and that reliability scored against the gold label
-on the training data measures anything once the teachers have been fine-tuned on that data. In the
-abusive-language literature the claim that several teachers beat one is typically reported without a
-no-distillation control, without the teachers' own scores, and without seeds or intervals
-\cite{prasomphan2025mtkd}; the Phase-2 report this work grew out of made the same omissions. Section
+and what none of the papers reviewed here tests, is a pair of assumptions: that the teachers
+collectively know more than any one of them in a way their outputs reveal, and that reliability scored
+against the gold label on the training data still means something once the teachers have been fine-tuned
+on that data. In the abusive-language literature the claim that several teachers beat one is typically
+reported without a no-distillation control, without the teachers' own scores, and without seeds or
+intervals \cite{prasomphan2025mtkd}; the Pre-Thesis II report this work grew out of reported its
+teachers' scores but omitted the control, the seeds and the intervals. Section
 5.5 tests both assumptions and finds both false on a committee assembled in the usual way, and Section
 5.7 finds the committee no better a labeller than one teacher out of sample either.
 
@@ -202,7 +219,7 @@ the tests: papers should state seeds, search budget and compute \cite{dodge2019s
 with paired bootstrap \cite{koehn2004statistical, dror2018hitchhiker}, and know the minimum effect
 their test set can detect, which for most NLP benchmarks is larger than the differences reported
 \cite{card2020power}. On our 4,326-post test set a paired interval is about 0.014 wide, so a difference
-under 0.007 macro-F1 is undetectable; every claim in this paper is read against that.
+under 0.007 macro-F1 is undetectable; every claim in this thesis is read against that.
 
 ## 3. The audited method, and the out-of-sample recipe
 
@@ -210,10 +227,14 @@ under 0.007 macro-F1 is undetectable; every claim in this paper is read against 
 
 Let $x_i$ be a text with majority label $y_i \in \{1,\dots,C\}$. A committee of $K$ teachers produces
 logits $z_k(x_i) \in \mathbb{R}^C$ and masked-mean-pooled last-layer states $h_k(x_i) \in
-\mathbb{R}^{d_k}$; the student produces $z_s(x_i)$ and $h_s(x_i) \in \mathbb{R}^{d_s}$, plus an
-auxiliary irony head $z_s^{\text{irony}}(x_i) \in \mathbb{R}^2$. $W_k \in \mathbb{R}^{d_k \times d_s}$
-is a learned projection from the student width to teacher $k$'s width; $T$ is the distillation
-temperature and $\tau$ the weight temperature.
+\mathbb{R}^{d_k}$; the student produces $z_s(x_i)$ and $h_s(x_i) \in \mathbb{R}^{d_s}$, pooled the
+same way, which for the BiLSTM student is the masked mean of its top-layer bidirectional states
+($d_s = 512$), so the hidden-state term is defined identically for every student; plus an
+auxiliary irony head $z_s^{\text{irony}}(x_i) \in \mathbb{R}^2$ whose target $z_{\text{irony}}(x_i) \in
+\mathbb{R}^2$ comes from the irony checkpoint *before* task adaptation, in its own irony against
+non-irony label space. $W_k \in \mathbb{R}^{d_k \times d_s}$ is a learned projection from the student
+width to teacher $k$'s width; $T$ is the distillation temperature and $\tau$ the weight temperature; $E$
+is the number of epochs and $B$ the batch size. All sums over $j$ or $k$ run over the $K$ teachers.
 
 Teachers are *task-adapted*: each is initialised from a specialist checkpoint and fine-tuned on the
 target training split, so that every committee member shares the task's label space. Without this
@@ -231,7 +252,7 @@ at run time.
 For each training instance the committee is weighted by how reliable each teacher is on it:
 
 $$
-\ell_k(i) = \mathrm{CE}\big(\mathrm{softmax}(z_k(x_i)),\, y_i\big), \qquad
+\ell_k(i) = \mathrm{CE}\big(z_k(x_i),\, y_i\big), \qquad
 w_k(i) = \frac{\exp(-\ell_k(i)/\tau)}{\sum_{j} \exp(-\ell_j(i)/\tau)} .
 $$
 
@@ -252,23 +273,28 @@ $$
 \mathcal{L}_{\mathrm{KL}}(i) = T^2\, \mathrm{KL}\!\big(\bar p(i)\,\|\,\mathrm{softmax}(z_s(x_i)/T)\big),
 $$
 $$
-\mathcal{L}_{\mathrm{hid}}(i) = \sum_k w_k(i)\, \big\| W_k h_s(x_i) - h_k(x_i) \big\|_2^2,
+\mathcal{L}_{\mathrm{hid}}(i) = \sum_k \frac{w_k(i)}{d_k}\, \big\| W_k h_s(x_i) - h_k(x_i) \big\|_2^2,
 $$
 $$
 \mathcal{L}_{\mathrm{irony}}(i) = T^2\, \mathrm{KL}\!\big(\mathrm{softmax}(z_{\text{irony}}(x_i)/T)\,\|\,\mathrm{softmax}(z_s^{\text{irony}}(x_i)/T)\big),
 $$
 $$
-\mathcal{L} = \frac{1}{B}\sum_i \Big[\alpha\, \mathcal{L}_{\mathrm{KL}}(i) + \beta\, m_i\, \mathrm{CE}(z_s(x_i), y_i)
- + \gamma\, \mathcal{L}_{\mathrm{hid}}(i) + \delta\, \mathcal{L}_{\mathrm{irony}}(i)\Big],
+\mathcal{L} = \frac{\alpha}{B}\sum_i \mathcal{L}_{\mathrm{KL}}(i)
+ + \beta\, \frac{\sum_i m_i\, \mathrm{CE}(z_s(x_i), y_i)}{\sum_i m_i}
+ + \frac{\gamma}{B}\sum_i \mathcal{L}_{\mathrm{hid}}(i) + \frac{\delta}{B}\sum_i \mathcal{L}_{\mathrm{irony}}(i),
 $$
 
 with $\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$ and $\tau = 1$ unless stated, and
 $m_i \in \{0, 1\}$ a label mask that is 1 on labelled rows and 0 on the unlabelled rows of Section 3.5.
-The irony teacher cannot join the committee, because its label space is irony against non-irony, so its
-softened output is distilled into a second head on the student's pooled state; the head is discarded at
-inference and exists to shape the shared representation. Uniform multi-teacher distillation sets
-$w_k(i) = 1/K$; single-teacher distillation uses BERT-large alone; fine-tune-only sets $\alpha = \gamma
-= \delta = 0$. Training: 6 epochs, AdamW \cite{loshchilov2019decoupled} at $3 \times 10^{-5}$
+The hard-label term is averaged over the labelled rows of the batch, not over the batch, so appending
+unlabelled rows does not silently dilute supervision: the ratio of the two terms is the same in every
+arm of Section 5.8. The irony target comes from the irony checkpoint before adaptation, whose label
+space is irony against non-irony and cannot enter the committee's KL term, so it is distilled into a
+second head on the student's pooled state; the head is discarded at inference and exists to shape the
+shared representation. The same checkpoint, after task adaptation into the six-class label space, is
+the committee's third member. Uniform multi-teacher distillation sets $w_k(i) = 1/K$; single-teacher
+distillation uses BERT-large alone; fine-tune-only drops every teacher term and trains on the
+cross-entropy alone. Training: 6 epochs, AdamW \cite{loshchilov2019decoupled} at $3 \times 10^{-5}$
 ($10^{-3}$ for the BiLSTM), 10 per cent warm-up and linear decay, batch 32, gradient clipping at 1.0,
 mixed precision on GPU, best validation macro-F1 epoch kept, early stopping with patience 2,
 implemented in PyTorch and Transformers \cite{paszke2019pytorch, wolf2020transformers}.
@@ -295,9 +321,10 @@ outputs are cached on $\mathcal{D}$, and $\mathcal{D}$ is the split the teachers
 split is appended to $\mathcal{D}$; on $x_u \in \mathcal{U}$ the label mask $m_u = 0$ removes the
 hard-label term, and the student trains from $\alpha\, \mathcal{L}_{\mathrm{KL}}(u) + \gamma\,
 \mathcal{L}_{\mathrm{hid}}(u) + \delta\, \mathcal{L}_{\mathrm{irony}}(u)$ alone. Nothing else changes:
-the same objective, teachers, student, epochs and learning rate. The construction of $\mathcal{U}$ is
-in Section 4.4; it is shuffled once with a fixed seed so that its prefixes are nested subsets, which is
-what lets Section 5.8 vary its size with everything else fixed.
+the same objective, teachers, student, epochs and learning rate, and the hard-label term stays averaged
+over the labelled rows, so its weight against the teacher terms is the same in every arm. The
+construction of $\mathcal{U}$ is in Section 4.4; it is shuffled once with a fixed seed so that its
+prefixes are nested subsets, which is what lets Section 5.8 vary its size with everything else fixed.
 
 Two controls separate what the soft labels carry from what more text and more updates carry. The
 *hard-label* control replaces $\bar p(u)$ by the committee's $\arg\max$ and trains the transfer rows
@@ -308,17 +335,20 @@ rather than argued away.
 
 Out of sample, the reliability of Section 3.2 has no label to be scored against, so we also test a
 reliability the teachers cannot have memorised. Let $\mathcal{V}$ be the validation split, $c_k(v)
-\in \{0, 1\}$ whether teacher $k$ is correct on $v \in \mathcal{V}$, and $N_k(x)$ the $m$ validation
+\in \{0, 1\}$ whether teacher $k$ is correct on $v \in \mathcal{V}$, and $N_k(x)$ the $\nu$ validation
 texts nearest $x$ by cosine similarity in teacher $k$'s own pooled space. Then
 
 $$
-r_k(x) = \frac{1 + \sum_{v \in N_k(x)} c_k(v)}{m + 2}, \qquad
-w_k(x) = \frac{r_k(x)^{1/\tau}}{\sum_j r_j(x)^{1/\tau}},
+r_k(x) = \frac{1 + \sum_{v \in N_k(x)} c_k(v)}{\nu + 2}, \qquad
+w_k^{\mathrm{knn}}(x) = \frac{r_k(x)^{1/\tau}}{\sum_j r_j(x)^{1/\tau}},
 $$
 
-with $m = 20$ and $\tau = 1$: the weight is proportional to the teacher's local out-of-sample
-accuracy, defined on labelled and unlabelled rows alike. It is a control, not a proposal: Section 5.4
-sets its ceiling before any student trains on it.
+with $\nu = 20$ and $\tau = 1$: the weight is proportional to the teacher's local out-of-sample
+accuracy. In an out-of-sample run it replaces $w_k(i)$ on every row, labelled and unlabelled alike,
+because the in-sample estimate is saturated on the labelled ones. Two caveats belong here rather than
+in the results. The validation split is also the split each teacher's checkpoint was selected on, so
+$c_k(v)$ is measured on data the teacher has seen once, and the estimate is optimistic; and the signal
+is a control, not a proposal, whose ceiling Section 5.4 sets before any student trains on it.
 
 ### 3.6 What is measured about the weighting
 
@@ -361,10 +391,13 @@ F1 on implicit hate against 0.548 for the same model trained on that corpus alon
 macro-F1 is higher, 0.681 against 0.562, which is exactly the artefact. We therefore build train,
 validation and test from the Implicit Hate Corpus and hold ISHate out whole as a 27,096-row
 out-of-domain test set. Every text occurring in any probe set (Section 4.3) is removed first, 1,581
-rows, so that probe metrics stay measured on text no model has trained on; the survivors then go
-through the tweet pipeline (10 short rows, 12 multi-label texts, 12 duplicates removed) and are split
-80/10/10 with seed 42: 16,509 / 2,064 / 2,064, training classes not_hate 10,616, implicit_hate 5,029,
-explicit_hate 864.
+rows across the two corpora, so that probe metrics stay measured on text no model has trained on. Of
+those, 796 come from the Implicit Hate Corpus, leaving 20,684; the tweet pipeline then removes 10 rows
+shorter than two tokens, 25 rows in 12 texts carrying conflicting labels and 12 duplicates, and the
+remaining 20,637 are split 80/10/10 with seed 42 into 16,509 / 2,064 / 2,064, with training classes
+not_hate 10,616, implicit_hate 5,029, explicit_hate 864 and 108 explicit rows in the test split. ISHate
+loses the other 785 probe rows, 613 rows that also occur in those splits and 269 rows in 14
+conflicting-label texts, which is how its 28,763 become the 27,096 held out.
 
 **The label is contested.** The two corpora share 629 texts. On whether a text is hateful at all they
 agree on 99.7 per cent; on whether the hate is stated or implied they agree on 48.2 per cent, the
@@ -378,11 +411,15 @@ redistributing text.
 
 ### 4.3 Probes
 
-Three inference-only sets, never used for training by any model on any corpus. *Benign sarcasm*:
+Three inference-only sets, never used for training by any model on any corpus. They are stored as five
+files, because the benign-sarcasm probe keeps its unscreened and reviewed versions beside the screened
+one the metrics use, and all five are screened against the transfer set. *Benign sarcasm*:
 1,064 sarcastic tweets from iSarcasmEval \cite{abufarha2022semeval, oprea2020isarcasm},
 author-labelled, of which 883 survive a screening pass over the rows a classical classifier flags as
-abusive; the metric is the false-positive rate, the share predicted as any abusive class. *Ironic
-abuse*: 1,560 items, 797 posts labelled irony in the Implicit Hate Corpus stage-2 data and 763 original
+abusive; the metric is the false-positive rate, the share whose argmax is any abusive class. Where a
+score rather than a decision is needed, $p(\text{abusive})$ is one minus the probability of the
+not-abusive class: one minus the probability of `not_cyberbullying` on the tweet corpus, and one minus
+the probability of `not_hate` on the implicit benchmark. *Ironic abuse*: 1,560 items, 797 posts labelled irony in the Implicit Hate Corpus stage-2 data and 763 original
 ISHate rows labelled implicit; the metric is recall. *Implicit abuse*: the 763 ISHate rows alone. ISHate
 rows sourced from ToxiGen or the Implicit Hate Corpus are excluded from the probes so that they stay
 independent of the corpus they test transfer into. The probes are rule-built from published corpora,
@@ -410,8 +447,13 @@ without it, a fifth of the "unlabelled" set would have been text a later evaluat
 For the size curve the base set is extended with generic tweets from TweetEval's sentiment, emoji and
 emotion configurations (59,899, 100,000 and 5,052 rows), screened identically and against the base set
 itself: 163,580 survive (emoji 98,867, sentiment 59,715, emotion 4,998), giving 205,593 rows in all.
-The base rows come first and verbatim, so a prefix of the extended file up to 42,013 is the base set,
-prefixes below that are nested subsets of it, and rows beyond it are generic. The report of every
+The generic block is shuffled with the same seed before it is appended, so its sources are mixed
+throughout rather than ordered by corpus. The base rows come first and verbatim, so a prefix of the
+extended file up to 42,013 is the base set, prefixes below that are nested subsets of it, and rows
+beyond it are generic. The size curve of Section 5.8 uses the prefixes of 5,000, 10,000, 21,000,
+42,013, 84,000 and 168,000 rows; the remaining 37,593 screened rows were built and not used. Its
+composition control is the slice of the same file that follows the base set, rows 42,013 to 84,026,
+which is 42,013 generic tweets and no abuse-domain text. The report of every
 count (`transfer_report.json`, `transfer_big_report.json`) is regenerated by the run itself, with the
 same seed, from the same public sources.
 
@@ -477,10 +519,10 @@ interval; single-seed rows are marked and treated as indicative.
 | DeBERTa-v3-base | 0.8720 | 0.8867 | 0.053 | 0.227 | 0.409 | 0.773 |
 | TF-IDF + logistic regression | 0.8798 | 0.8930 | -- | -- | -- | -- |
 
-Three of the original four teachers beat the fine-tune-only student and the classical floor, so the
+Three of the original four teachers beat the fine-tune-only headline student and the classical floor, so the
 pre-registered stop rule passes. DeBERTa-v3-base sits below the floor and is retained only as the
 heterogeneous committee member, which is what it is there to test. The implicit specialist, trained on
-different data under a different label scheme, lands within 0.009 of the other three after adaptation.
+different data under a different label scheme, lands within 0.005 of the other three after adaptation.
 Two columns of this table carry the rest of the paper. The training losses say that every task-adapted
 teacher has, by its last epoch, assigned the gold label a probability near one on the split the student
 will be distilled on (Section 5.6). And the probe columns already show the pattern Section 5.9 makes
@@ -502,7 +544,7 @@ Test macro-F1, mean over three seeds; classical floor 0.8798.
 Best distilled configuration against fine-tune-only: BERT-mini +0.0012 [-0.0057, +0.0079], BERT-small
 +0.0040 [-0.0058, +0.0126], DistilBERT +0.0068 [-0.0013, +0.0139], DeBERTa-v3-xsmall +0.0040 [-0.0024,
 +0.0109], BiLSTM +0.0071 [-0.0039, +0.0195]. Five of five positive, which is the result the control was
-added to test and which the Phase-2 version of this work failed; and none of the five intervals
+added to test and which the Pre-Thesis II version of this work failed; and none of the five intervals
 excludes zero, nor does any of the 27 in-sample distillation-against-fine-tuning comparisons in the
 grid. Taking the best of six configurations per student also flatters the difference. The supportable
 claim is the modest one: in sample, distillation moves every student in the same direction, by 0.001
@@ -512,7 +554,7 @@ Two students deserve a remark. The most heterogeneous student, the BiLSTM, gains
 student that shares the teachers' architecture most closely, BERT-mini, gains the least; the
 hidden-state term, the only part of the objective that architectural similarity could help, is worth
 +0.0009 on BERT-mini. Nothing in this grid supports a preference for homogeneous student and teachers.
-And on BERT-mini nothing beats the no-teacher control at all: candidate minus fine-tune-only is -0.0015
+And on BERT-mini no distilled configuration beats the no-teacher control by more than the seeds' own spread: candidate minus fine-tune-only is -0.0015
 [-0.0076, +0.0048] for D-MTHD, -0.0007 [-0.0074, +0.0058] for uniform, +0.0012 [-0.0057, +0.0079] for
 single-teacher, -0.0019 [-0.0082, +0.0041] with the DeBERTa committee, -0.0003 [-0.0080, +0.0075] and
 -0.0019 [-0.0093, +0.0049] with the specialist committee under averaging and weighting.
@@ -531,7 +573,7 @@ that as parity, not as the student beating the teacher.
 | DeBERTa-v3-xsmall | -0.0029 [-0.0086, +0.0029] | -0.0019 [-0.0108, +0.0108] |
 | BiLSTM | -0.0029 [-0.0116, +0.0056] | +0.0004 [-0.0072, +0.0081] |
 
-Four negative, one tie, every interval containing zero. On the headline student the ablation that
+Without the DeBERTa teacher four differences are negative and one is a tie; with it, four are negative and one positive. Every interval contains zero. On the headline student the ablation that
 removes the weighting altogether scores 0.8386 against 0.8385 for full D-MTHD on the same seed.
 
 The obvious objection is that at $\tau = 1$ the weights are nearly uniform, 0.332 / 0.337 / 0.331
@@ -558,9 +600,9 @@ heaviest teacher averages 0.356.
 initialised student 0.7905 (-0.0473); no auxiliary irony head 0.8364 (-0.0014); no hidden-state term
 0.8369 (-0.0009); uniform weights 0.8386 (+0.0008); per-batch weights 0.8389 (+0.0011); the specialist
 alone 0.8392 (+0.0014); pre-trained on the implicit corpus 0.8377 (-0.0001). Removing components of the
-method costs at most 0.0014 and in two cases improves the score; removing pre-training costs 0.047, and
+method costs at most 0.0014 and in three cases improves the score; removing pre-training costs 0.047, and
 against fine-tune-only on the same seed it is the one in-sample difference in the grid whose interval
-excludes zero, -0.0488 [-0.0603, -0.0376]. Hyper-parameters behave the same way: $T \in \{1, 2, 8\}$
+excludes zero, -0.0488 [-0.0603, -0.0376]. Hyper-parameters behave the same way, against 0.8385 at the defaults on the same seed: $T \in \{1, 2, 8\}$
 gives 0.8386 / 0.8402 / 0.8391, $\alpha \in \{0.2, 0.6\}$ 0.8386 / 0.8394, $\delta \in \{0.1, 0.5\}$
 0.8389 / 0.8399. The objective is flat in every direction we can move it, and adding a DeBERTa-v3
 teacher to the homogeneous committee changes the five students by -0.0005, +0.0006, +0.0032, -0.0005
@@ -578,15 +620,15 @@ Scored directly from the teachers' saved test probabilities, before any student 
 | All five | 0.8973 | 0.9036 | 0.9046 | 0.9030 | 0.9000 | 0.9041 | 0.9552 |
 
 Uniform averaging of the committee beats the best teacher by 0.3 to 0.8 macro-F1. No combination that
-needs no gold label at inference improves on the uniform mean by more than 0.003, and neither does a
+needs no gold label at inference improves on the uniform mean by more than 0.005, and neither does a
 stacked logistic-regression gate fitted to the concatenated teacher probabilities by five-fold
 cross-validation over the test set, which is as favourable a test of learned routing as can be made
 without touching the training data. The oracle that picks a correct teacher whenever one exists sits
 at 0.945 to 0.955 accuracy, against 0.9075 for BERT-large. That headroom is real and it is
 unreachable from the teachers' outputs: where the teachers disagree, 10 to 14 per cent of the test set,
 some teacher is right on about 90 per cent of items and the uniform mean on 55 to 62, and their
-probabilities do not say which. A corrected reliability signal therefore has a ceiling of roughly +0.3
-points over uniform averaging on this committee, in or out of sample.
+probabilities do not say which. A corrected reliability signal therefore has a ceiling of under half a
+point of macro-F1 over uniform averaging on this committee, in or out of sample.
 
 The teachers are not diverse enough for a weighting to have work to do, and adaptation is what made
 them so.
@@ -606,7 +648,7 @@ them so.
 
 The original four teachers are all right on 83.2 per cent of the test set and all wrong on the same
 4.7 per cent. A per-instance weighting can only express a preference where its members disagree, at
-most one instance in eleven here, and on two-thirds of the errors there is no correct teacher to
+most one instance in seven here, and on about half of the best teacher's errors no member is right to
 prefer. The committee was chosen for complementary expertise, and after task adaptation on the same
 corpus its members converged to near-identical behaviour. Task adaptation is what makes a sarcasm
 model's logits comparable with an abuse model's, and it is also what removes the diversity the
@@ -751,7 +793,7 @@ arm's number of updates, both with early stopping off and the best validation ep
 
 **The curve rises at every step.** Six sizes give six ordered means with no inversion, the 42k arm
 reproduces Section 5.7's to within 0.0003, and at 168k the gain is +0.0123 with an interval that
-excludes zero: the first distillation arm in the grid that beats fine-tuning on the headline student by
+excludes zero: the largest gain in the grid on the headline student, and one of three arms that beat fine-tuning by
 more than the test set can resolve. No single step of the curve is significant on its own (the largest,
 84k to 168k, is +0.0042 [-0.0047, +0.0134]); the evidence is the ordering, and the endpoint.
 
@@ -767,7 +809,7 @@ gains +0.0027; fine-tuning for the 168k arm's number of updates gains nothing, -
 +0.0072], with the validation score peaking between epochs 6 and 13 and declining afterwards (0.855 to
 0.844 by the last epoch): the extra updates are spent overfitting. The 13-epoch control's small gain
 was a longer search over checkpoints rather than a better optimum, and 35 epochs is its ceiling.
-Against these controls the 42k arm keeps +0.0043 [-0.0032, +0.0122] and the 168k arm +0.0136
+Against these controls the 42k arm keeps +0.0043 [-0.0032, +0.0122]; the 168k arm keeps +0.0096 [+0.0000, +0.0191] over the 13-epoch control and +0.0136
 [+0.0023, +0.0240], the latter with an interval clear of zero.
 
 **The endpoint holds on two more students.** The largest set was run on BERT-small (28.8M, the same
@@ -781,7 +823,7 @@ single-teacher runs:
 | BiLSTM (10.4M) | 0.8693 +- 0.0043 | 0.8748 +- 0.0018 | 0.8856 +- 0.0003 | +0.0163 [+0.0063, +0.0271] | +0.0108 [+0.0023, +0.0200] |
 
 The BiLSTM gains most, every seed above every baseline seed, and at 10.4M parameters now clears the
-classical floor (0.8798) and sits within 0.005 of DistilBERT's fine-tuning (0.8907) with a sixth of the
+classical floor (0.8798) and sits within 0.006 of DistilBERT's fine-tuning (0.8907) with a sixth of the
 parameters. BERT-small gains on the mean, with two of three seeds above every fine-tuning seed, but its
 fine-tuning seeds vary by 0.008 and its interval includes zero, which we report as it is. On every
 student the gain lands in the same place: between fine-tuning and the 168k arm, F1 on not_cyberbullying
@@ -809,15 +851,20 @@ out-of-sample and matched-steps models reach it at 0.90, at a recall of 0.31 to 
 own labels show the same confusion: other_cyberbullying recall 0.710 with 109 of its errors going to
 not_cyberbullying, and not_cyberbullying recall 0.648 with 126 going the other way.
 
-**Nothing moves the discrimination.** Over the 28 in-sample pre-trained variants of BERT-mini analysed,
+**Nothing raises the discrimination.** Over the 28 in-sample pre-trained variants of BERT-mini analysed,
 which cover every objective and committee, seven temperatures, the $T$, $\alpha$ and $\delta$ sweeps,
 every ablation and both controls, sarcasm-discrimination AUC has mean 0.771 and standard deviation
 0.004, from 0.756 to 0.777. The randomly initialised student scores 0.613. The auxiliary irony head,
 the component built for this measurement, is inside the band: without it 0.775, with it 0.773. Along
 the whole out-of-sample curve the first seed's AUC is 0.758, 0.764, 0.752, 0.765, 0.771 and 0.761, the
 generic control's 0.760, the 35-epoch control's 0.774 and the hard-label arm's 0.727: every
-pre-trained variant of the student lies between 0.73 and 0.78, and every soft-label variant between 0.75 and 0.78.
-What moves is the operating point. Over the in-sample variants, recall at 0.5 ranges from 0.758 to
+pre-trained variant of the student lies between 0.72 and 0.78, and every soft-label variant between
+0.75 and 0.78. This is where a pre-registered prediction failed as written: the transfer run's
+predictions included the claim that the AUC would stay inside the in-sample band of 0.756 to 0.777 on
+every arm, and three of the five arms fall below that band, the hard-label arm furthest at 0.727.
+Nothing rises above it.
+
+What moves is the operating point. Over the 28 pre-trained in-sample variants, recall at 0.5 ranges from 0.758 to
 0.821 and the false-positive rate from 0.343 to 0.448, correlated at +0.87; along the out-of-sample
 curve both fall together, recall from 0.74 to 0.57 and the false-positive rate from 0.35 to 0.25 as the
 set grows to 168,000 rows, and on the BiLSTM to 0.50 and 0.18. The out-of-sample student fires less on
@@ -826,7 +873,7 @@ sarcasm of both kinds; it does not tell them apart any better.
 **Across the grid, methods differ only in how readily they fire.** Across all 184 evaluated models in
 the grid, teachers and students, every mode and seed, the false-positive rate on benign sarcasm and
 the recall on ironic abuse correlate at +0.772. Recall minus false-positive rate has mean 0.357 and
-standard deviation 0.046, while its components range over 0.15 to 0.59 and 0.48 to 0.81. The 42
+standard deviation 0.046, while its components range over 0.14 to 0.59 and 0.48 to 0.81. The 42
 out-of-sample models do not leave the curve, they slide along it: among themselves they correlate at
 +0.922, with the same mean margin, 0.355.
 
@@ -857,23 +904,28 @@ model fires, and across 184 models that is all it measures.
 The compact student loses to a bag of n-grams on F1 and beats it decisively on ranking: it separates
 implied abuse from benign text at 0.8196 AUC against 0.7610 while scoring below the floor on the
 implicit class itself. The two measures disagree in direction, not degree, which is the argument of
-this section made on other people's labels. Both neural models score 0.29 to 0.37 on the 864-row
+this section made on other people's labels. Both neural models score 0.29 to 0.37 on the 108-row
 explicit class, which is why macro-F1 is not the headline here; these are single-seed results.
 Applied without further training to the benchmark's 2,064 test posts, the tweet-trained BERT-mini calls
 81.0 per cent of them abusive against a true rate of 35.7 per cent (binary macro-F1 0.423, ROC-AUC
-0.608); on implicit hate against posts that are not hateful it catches 85.1 per cent at a 78.8 per cent
-false-positive rate and ranks the two at an AUC of 0.600, barely above chance, against 0.820 for the
-same architecture trained on the corpus. D-MTHD transfers no better (0.411, 0.600). Whatever the tweet
+0.608). On implicit hate against posts that are not hateful it catches 85.1 per cent at a 78.8 per
+cent false-positive rate. It ranks the two at an AUC of 0.600, barely above chance, against 0.820 for
+the same architecture trained on the corpus. D-MTHD transfers no better: binary macro-F1 0.411, the same two AUCs at 0.609 and 0.600. Whatever the tweet
 students have learned about abuse, in sample or out, does not include what makes an implication
 hateful; there was little of that knowledge in the committee to receive, and none in the transfer text.
 
-### 5.10 Robustness and efficiency
+### 5.10 Character-level obfuscation and deployment cost
 
-Synthetic obfuscation of the abusive rows, BERT-mini, seed 1, macro-F1: fine-tune only 0.8394 clean,
-0.7475 leetspeak, 0.7417 character swap, 0.7275 inserted spaces, 0.7116 mixed; D-MTHD 0.8385, 0.7460,
-0.7361, 0.7250, 0.7077. Twelve to thirteen points lost on short text, and distillation does not help.
-These are character edits, not evasion by people trying to evade, and we do not call the result
-robustness.
+Synthetic obfuscation of the abusive test rows, BERT-mini, seed 1, macro-F1:
+
+| Objective | Clean | Leetspeak | Character swap | Inserted spaces | Mixed |
+|---|---|---|---|---|---|
+| Fine-tune only | 0.8394 | 0.7475 | 0.7417 | 0.7275 | 0.7116 |
+| D-MTHD | 0.8385 | 0.7460 | 0.7361 | 0.7250 | 0.7077 |
+
+Nine to thirteen points lost on short text, and distillation does not help: the two objectives are
+within 0.006 of each other under every edit. These are character edits, not evasion by people trying
+to evade, and we do not call the result robustness.
 
 Median of five timed passes after warm-up on an idle machine:
 
@@ -886,7 +938,7 @@ Median of five timed passes after warm-up on an idle machine:
 | DeBERTa-v3-xsmall | 70.8M | 23.49 ms | 3.25 ms | 10.57 | 270 MB | 209 MB | 0.8765 |
 | BERT-large (teacher) | 335.1M | 26.56 ms | 21.65 ms | 78.92 | 1,279 MB | -- | -- |
 
-DistilBERT matches BERT-large at 5.1 times fewer parameters and 5.8 times lower batch-32 latency; INT8
+DistilBERT matches BERT-large at 5.0 times fewer parameters and 5.8 times lower batch-32 latency; INT8
 dynamic quantisation halves its size for 0.003 macro-F1. BERT-mini's size falls only from 43 to 33 MB
 because 7.8M of its 11.2M parameters are the embedding table, which dynamic quantisation does not
 touch. The out-of-sample recipe adds nothing to inference: the transfer set is used once, in training,
@@ -896,11 +948,11 @@ and the deployed student is the same model.
 **What the audit says about error-weighted multi-teacher distillation.** The family's weighting rule
 scores each teacher's reliability against the gold label on the training set. For teachers fine-tuned
 on that set the score is saturated, and the weights it produces are uniform whatever the temperature.
-Correcting the estimate, by scoring reliability out of sample as Section 3.5 does or by fitting a gate
-on held-out data, is necessary for the rule to mean anything, and on a committee assembled in the usual
-way it is not sufficient: the teachers' outputs do not carry the information needed to pick the right
-one where they disagree, so the reachable gain over uniform averaging is a few tenths of a point, in
-sample and out. The five-point oracle gap is real, and it is made of instances on which the teachers,
+The estimate has to be corrected before the rule can mean anything, either by scoring reliability out
+of sample as Section 3.5 does or by fitting a gate on held-out data. On a committee assembled the
+usual way that is necessary and not sufficient. Where the teachers disagree their outputs do not carry
+the information needed to pick the right one, so the reachable gain over uniform averaging is a few
+tenths of a point, in sample and out. The oracle's four to five points of accuracy over the best teacher are real, and made of instances on which the teachers,
 and very likely the annotators, are uncertain.
 
 **What it says about the committee.** Assembling specialists for complementary expertise and then
@@ -919,11 +971,15 @@ report large gains for small students distil on transfer sets larger than the la
 \cite{tang2019distilling, jiao2020tinybert, turc2019wellread}, and Beyer et al.'s account of
 distillation as function matching says why: a function is learned where it is sampled, and sampling it
 only where it equals the label teaches the label \cite{beyer2022knowledge}. What our measurements add
-is the domain-specific shape. The curve is monotone over a 34-fold range of size and has not saturated
-at 168,000 rows; generic tweets carry most of the value, so the text need not be abuse-related, only in
-the register the student will meet; the gain is not optimisation length, which on its own overfits from
-the thirteenth epoch; and the heterogeneous student, which cannot share the teacher's representation,
-gains most, which places the effect in the soft labels rather than in the hidden-state term. The cost
+is the domain-specific shape. The curve is monotone over six nested subsets spanning a 34-fold range
+of size, with composition held fixed to 42,013 rows and generic text appended beyond it, and it has
+not saturated at 168,000 rows. Generic tweets carry most of the value, so the text need not be
+abuse-related, only in the register the student will meet. The gain is not optimisation length:
+fine-tuning alone overfits from the thirteenth epoch. And removing the hidden-state term costs 0.0009
+on the headline student, which places the effect in the soft labels rather than in the alignment of
+states.
+The heterogeneous student, which cannot share the teacher's representation at all, gains most, which
+points the same way, though family, capacity and starting score differ with it. The cost
 is one forward pass of one teacher over the unlabelled text and a longer student run; the deployed model
 is unchanged.
 
@@ -932,28 +988,30 @@ not_cyberbullying and other_cyberbullying, and nowhere else. Recall at a fixed t
 false-positive rate on harmless sarcasm move together across 184 models; a method that reports only the
 first can claim progress on implication by lowering its threshold, and the out-of-sample students do
 the opposite, firing less on sarcasm of both kinds while discriminating no better. The threshold-free
-measure shows the ability to be fixed by pre-training and unmoved by every objective, committee,
-teacher and transfer set we tried. If unlabelled text is to teach implication, its composition is the
+measure shows the ability to be fixed by pre-training: it does not move for any objective, committee,
+teacher or transfer set in the grid, and three out-of-sample arms fall below the in-sample band. If unlabelled text is to teach implication, its composition is the
 variable, not its size: nothing in 205,593 tweets of offence and sentiment carries the distinction the
 probes measure, and a transfer set that did would have to be built from text in which implication is
 present and marked, which is the corpus of Section 4.2 and not the platform's ordinary stream.
 
-**What it says about reporting.** Every out-of-sample result in this paper was predicted in writing
+**What it says about reporting.** Every out-of-sample result in this thesis was predicted in writing
 before the run that tested it, with thresholds and a decision rule, and scored by a script against the
 generated tables; three of the eleven predictions failed as written and are reported as such. A test set of
 4,326 posts cannot resolve differences under 0.007 macro-F1, which is larger than every in-sample
 distillation effect in the grid and than most differences reported in this literature. The
-multi-teacher results the field has published for this task were obtained without the fine-tuning
+multi-teacher results we reviewed for this task (Section 2.3) were obtained without the fine-tuning
 control, the teachers' own scores, seeds or intervals; under those conditions our in-sample grid would
 also have read as a success.
 
 ## 7. Threats to validity
 
-**One corpus.** Every claim about the out-of-sample curve rests on one benchmark, one platform and one
-language. The Wikipedia grid and the student grid on the implicit benchmark were built and not run
-within the compute available; the curve on DistilBERT and DeBERTa-v3-xsmall was not run either. The
-claim is stated for compact students on this corpus, in the plural because it holds on three students
-of two families, and for nothing wider.
+**One corpus.** Every claim here, the audit and the curve alike, rests on one benchmark, one platform
+and one language. Three evaluations were built and not run within the compute available: the Wikipedia
+grid, the student grid on the implicit benchmark, and the 27,096-row held-out ISHate set, which exists
+as an out-of-domain test set and is screened against throughout but carries no result in this thesis.
+The curve on DistilBERT and DeBERTa-v3-xsmall was not run either. The claim is stated for compact
+students on this corpus, in the plural because it holds on three students of two families, and for
+nothing wider.
 
 **BERT-small's interval includes zero.** Its fine-tuning seeds vary by 0.008, and its out-of-sample gain
 of +0.0057 sits inside that variance; the direction agrees with the other two students and the
@@ -971,10 +1029,21 @@ the discrimination AUC of the two environments' models differs by 0.003. Absolut
 BERT-small numbers may be under-trained by up to four points, which is also why both sit below the
 classical floor in sample.
 
-**Test-set size and seeds.** 4,326 test posts give paired intervals about 0.014 wide; three seeds per
-main configuration and one for ablations, controls and sweeps. Differences are read from intervals, not
-from seed variance, and single-seed rows are indicative only. The threshold-free probe analysis covers
-the first seed of each configuration.
+**Test-set size and seeds.** 4,326 test posts give paired intervals about 0.014 wide; three seeds for
+the main configurations and for every control of Sections 5.7 and 5.8, one seed for the ablations and
+the temperature sweeps. Differences are read from intervals, not from seed variance, and single-seed
+rows are indicative only. The threshold-free probe analysis covers the first seed of each
+configuration.
+
+**The in-sample result is an absence, not a zero.** A test set of this size cannot separate "no effect"
+from "an effect below 0.007 macro-F1". Every one of the five students moved in the same direction, and
+the consistent sign is worth stating; what the design licenses is that no in-sample effect is large
+enough for this test set to resolve, not that the effect is zero.
+
+**The gain is measured against a baseline this environment may under-train.** The +0.0123 sits inside a
+four-point deficit that the environment note below describes, so part of it could be optimisation the
+stack lost rather than knowledge the transfer set added. The 35-epoch matched-updates control, which
+gains nothing on its own, is the evidence against that reading, and it is not decisive.
 
 **The transfer set's provenance.** Its sources are public abusive-language and sentiment corpora whose
 labels we discard; their texts were collected by other researchers under their own sampling, and the
@@ -982,35 +1051,64 @@ generic portion is dominated by the emoji-prediction corpus. The screens against
 are exact-match on normalised text; near-duplicates that differ by more than punctuation, casing or
 mentions would pass them.
 
-**Teacher variance is not estimated**; each teacher is trained once. **The heterogeneous comparison is
-confounded**: DeBERTa-v3-xsmall is a weaker model on this task than the BERT-lineage students, so the
-student swap mixes family with quality; the hidden-state term is the controlled version of that
-question. **The probes are rule-built**, about 1,000 items each, with a 300-item human annotation in
-progress; probe metrics are reported only for models trained on Twitter-domain data. **The label is
-contested**: the two corpora that annotate implication agree on 48.2 per cent of shared hateful texts
-about whether the hate is implied, and every result on that class is bounded by it. **Robustness** was
-measured with synthetic character edits. **Distillation on an unlabelled transfer set is not new**; the
-contribution is the controlled measurement in this domain, and a reader should not take the title's
-first clause as a method claim.
+**Teacher variance is not estimated.** Each teacher is trained once, so the committee's behaviour is
+measured at one draw of teacher weights.
+
+**The heterogeneous comparisons are confounded.** DeBERTa-v3-xsmall is a weaker model on this task than
+the BERT-lineage students, so the student swap mixes family with quality; the BiLSTM differs from the
+teachers in family, capacity and starting score at once. The hidden-state ablation is the controlled
+version of the question both are used to raise.
+
+**The probes are rule-built**: 883 benign-sarcasm, 1,560 ironic-abuse and 763 implicit-abuse items, with
+a 300-item human annotation in progress. Probe metrics are reported only for models trained on
+Twitter-domain data.
+
+**The recommended recipe costs recall.** As the transfer set grows, recall on ironic abuse at a 0.5
+threshold falls from 0.74 to 0.57 on BERT-mini and to 0.50 on the BiLSTM, against false-positive rates
+on harmless sarcasm that fall with it. A deployment that cares about catching ironic abuse more than
+about false alarms should set its threshold accordingly, and know that the discrimination behind both
+numbers has not improved.
+
+**The label is contested.** The two corpora that annotate implication agree on 48.2 per cent of shared
+hateful texts about whether the hate is implied, and every result on that class is bounded by it.
+
+**Robustness was not measured.** What was measured is degradation under synthetic character edits,
+which is not evasion by people trying to evade.
+
+**Distillation on an unlabelled transfer set is not new.** The contribution is the controlled
+measurement in this domain, and a reader should not take the title's first clause as a method claim.
 
 ## 8. Conclusion
 
-We built the multi-teacher distillation method the abusive-language literature keeps proposing, gave
-it the teacher it was missing, and measured it under the controls it is rarely given. In sample it does
-not beat a compact student trained with no teacher, its per-instance weighting does not differ from
-averaging at any temperature, and a teacher trained on labelled implication adds nothing, for a reason
-we could measure: the student is distilled where every teacher has memorised the label, so the soft
-labels are the gold labels and the reliability that weights them is saturated. Out of sample the same
-teacher's soft labels on unlabelled tweets raise the student, monotonically with the amount of text, to
-+0.012 macro-F1 at 168,000 tweets on an 11M student, +0.016 on a 10M BiLSTM and +0.006 on a 29M BERT,
-from generic tweets nearly as well as from abuse-related ones, while fine-tuning for the same number of
-updates gains nothing; the committee, its weighting and hard pseudo-labels add nothing at any point.
-Measured without a threshold, the ability to tell implied abuse from harmless sarcasm is set by
-pre-training and unmoved by every component and every transfer set we tested, and recall at a fixed
-cut measures readiness to fire. More unlabelled text helps; more teachers do not; and neither teaches
-implication. What stands for practice is the oldest recipe in distillation, measured: one teacher, its
-soft labels on as much unlabelled text from the platform as can be screened, and a compact student
-that is unchanged at inference.
+We built the multi-teacher distillation method the abusive-language literature keeps proposing, gave it
+the teacher it was missing, and measured it under the controls it is rarely given.
+
+In sample the method fails its own test. It does not beat a compact student trained with no teacher on
+any of five students; its per-instance weighting does not differ from averaging at any temperature; and
+a teacher trained on labelled implication adds nothing, in a committee, alone, or as pre-training. The
+reason is measurable. The student is distilled on the split the teachers were fine-tuned on, where they
+have memorised the labels, so their soft labels are the gold labels and the reliability signal that
+weights them has nothing left to express.
+
+Out of sample the same teacher earns its place. Its soft labels on unlabelled tweets raise the headline
+11M student by 0.012 macro-F1 at 168,000 tweets, with an interval clear of zero, and the gain grows
+monotonically over six sizes. Generic tweets of the platform work nearly as well as abuse-related ones.
+Fine-tuning alone for the same number of updates gains nothing. The 10M BiLSTM gains 0.016, also clear
+of zero, and a 29M BERT gains 0.006 on the mean, with an interval that includes it. At no point does
+the committee, its weighting or its hard pseudo-labels add anything to what one teacher does.
+
+What does not move is the part of the task the thesis set out to reach. Measured without a threshold,
+the ability to tell implied abuse from harmless sarcasm is set by pre-training; no objective, committee,
+teacher or transfer set we tried raises it, and recall at a fixed cut measures only how readily a model
+fires. More unlabelled text helps, more teachers do not, and neither teaches implication.
+
+For practice, the recipe that survives is the oldest one in distillation, now measured in this domain:
+one teacher, its soft labels on unlabelled text from the platform the student will serve, screened
+against every evaluation set, and a compact student that is unchanged at inference. Two caveats travel
+with it. The measurements run to 168,000 unlabelled tweets on one corpus in one language, and the curve
+had not flattened there, so the ceiling is unknown. And the recipe buys its gain by firing less: on the
+probes, recall on ironic abuse falls as the transfer set grows, which a deployment must decide about
+knowingly.
 
 ## Statements
 
@@ -1032,13 +1130,14 @@ the normalised text) that let a reader verify a rebuild against ours without eit
 redistributing text; the transfer-set reports record every count at every screen.
 
 **Reproducibility.** Code, configuration, seeds and one-command drivers are public
-(github.com/mahdihasanshadi/THESIS). Every reported number is produced by a script that writes a
-results file; the decision log records every design decision with the evidence behind it and every
-pre-registered prediction with its score; the lab notebook records each run; every table and every
-interval in this paper is generated. Data preparation is deterministic (seed 42) and reports every
-removal count. Checkpoints and cached teacher outputs will be released on acceptance. Compute: 18.4
-GPU-hours on Kaggle T4 accelerators for the 179 runs of the tweet grid, over the five sessions that ran
-to completion.
+(github.com/mahdihasanshadi/THESIS). Every reported number comes from a script that writes a results
+file: the run tables and every interval are generated by `dmthd.tables` and `dmthd.significance` from
+the saved per-run predictions, the teacher-combination table by `scripts/committee_rules.py`, and the
+probe analysis by `dmthd.implicit_analysis`. The decision log records every design decision with the
+evidence behind it and every pre-registered prediction with its score, and the lab notebook records
+each run. Data preparation is deterministic (seed 42) and reports every removal count. Checkpoints and
+cached teacher outputs are released with the thesis. Compute: 18.4 GPU-hours on Kaggle T4 accelerators
+for the 179 runs of the tweet grid, over the five sessions that ran to completion.
 
 **Author contributions.** To be completed (CRediT). Supervision: Dr. Muhammad Iqbal Hossain, Sheikh
 Araf Noshin.
@@ -1063,20 +1162,20 @@ one file.
 ## Appendix C. Hyper-parameters
 
 The distillation hyper-parameters ($\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$,
-$\tau = 1$) are carried over from the Phase-2 report's Table 3.1 unchanged, so that the audit tests the
-method as proposed; Section 5.3 sweeps each of them. Students train for 6 epochs at $3 \times 10^{-5}$
-($10^{-3}$ for the BiLSTM), batch 32, 10 per cent warm-up, linear decay, gradient clipping at 1.0, early
-stopping with patience 2 on validation macro-F1; the matched-steps controls disable early stopping and
-run 13 and 35 epochs. Teachers train for 5 epochs at $2 \times 10^{-5}$, batch 32. Maximum sequence
-length 128.
+$\tau = 1$) are carried over from the Pre-Thesis II report's Table 3.1 unchanged, so that the audit
+tests the method as proposed; Section 5.3 sweeps each of them around those defaults. Every other
+setting, for the teachers and for the students, is in the table below, which is the single source for
+all of them.
 
 ## Appendix D. Pre-registered predictions and their scores
 
-Decisions D19, D20 and D21 in the repository's decision log state, before each of the three
-out-of-sample runs, the predictions and the decision rule that would follow from them.
-`scripts/transfer_verdict.py` and `scripts/scaling_verdict.py` score them against the generated tables.
-Of the eleven predictions, six held, two held in part (one of their two clauses each), and three failed
-as written, and both decision rules fired in favour of the constructive framing. The three failures: the committee was predicted to be the better labeller for
+Decisions D19, D20 and D21 in the repository's decision log state the predictions before each of the
+three out-of-sample runs, and two of them also fix a decision rule for what the thesis would say either
+way. `scripts/transfer_verdict.py` and `scripts/scaling_verdict.py` score them against the generated
+tables. Of the eleven predictions, six held, two held in part (one of their two clauses each), and three
+failed as written; both decision rules fired in favour of the constructive framing. Prediction 10 was
+registered on means and is scored on means: BERT-small's gain of +0.0057 has an interval that includes
+zero, which Section 5.8 reports. The three failures: the committee was predicted to be the better labeller for
 the student out of sample and was not; the pre-registered committee arm was predicted to gain at least
 0.010 and gained 0.007; and the sarcasm-discrimination AUC was predicted to stay in its in-sample band
 on every out-of-sample arm and fell below it on three of the five. All three failures are reported in
@@ -1085,7 +1184,8 @@ Sections 5.7 to 5.9.
 ## Appendix E. How the study changed
 
 The thesis version of this document carries, as an appendix, the decision log's account of how the
-framing moved: from a multi-teacher method (Phase 2), to a rebuilt pipeline with the missing control,
+framing moved: from a multi-teacher method (Pre-Thesis II), to a rebuilt pipeline with the missing
+control,
 to the finding that the weighting does nothing, to the specialist that did not help, to the audit of
 implication, to the mechanism, and finally to the out-of-sample result and its curve. It is omitted
 from the journal version.

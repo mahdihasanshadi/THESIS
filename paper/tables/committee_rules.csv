@@ -1,0 +1,5 @@
+Committee,Best single,Uniform mean,Confidence-weighted,Entropy-weighted,Most confident teacher,Stacked gate (5-fold CV),Oracle accuracy
+Homogeneous (3),0.8973,0.9026,0.9018,0.9023,0.9015,0.9046,0.9454
++ implicit specialist (4),0.8973,0.9000,0.9005,0.9011,0.9011,0.9043,0.9494
++ DeBERTa (4),0.8973,0.9051,0.9055,0.9052,0.9005,0.9055,0.9526
+All five,0.8973,0.9036,0.9046,0.9030,0.9000,0.9041,0.9552

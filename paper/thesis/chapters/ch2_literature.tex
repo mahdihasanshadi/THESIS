@@ -60,8 +60,10 @@ resources are iSarcasm and iSarcasmEval \cite{oprea2020isarcasm, abufarha2022sem
 SemEval-2018 irony task \cite{vanhee2018semeval}. Domain-specialised encoders include HateBERT
 \cite{caselli2021hatebert}, the TweetEval models \cite{barbieri2020tweeteval} and the ToxDect
 RoBERTa \cite{zhou2021challenges}. Earlier datasets and the pitfalls of duplicate-heavy corpora are
-documented in \cite{vanhee2018automatic, founta2018large, davidson2017automated, borkan2019nuanced};
-the unlabelled transfer set of Section~\ref{sec:4.4} draws its text from three of them.
+documented in \cite{vanhee2018automatic, founta2018large, davidson2017automated, borkan2019nuanced}.
+The unlabelled transfer set of Section~\ref{sec:4.4} takes its text from Davidson et al.
+\cite{davidson2017automated}, OLID \cite{zampieri2019olid} and HatEval \cite{basile2019hateval}, and
+excludes Founta et al. under the provenance rule of Section~\ref{sec:4.5}.
 
 A separate line of work argues that the hard case is not offensive vocabulary but its absence.
 ElSherief et al. \cite{elsherief2021latent} build a taxonomy of implicit hate and a corpus in which
@@ -70,20 +72,21 @@ their accuracy on it; Ocampo et al. \cite{ocampo2023indepth} separate hate speec
 implicit layers and show the implicit layer is where detectors and annotators both struggle. The
 annotation literature adds that the texts annotators disagree on are disproportionately the ones
 whose hostility is implied \cite{uma2021learning, davani2022dealing, plank2022problem,
-peterson2019human}. Two things follow for a paper about compact models. A corpus that does not label
-implication cannot be used to train for it, and the domain-specialised encoders a distillation
-committee would recruit were themselves trained on corpora of that kind. Whether the ability to read
-implication can be moved into a deployable model, and by what mechanism, had not been asked;
-Section~\ref{sec:5.9} asks it and answers no, and Section~\ref{sec:4.2} measures how far the label
-itself can be trusted.
+peterson2019human}. Two things follow for a thesis about compact models. A corpus that does not
+label implication cannot be used to train for it, and the domain-specialised encoders a distillation
+committee would recruit were themselves trained on corpora of that kind. We are not aware of work
+that asks whether the ability to read implication can be moved into a deployable model, or by what
+mechanism; Section~\ref{sec:5.9} asks it and finds no intervention in this grid that moves it, and
+Section~\ref{sec:4.2} measures how far the label itself can be trusted.
 \section{Distilling Compact Language Models, and the Transfer Set}
 \label{sec:2.2}
-Distillation transfers a large model's softened outputs to a smaller one \cite{hinton2015distilling,
-bucilua2006model}; intermediate-feature transfer follows FitNets \cite{romero2015fitnets}; surveys
-organise response-, feature- and relation-based variants \cite{gou2021knowledge}. For BERT-style
-encoders the line runs through DistilBERT \cite{sanh2019distilbert}, Patient KD
-\cite{sun2019patient}, TinyBERT \cite{jiao2020tinybert}, MiniLM \cite{wang2020minilm} and MobileBERT
-\cite{sun2020mobilebert}.
+Language models have grown far past what a moderation pipeline can run on every post
+\cite{brown2020language}, which is the pressure distillation answers. It transfers a large model's
+softened outputs to a smaller one \cite{hinton2015distilling, bucilua2006model};
+intermediate-feature transfer follows FitNets \cite{romero2015fitnets}; surveys organise response-,
+feature- and relation-based variants \cite{gou2021knowledge}. For BERT-style encoders the line runs
+through DistilBERT \cite{sanh2019distilbert}, Patient KD \cite{sun2019patient}, TinyBERT
+\cite{jiao2020tinybert}, MiniLM \cite{wang2020minilm} and MobileBERT \cite{sun2020mobilebert}.
 
 Hinton et al. named the data the student imitates the teacher on the \emph{transfer set}, and
 observed that it need not be the labelled training data \cite{hinton2015distilling}. The recipes
@@ -107,19 +110,21 @@ weights: adaptive multi-level weighting \cite{liu2020adaptive}, gradient-space a
 weighting \cite{zhang2022confidence}. For language models, MT-BERT co-fine-tunes several teachers
 and weights their soft labels by prediction error while aligning hidden states through learned
 projections \cite{wu2021one}; dynamic weighting by teacher confidence has been used for semantic
-parsing \cite{zou2025dynamic}. Heterogeneous distillation needs an explicit information-flow model
-\cite{passalis2020heterogeneous}.
+parsing \cite{zou2025dynamic}. Passalis et al. model information flow explicitly when teacher and
+student architectures differ \cite{passalis2020heterogeneous}; the heterogeneous student here is
+trained without such a model (Section~\ref{sec:3.3}).
 
 The method we audit belongs to the error-weighted family: its per-instance weights follow
 \cite{wu2021one, zhang2022confidence}, and the combination of error-weighted soft labels with
 projected hidden-state alignment is MT-BERT's. We do not claim that combination as novel. What the
-family shares, and what none of its papers tests, is a pair of assumptions: that the teachers
-collectively know more than any one of them in a way their outputs reveal, and that reliability
-scored against the gold label on the training data measures anything once the teachers have been
-fine-tuned on that data. In the abusive-language literature the claim that several teachers beat one
-is typically reported without a no-distillation control, without the teachers' own scores, and
-without seeds or intervals \cite{prasomphan2025mtkd}; the Phase-2 report this work grew out of made
-the same omissions. Section~\ref{sec:5.5} tests both assumptions and finds both false on a committee
+family shares, and what none of the papers reviewed here tests, is a pair of assumptions: that the
+teachers collectively know more than any one of them in a way their outputs reveal, and that
+reliability scored against the gold label on the training data still means something once the
+teachers have been fine-tuned on that data. In the abusive-language literature the claim that
+several teachers beat one is typically reported without a no-distillation control, without the
+teachers' own scores, and without seeds or intervals \cite{prasomphan2025mtkd}; the Pre-Thesis II
+report this work grew out of reported its teachers' scores but omitted the control, the seeds and
+the intervals. Section~\ref{sec:5.5} tests both assumptions and finds both false on a committee
 assembled in the usual way, and Section~\ref{sec:5.7} finds the committee no better a labeller than
 one teacher out of sample either.
 \section{Evaluation Practice}
@@ -132,7 +137,7 @@ matters as much as the tests: papers should state seeds, search budget and compu
 dror2018hitchhiker}, and know the minimum effect their test set can detect, which for most NLP
 benchmarks is larger than the differences reported \cite{card2020power}. On our 4,326-post test set
 a paired interval is about 0.014 wide, so a difference under 0.007 macro-F1 is undetectable; every
-claim in this paper is read against that.
+claim in this thesis is read against that.
 
 \section{Summary and Research Gap}
 \label{sec:gap}

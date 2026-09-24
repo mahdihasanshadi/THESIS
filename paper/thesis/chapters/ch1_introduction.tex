@@ -10,11 +10,11 @@ zhou2019edge}. Knowledge distillation is the standard response \cite{hinton2015d
 bucilua2006model}: a compact student is trained to imitate a large teacher's softened outputs, and
 in the multi-teacher variants this literature increasingly favours, the outputs of several teachers
 combined by a weighting that trusts each where it is reliable \cite{you2017learning, wu2021one,
-zhang2022confidence, yuan2021reinforced}. In abusive-language detection the recipe is almost always
-applied in one way: the teachers are fine-tuned on the task's labelled training split, and the
-student is distilled on that same split \cite{wu2021one, prasomphan2025mtkd}. The promise is that a
-committee of teachers with complementary expertise holds more of what the task requires than any one
-of them, and that the student, small enough to run on a phone, receives it.
+zhang2022confidence, yuan2021reinforced}. In abusive-language detection the published multi-teacher
+work applies the recipe in one way: the teachers are fine-tuned on the task's labelled training
+split, and the student is distilled on that same split \cite{wu2021one, prasomphan2025mtkd}. The
+promise is that a committee of teachers with complementary expertise holds more of what the task
+requires than any one of them, and that the student, small enough to run on a phone, receives it.
 
 This thesis continues the Pre-Thesis II report of February 2026, which proposed Dynamic Multi-Teacher
 Homogeneous Knowledge Distillation (D-MTHD) and evaluated it on the Wikipedia Talk personal-attacks corpus
@@ -33,12 +33,11 @@ competitive. Two facts make the question worth a thesis. The first is that the a
 most is the abuse that is implied rather than stated: every survey of cyberbullying detection names
 sarcastic and indirect abuse as the open case \cite{rosa2019automatic, salawu2020approaches,
 emmery2021current}, and implicit hate has needed benchmarks of its own \cite{elsherief2021latent,
-ocampo2023indepth}. The second is that the distillation methods proposed for this task, and the
-Pre-Thesis II version of this one, have been reported without the controls that would show whether
-the teachers help at all. A practitioner choosing how to train a compact detector needs to know
-whether distillation moves it, where the gain comes from, and whether any of it reaches implied
-abuse. This thesis sets out to answer those three questions with measurements rather than
-assumptions.
+ocampo2023indepth}. The second is that the methods proposed for this task have not been given the
+controls that would show whether the teachers help at all (Section~\ref{sec:1.3}). A practitioner
+choosing how to train a compact detector needs to know whether distillation moves it, where the gain
+comes from, and whether any of it reaches implied abuse. Those questions become the four of
+Section~\ref{sec:1.4}, the first splitting into an in-sample and an out-of-sample form.
 
 \section{Problem Statement}
 \label{sec:1.3}
@@ -58,7 +57,7 @@ The thesis asks four questions.
 \begin{description}
   \item[RQ1.] Does multi-teacher distillation with per-instance reliability weighting improve a compact
     cyberbullying detector over the same student fine-tuned without teachers?
-  \item[RQ2.] If it does not, why not?
+  \item[RQ2.] What mechanism explains the answer to RQ1?
   \item[RQ3.] Does distillation on unlabelled text the teachers have never seen improve the student, and
     how does the gain depend on the amount and composition of that text, on the number of optimisation
     updates, and on the student?
@@ -81,50 +80,57 @@ To answer them, the thesis sets four objectives.
 \section{Approach and Summary of Findings}
 \label{sec:1.5}
 We tested that promise under the controls it is rarely given, and then tested the alternative the
-controls pointed to. The first half of the paper is an audit. We built the method the literature
-suggests: a committee of task-adapted specialist teachers, a general encoder, an abusive-language
+controls pointed to. The first half of this thesis is an audit. We built the method the literature
+suggests: a committee of three task-adapted teachers, a general encoder, an abusive-language
 specialist and an irony specialist, weighted per instance by reliability, with an auxiliary irony
-head and a fourth teacher trained on a corpus in which implication is a label. We measured it on a
-cleaned benchmark against the baseline these papers rarely include, the same student trained with no
-teacher at all, over five students, three committees, every weighting temperature from 0.05 to 5 and
-three seeds, with every difference tested by paired bootstrap. Nothing moved. Distillation raised
-every student by 0.001 to 0.007 macro-F1 and no interval excluded zero; per-instance weighting never
-differed from uniform averaging; the specialist added nothing in a committee, alone or as
-pre-training. And the reason is measurable rather than argued: on the split the teachers were
-fine-tuned on, their training losses end at 0.03 to 0.08, so their soft labels are the gold labels,
-the reliability signal that weights them is saturated, and distillation on that split reduces to
-fine-tuning with a smoothed target.
+head; a fourth teacher trained on a corpus in which implication is a label; and a fifth, DeBERTa-v3,
+as the heterogeneous member of a third committee. We measured it on a cleaned benchmark against the
+baseline these papers rarely include, the same student trained with no teacher at all, over five
+students and three committees at three seeds, with seven weighting temperatures from 0.05 to 5 and
+the ablations at one seed, and with every difference tested by paired bootstrap. Nothing moved by
+more than the test set can resolve. The best of six distilled configurations raised every student,
+by 0.001 to 0.007 macro-F1, a range that taking the best of six flatters; no interval excluded zero,
+and neither did any of the 27 in-sample comparisons of distillation against fine-tuning.
+Per-instance weighting never differed from uniform averaging, and the specialist added nothing in a
+committee, alone or as pre-training. The reason is measurable rather than argued: on the split the
+teachers were fine-tuned on, four of the five end training at a loss between 0.03 and 0.08, so their
+soft labels are the gold labels, the reliability signal that weights them is saturated, and
+distillation on that split reduces to fine-tuning with a smoothed target.
 
-The second half follows from the first. If soft labels carry information only where the teacher is
-uncertain, the student should be distilled on text the teacher has never fitted. We added an
-unlabelled transfer set of tweets, screened against every split, probe and benchmark, on which the
-student trains from the teacher's soft labels alone, and measured its effect the way the audit had
-taught us to: with the committee against a single teacher, with a corrected out-of-sample
-reliability weighting against averaging, with hard pseudo-labels against soft, with the size of the
-set varied over six nested subsets from 5,000 to 168,000 tweets, with generic tweets against
-abuse-related ones at fixed size, with fine-tuning alone run for the same number of updates, and
-with the largest set on two more students. The predictions were written before each run and scored
-by a script against the tables. The gain exists, grows monotonically with the amount of text,
-reaches +0.012 macro-F1 on the 11M student with an interval clear of zero, comes from generic tweets
-nearly as well as from abuse-related ones, survives fine-tuning at matched compute, which gains
-nothing on its own, and holds on a 10M BiLSTM (+0.016) and a 29M BERT (+0.006). One teacher does it
-as well as three; the weighting, the committee and the specialist add nothing here either.
-Distilling a compact student on an unlabelled transfer set is not new \cite{hinton2015distilling,
-turc2019wellread, tang2019distilling}; what is new is the controlled demonstration, in this
-application, that it is the only lever that moves the student, and the measurement of what it moves.
+The second half follows: the student should be distilled where the teacher is still uncertain. We
+added an unlabelled transfer set of tweets, text no teacher was fine-tuned on, screened against
+every split, probe and benchmark, on which the student trains from the teacher's soft labels alone.
+Its effect was measured the way the audit had taught us to. Three contrasts test the labeller: the
+committee against a single teacher, a corrected out-of-sample reliability weighting against
+averaging, and hard pseudo-labels against soft. Three test the data and the compute: six nested
+sizes from 5,000 to 168,000 tweets, generic tweets against abuse-related ones at fixed size, and
+fine-tuning alone run for the same number of updates. The largest set was then run on two further
+students. The predictions were written before each run and scored by a script against the tables.
+
+The gain exists and grows monotonically with the amount of text, reaching +0.012 macro-F1 on the 11M
+student with an interval clear of zero. It comes from generic tweets nearly as well as from
+abuse-related ones, and it survives a fine-tuning control run for the same number of updates, a
+control that gains nothing on its own. It holds on a 10M BiLSTM (+0.016, interval clear of zero)
+and, on the mean only, on a 29M BERT (+0.006, interval including zero). With the largest transfer
+set the BiLSTM clears the classical TF-IDF floor of 0.8798; the two small BERT students do not, in
+sample or out (Section~\ref{sec:7.1}). One teacher does it as well as three; the weighting, the
+committee and the specialist add nothing here either. Distilling a compact student on an unlabelled
+transfer set is not new \cite{hinton2015distilling, turc2019wellread, tang2019distilling}; what is
+new is the controlled demonstration, in this application, that for a student that is already
+pre-trained it is the only lever in this grid whose effect on the student the test set can detect,
+and the measurement of what it moves.
 
 The knowledge that matters most in this task is also the one that does not move. Abuse that names
 its target is largely solved by lexical models; abuse carried by implication, stereotype, irony or
 coded reference is where detectors and annotators both fail \cite{elsherief2021latent,
-ocampo2023indepth, hartvigsen2022toxigen}, every survey of cyberbullying detection names it as the
-open case \cite{rosa2019automatic, salawu2020approaches, emmery2021current}, and no widely used
-benchmark labels it \cite{wang2020sosnet, wulczyn2017exmachina}. We measured it with a
-threshold-free metric on held-out probes of ironic abuse and harmless sarcasm, and with a corpus
-that labels implication. Across 184 models in the grid, recall on ironic abuse and the
-false-positive rate on harmless sarcasm rise together; the ability to tell them apart is set by
-pre-training and unmoved by every objective, committee, teacher and transfer set we tried. The
-out-of-sample gain is a task gain. What the student learns from the unlabelled text is the boundary
-between the two classes the labelled split draws worst, not the reading of implication.
+ocampo2023indepth, hartvigsen2022toxigen}, and the cyberbullying benchmarks in general use do not
+label it \cite{wang2020sosnet, wulczyn2017exmachina}. We measured it with a threshold-free metric on
+held-out probes of ironic abuse and harmless sarcasm, and with a corpus that labels implication.
+Across 184 models in the grid, recall on ironic abuse and the false-positive rate on harmless
+sarcasm rise together; the ability to tell them apart is set by pre-training, and no objective,
+committee, teacher or transfer set we tried raises it. The out-of-sample gain is a task gain. What
+the student learns from the unlabelled text is the boundary between the two classes the labelled
+split draws worst, not the reading of implication.
 
 \section{Contributions}
 \label{sec:1.6}
@@ -134,15 +140,14 @@ The contributions are as follows.
   \item \textbf{A controlled audit of multi-teacher distillation for abusive language}
     (Sections~\ref{sec:5.2} to~\ref{sec:5.6}). Five students across three architecture families,
     three committees, four objectives, a specialist teacher trained on labelled implication,
-    weighting temperatures over a hundredfold range, three seeds, 99 paired comparisons with
-    bootstrap intervals. In sample, nothing beats fine-tuning by more than the test set can resolve,
-    and the mechanism is measured: memorised labels, saturated reliability, and diversity spent by
-    the task adaptation that makes teachers comparable.
-  \item \textbf{The out-of-sample result and its curve} (Sections~\ref{sec:5.7} and~\ref{sec:5.8}).
-    Soft labels on unlabelled tweets the teachers have not fitted raise the student, monotonically
-    over six sizes to +0.012 at 168,000 rows, from any tweets of the platform, with fine-tuning at
-    matched compute gaining nothing, on three compact students of two families; the committee, its
-    weighting and hard pseudo-labels add nothing.
+    weighting temperatures over a hundredfold range and three seeds, tested by the grid's 99 paired
+    bootstrap comparisons, of which 27 set distillation against fine-tuning in sample. No in-sample
+    arm beats fine-tuning there by a detectable margin, and the mechanism is measured: memorised
+    labels, saturated reliability, and diversity spent by the task adaptation that makes teachers
+    comparable.
+  \item \textbf{The out-of-sample result and its curve} (Sections~\ref{sec:5.7} and~\ref{sec:5.8}):
+    the size curve over six nested subsets, the composition control at fixed size, the
+    matched-compute control, and the largest set on two further students.
   \item \textbf{A threshold-free protocol for implication} (Sections~\ref{sec:4.6}
     and~\ref{sec:5.9}), which shows that recall at a fixed cut measures readiness to fire and that
     discrimination of implied abuse is fixed by pre-training, on the probes and on a corpus that

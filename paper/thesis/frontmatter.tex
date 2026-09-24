@@ -107,24 +107,26 @@ the platform and monitoring for disparate impact, which we do not evaluate.
 \phantomsection\addcontentsline{toc}{chapter}{Abstract}
 Compact detectors of abusive language are usually trained by distillation from one or more large
 teachers on the labelled split the teachers were fine-tuned on. We show, under controls the setting
-is rarely given, that this teaches the student nothing the labels do not. Across five students from
-10M to 71M parameters, three teacher committees, per-instance reliability weighting at every
-temperature from 0.05 to 5 and an implicit-abuse specialist teacher, no distilled student beats
-fine-tuning by more than the test set can resolve (179 runs, three seeds, paired bootstrap), and the
-reason is measured: teachers adapted to one split agree at Cohen's kappa 0.89 to 0.96 and assign the
-gold label a probability near one, so their soft labels are the gold labels and a reliability
-weighting has nothing to express. The gain is elsewhere. On unlabelled tweets the teachers have not
-fitted, a single teacher's soft labels raise an 11M student by 0.007 macro-F1 with 42,013 tweets and
-by 0.012 with 168,000 ([+0.004, +0.021]), monotonically over six sizes, from generic tweets nearly
-as well as from abuse-related ones, and by 0.014 over fine-tuning run for the same number of
-updates, which gains nothing on its own; a 10M BiLSTM gains 0.016 and a 29M BERT gains 0.006 from
-the same text, and the committee, its weighting and hard pseudo-labels add nothing to any of it. The
-gain is in the task: measured without a threshold, the ability to tell ironic abuse from harmless
-sarcasm stays where pre-training put it, between 0.73 and 0.78 AUC across every pre-trained variant
-of the student, while the operating point slides towards caution, and across 184 models recall on
-ironic abuse and false positives on harmless sarcasm rise together (r = 0.77). We release the
-protocol, the transfer-set construction with its provenance screens, and a single-source
-implicit-abuse benchmark with per-row manifests.
+is rarely given, that this adds nothing the labels do not, to within what the test set can resolve.
+Across five students from 10M to 71M parameters, three teacher committees, per-instance reliability
+weighting at seven temperatures spanning 0.05 to 5, and an implicit-abuse specialist teacher, no
+distilled student beats fine-tuning by a margin this test set can detect (131 in-sample runs, three
+seeds, paired bootstrap). The reason is measured: task adaptation leaves the teachers agreeing at
+Cohen's kappa 0.89 to 0.96, and the four that memorise the split assign the gold label a probability
+near one, so their soft labels are the gold labels and a reliability weighting has nothing to
+express. The gain is elsewhere. On unlabelled tweets the teachers have not fitted, a single
+teacher's soft labels raise an 11M student by 0.007 macro-F1 with 42,013 tweets and by 0.012 with
+168,000 ([+0.004, +0.021]), monotonically over six sizes, and from generic tweets nearly as well as
+from abuse-related ones. That gain survives a fine-tuning control run for the same number of
+updates, which gains nothing on its own; a 10M BiLSTM gains 0.016 on the same text, a 29M BERT 0.006
+on the mean with an interval that includes zero, and the committee, its weighting and hard
+pseudo-labels add nothing to any of it. What the student gains is task score, not the reading of
+implication. Measured without a threshold, the ability to tell ironic abuse from harmless sarcasm
+never rises above where pre-training put it, staying between 0.73 and 0.78 AUC across every
+pre-trained variant of the student, while the operating point slides towards caution. Across 184
+models, recall on ironic abuse and false positives on harmless sarcasm rise together (r = 0.77). We
+release the protocol, the transfer-set construction with its provenance screens, and build scripts
+with per-row manifests for a single-source implicit-abuse benchmark.
 
 \vspace{0.4cm}
 \noindent\textbf{Keywords:} knowledge distillation, transfer set, compact models, cyberbullying detection, implicit hate speech, sarcasm, evaluation methodology.
@@ -149,7 +151,7 @@ AUC & Area under the receiver operating characteristic curve\\
 BERT & Bidirectional Encoder Representations from Transformers\\
 BiLSTM & Bidirectional long short-term memory network\\
 CE & Cross-entropy\\
-D-MTHD & Dynamic Multi-Teacher Homogeneous Distillation, the method audited here\\
+D-MTHD & Dynamic Multi-Teacher Homogeneous Knowledge Distillation, the method audited here\\
 ECE & Expected calibration error\\
 F1 & Harmonic mean of precision and recall; macro-F1 averages it over classes\\
 FLOPs & Floating-point operations\\

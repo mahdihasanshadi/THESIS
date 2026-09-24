@@ -2,16 +2,18 @@
 
 \label{app:predictions}
 
-Decisions D19, D20 and D21 in the repository's decision log state, before each of the three
-out-of-sample runs, the predictions and the decision rule that would follow from them.
-\texttt{scripts/transfer\_verdict.py} and \texttt{scripts/scaling\_verdict.py} score them against
-the generated tables. Of the eleven predictions, six held, two held in part (one of their two
-clauses each), and three failed as written, and both decision rules fired in favour of the
-constructive framing. The three failures: the committee was predicted to be the better labeller for
-the student out of sample and was not; the pre-registered committee arm was predicted to gain at
-least 0.010 and gained 0.007; and the sarcasm-discrimination AUC was predicted to stay in its
-in-sample band on every out-of-sample arm and fell below it on three of the five. All three failures
-are reported in Sections~\ref{sec:5.7} to~\ref{sec:5.9}.
+Decisions D19, D20 and D21 in the repository's decision log state the predictions before each of the
+three out-of-sample runs, and two of them also fix a decision rule for what the thesis would say
+either way. \texttt{scripts/transfer\_verdict.py} and \texttt{scripts/scaling\_verdict.py} score
+them against the generated tables. Of the eleven predictions, six held, two held in part (one of
+their two clauses each), and three failed as written; both decision rules fired in favour of the
+constructive framing. Prediction 10 was registered on means and is scored on means: BERT-small's
+gain of +0.0057 has an interval that includes zero, which Section~\ref{sec:5.8} reports. The three
+failures: the committee was predicted to be the better labeller for the student out of sample and
+was not; the pre-registered committee arm was predicted to gain at least 0.010 and gained 0.007; and
+the sarcasm-discrimination AUC was predicted to stay in its in-sample band on every out-of-sample
+arm and fell below it on three of the five. All three failures are reported in
+Sections~\ref{sec:5.7} to~\ref{sec:5.9}.
 
 Table~\ref{tab:predictions} lists every prediction with the number that decided it. The session
 column refers to Table~\ref{tab:sessions}.

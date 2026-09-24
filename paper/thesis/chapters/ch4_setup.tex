@@ -19,6 +19,7 @@ Implicit Hate Corpus, single source & implicit benchmark & 16,509 & 2,064 & 2,06
 ISHate, held out whole & out-of-domain test & -- & -- & 27,096 & 3 classes \\
 Benign sarcasm probe & inference only & -- & -- & 883 & -- \\
 Ironic abuse probe & inference only & -- & -- & 1,560 & -- \\
+Implicit abuse probe, a subset of it & inference only & -- & -- & 763 & -- \\
 Transfer set, abuse-domain base & training, unlabelled & 42,013 & -- & -- & none \\
 Transfer set, extended & training, unlabelled & 205,593 & -- & -- & none \\
 \bottomrule
@@ -77,10 +78,14 @@ reaches 0.473 F1 on implicit hate against 0.548 for the same model trained on th
 while its aggregate macro-F1 is higher, 0.681 against 0.562, which is exactly the artefact. We
 therefore build train, validation and test from the Implicit Hate Corpus and hold ISHate out whole
 as a 27,096-row out-of-domain test set. Every text occurring in any probe set
-(Section~\ref{sec:4.3}) is removed first, 1,581 rows, so that probe metrics stay measured on text no
-model has trained on; the survivors then go through the tweet pipeline (10 short rows, 12
-multi-label texts, 12 duplicates removed) and are split 80/10/10 with seed 42: 16,509 / 2,064 /
-2,064, training classes not\_hate 10,616, implicit\_hate 5,029, explicit\_hate 864.
+(Section~\ref{sec:4.3}) is removed first, 1,581 rows across the two corpora, so that probe metrics
+stay measured on text no model has trained on. Of those, 796 come from the Implicit Hate Corpus,
+leaving 20,684; the tweet pipeline then removes 10 rows shorter than two tokens, 25 rows in 12 texts
+carrying conflicting labels and 12 duplicates, and the remaining 20,637 are split 80/10/10 with seed
+42 into 16,509 / 2,064 / 2,064, with training classes not\_hate 10,616, implicit\_hate 5,029,
+explicit\_hate 864 and 108 explicit rows in the test split. ISHate loses the other 785 probe rows,
+613 rows that also occur in those splits and 269 rows in 14 conflicting-label texts, which is how
+its 28,763 become the 27,096 held out.
 
 \textbf{The label is contested.} The two corpora share 629 texts. On whether a text is hateful at
 all they agree on 99.7 per cent; on whether the hate is stated or implied they agree on 48.2 per
@@ -93,17 +98,22 @@ per-row manifest (split, label, source, SHA-1 of the normalised text), so a read
 rebuild row by row without either party redistributing text.
 \section{Probes}
 \label{sec:4.3}
-Three inference-only sets, never used for training by any model on any corpus. \emph{Benign
+Three inference-only sets, never used for training by any model on any corpus. They are stored as
+five files, because the benign-sarcasm probe keeps its unscreened and reviewed versions beside the
+screened one the metrics use, and all five are screened against the transfer set. \emph{Benign
 sarcasm}: 1,064 sarcastic tweets from iSarcasmEval \cite{abufarha2022semeval, oprea2020isarcasm},
 author-labelled, of which 883 survive a screening pass over the rows a classical classifier flags as
-abusive; the metric is the false-positive rate, the share predicted as any abusive class.
-\emph{Ironic abuse}: 1,560 items, 797 posts labelled irony in the Implicit Hate Corpus stage-2 data
-and 763 original ISHate rows labelled implicit; the metric is recall. \emph{Implicit abuse}: the 763
-ISHate rows alone. ISHate rows sourced from ToxiGen or the Implicit Hate Corpus are excluded from
-the probes so that they stay independent of the corpus they test transfer into. The probes are
-rule-built from published corpora, not hand-verified; a 300-item human annotation with
-inter-annotator agreement \cite{fleiss1971measuring} is in progress. Probe metrics are only
-meaningful for models trained on Twitter-domain data.
+abusive; the metric is the false-positive rate, the share whose argmax is any abusive class. Where a
+score rather than a decision is needed, $p(\text{abusive})$ is one minus the probability of the
+not-abusive class: one minus the probability of \texttt{not\_cyberbullying} on the tweet corpus, and
+one minus the probability of \texttt{not\_hate} on the implicit benchmark. \emph{Ironic abuse}:
+1,560 items, 797 posts labelled irony in the Implicit Hate Corpus stage-2 data and 763 original
+ISHate rows labelled implicit; the metric is recall. \emph{Implicit abuse}: the 763 ISHate rows
+alone. ISHate rows sourced from ToxiGen or the Implicit Hate Corpus are excluded from the probes so
+that they stay independent of the corpus they test transfer into. The probes are rule-built from
+published corpora, not hand-verified; a 300-item human annotation with inter-annotator agreement
+\cite{fleiss1971measuring} is in progress. Probe metrics are only meaningful for models trained on
+Twitter-domain data.
 \section{The Transfer Set}
 \label{sec:4.4}
 The transfer set is unlabelled tweets the teachers have never fitted. Its base is abuse-domain text
@@ -126,10 +136,16 @@ of the ``unlabelled'' set would have been text a later evaluation scores.
 For the size curve the base set is extended with generic tweets from TweetEval's sentiment, emoji
 and emotion configurations (59,899, 100,000 and 5,052 rows), screened identically and against the
 base set itself: 163,580 survive (emoji 98,867, sentiment 59,715, emotion 4,998), giving 205,593
-rows in all. The base rows come first and verbatim, so a prefix of the extended file up to 42,013 is
-the base set, prefixes below that are nested subsets of it, and rows beyond it are generic. The
-report of every count (\texttt{transfer\_report.json}, \texttt{transfer\_big\_report.json}) is
-regenerated by the run itself, with the same seed, from the same public sources.
+rows in all. The generic block is shuffled with the same seed before it is appended, so its sources
+are mixed throughout rather than ordered by corpus. The base rows come first and verbatim, so a
+prefix of the extended file up to 42,013 is the base set, prefixes below that are nested subsets of
+it, and rows beyond it are generic. The size curve of Section~\ref{sec:5.8} uses the prefixes of
+5,000, 10,000, 21,000, 42,013, 84,000 and 168,000 rows; the remaining 37,593 screened rows were
+built and not used. Its composition control is the slice of the same file that follows the base set,
+rows 42,013 to 84,026, which is 42,013 generic tweets and no abuse-domain text. The report of every
+count (\texttt{transfer\_report.json}, \texttt{transfer\_big\_report.json}) is regenerated by the
+run itself, with the same seed, from the same public sources; Appendix~\ref{app:transfer} says what
+each file records.
 
 Table~\ref{tab:transfer} records every count.
 
