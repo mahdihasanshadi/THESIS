@@ -2,14 +2,15 @@
 \label{ch:5}
 The sections run in the order of the argument, not the order the runs were made: the in-sample audit
 (5.1 to 5.5), its mechanism (5.6), the out-of-sample result and its curve (5.7 and 5.8), what never
-transferred (5.9), and what survives for practice (5.10). Every difference is a paired bootstrap
-interval; single-seed rows are marked and treated as indicative.
+transferred (5.9), what survives for practice (5.10), and the decision each research question comes
+to on this evidence (5.11). Every difference is a paired bootstrap interval; single-seed rows are
+marked and treated as indicative.
 \section{The Teachers Clear the Bar}
 \label{sec:5.1}
 \begin{table}[htbp]
 \centering
 \small
-\caption{Teachers after task adaptation, with the classical floor. The training loss is the last epoch's cross-entropy on the split the students are distilled on; the probe columns are the share of each probe the model assigns to any abusive class, which is its argmax decision rather than a threshold on $p(\text{abusive})$.}
+\caption[Teachers after task adaptation]{Teachers after task adaptation, with the classical floor. The training loss is the last epoch's cross-entropy on the split the students are distilled on; the probe columns are the share of each probe the model assigns to any abusive class, which is its argmax decision rather than a threshold on $p(\text{abusive})$.}
 \label{tab:teachers}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcccccc}
@@ -45,7 +46,7 @@ and committee, against a classical floor of 0.8798.
 \begin{table}[htbp]
 \centering
 \small
-\caption{In-sample distillation: test macro-F1 of the five students under each objective and committee, mean over three seeds. The classical floor is 0.8798. Standard deviations over seeds run from 0.0002 to 0.0078 and are in the generated table \texttt{paper/tables/main.csv}; the paired intervals are in Appendix~\ref{app:significance}.}
+\caption[In-sample distillation on the five students]{In-sample distillation: test macro-F1 of the five students under each objective and committee, mean over three seeds. The classical floor is 0.8798. Standard deviations over seeds run from 0.0002 to 0.0078 and are in the generated table \texttt{paper/tables/main.csv}; the paired intervals are in Appendix~\ref{app:significance}.}
 \label{tab:main}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccccccc}
@@ -89,7 +90,7 @@ The efficiency claim sits in this table. DistilBERT with a uniform heterogeneous
 \begin{table}[htbp]
 \centering
 \small
-\caption{Per-instance weighting minus uniform averaging, with and without the DeBERTa teacher; paired bootstrap 95\% intervals.}
+\caption[Per-instance weighting minus uniform averaging]{Per-instance weighting minus uniform averaging, with and without the DeBERTa teacher; paired bootstrap 95\% intervals.}
 \label{tab:dmthd-uniform}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcc}
@@ -118,7 +119,7 @@ against 0.333, so the two objectives coincide by arithmetic. The sweep therefore
 \begin{table}[htbp]
 \centering
 \small
-\caption{The weighting-temperature sweep on BERT-mini: mean weight of each teacher over the training split, and test macro-F1 of the first seed.}
+\caption[Teacher weights and score across the temperature sweep]{The weighting-temperature sweep on BERT-mini: mean weight of each teacher over the training split, and test macro-F1 of the first seed.}
 \label{tab:tau}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcc}
@@ -142,7 +143,7 @@ Fine-tune only & -- & 0.8394 \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_tau.pdf}
-\caption{The weighting-temperature sweep on BERT-mini. (a) Even at $\tau = 0.05$ the largest teacher weight on a tweet averages 0.376 against a uniform 0.333. (b) Test macro-F1 of the first seed stays within 0.0007 across a hundredfold range of $\tau$, below fine-tuning at every value.}
+\caption[The weighting-temperature sweep on BERT-mini]{The weighting-temperature sweep on BERT-mini. (a) Even at $\tau = 0.05$ the largest teacher weight on a tweet averages 0.376 against a uniform 0.333. (b) Test macro-F1 of the first seed stays within 0.0007 across a hundredfold range of $\tau$, below fine-tuning at every value.}
 \label{fig:tau}
 \end{figure}
 
@@ -171,7 +172,7 @@ is involved.
 \begin{table}[htbp]
 \centering
 \small
-\caption{Combining the teachers directly on the test set, before any student is trained: macro-F1 of each combination rule and the oracle's accuracy.}
+\caption[Combining the teachers directly on the test set]{Combining the teachers directly on the test set, before any student is trained: macro-F1 of each combination rule and the oracle's accuracy.}
 \label{tab:committee}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccccccc}
@@ -229,7 +230,7 @@ implicit specialist, DeBERTa-v3 & 0.889 & 9.2\% & 0.691 \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_agreement.pdf}
-\caption{Cohen's kappa between the task-adapted teachers' test predictions. Every pair agrees above 0.88, and the implicit specialist agrees with HateBERT, the checkpoint it was trained from, at 0.962. A per-instance weighting has to work inside what is left.}
+\caption[Pairwise agreement between the task-adapted teachers]{Cohen's kappa between the task-adapted teachers' test predictions. Every pair agrees above 0.88, and the implicit specialist agrees with HateBERT, the checkpoint it was trained from, at 0.962. A per-instance weighting has to work inside what is left.}
 \label{fig:agreement}
 \end{figure}
 
@@ -292,7 +293,7 @@ other\_cyberbullying minus mean weight on the four targeted classes, against a u
 \begin{table}[htbp]
 \centering
 \small
-\caption{Routing contrast in the committee with the specialist: mean weight on other\_cyberbullying minus mean weight on the four targeted classes, with 95\% bootstrap intervals. The uniform weight is 0.25.}
+\caption[Routing contrast in the committee with the specialist]{Routing contrast in the committee with the specialist: mean weight on other\_cyberbullying minus mean weight on the four targeted classes, with 95\% bootstrap intervals. The uniform weight is 0.25.}
 \label{tab:routing}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcc}
@@ -350,7 +351,7 @@ Appendix~\ref{app:predictions}.
 \begin{table}[htbp]
 \centering
 \small
-\caption{Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same objectives with and without the unlabelled rows, three seeds each. The labelled-split column gives each objective's in-sample twin; for the out-of-sample-weighted arm that twin is D-MTHD, because the weighting differs only where there are no labels.}
+\caption[Out-of-sample distillation on BERT-mini]{Out-of-sample distillation on BERT-mini with the 42,013-tweet transfer set: the same objectives with and without the unlabelled rows, three seeds each. The labelled-split column gives each objective's in-sample twin; for the out-of-sample-weighted arm that twin is D-MTHD, because the weighting differs only where there are no labels.}
 \label{tab:oos}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccc}
@@ -403,7 +404,7 @@ kept.
 \begin{table}[htbp]
 \centering
 \small
-\caption{The size curve and its controls on BERT-mini, one teacher labelling, three seeds per arm. Gains are paired bootstrap 95\% intervals against fine-tuning.}
+\caption[The size curve and its controls]{The size curve and its controls on BERT-mini, one teacher labelling, three seeds per arm. Gains are paired bootstrap 95\% intervals against fine-tuning.}
 \label{tab:size-curve}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccc}
@@ -428,7 +429,7 @@ Fine-tune only, 35 epochs (168k arm's updates) & 0 & 0.8380 $\pm$ 0.0033 & $-$0.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_size_curve.pdf}
-\caption{The size curve on BERT-mini, one teacher labelling. Filled points: nested subsets of the abuse-domain transfer set; hollow points: the same set extended with generic tweets; diamond: 42,013 generic tweets alone. Horizontal lines: fine-tuning alone for 6, 13 and 35 epochs, the last two matching the number of updates of the 42k and 168k arms. Small dots are single seeds.}
+\caption[The size curve on BERT-mini]{The size curve on BERT-mini, one teacher labelling. Filled points: nested subsets of the abuse-domain transfer set; hollow points: the same set extended with generic tweets; diamond: 42,013 generic tweets alone. Horizontal lines: fine-tuning alone for 6, 13 and 35 epochs, the last two matching the number of updates of the 42k and 168k arms. Small dots are single seeds.}
 \label{fig:size-curve}
 \end{figure}
 
@@ -459,7 +460,7 @@ better optimum, and 35 epochs is its ceiling. Against these controls the 42k arm
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_validation.pdf}
-\caption{Validation macro-F1 of BERT-mini against the number of optimisation updates. Fine-tuning alone for 35 epochs (gray, three seeds) peaks early and then declines; the 168k transfer arm (blue, three seeds) reaches a higher score within the same number of updates.}
+\caption[Validation macro-F1 against optimisation updates]{Validation macro-F1 of BERT-mini against the number of optimisation updates. Fine-tuning alone for 35 epochs (gray, three seeds) peaks early and then declines; the 168k transfer arm (blue, three seeds) reaches a higher score within the same number of updates.}
 \label{fig:validation}
 \end{figure}
 
@@ -489,7 +490,7 @@ BiLSTM (10.4M) & 0.8693 $\pm$ 0.0043 & 0.8748 $\pm$ 0.0018 & 0.8856 $\pm$ 0.0003
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_students.pdf}
-\caption{Gain over fine-tuning from the same teacher, in sample and with 168,000 unlabelled tweets, on three students. Whiskers are paired bootstrap 95\% intervals.}
+\caption[The largest transfer set on three students]{Gain over fine-tuning from the same teacher, in sample and with 168,000 unlabelled tweets, on three students. Whiskers are paired bootstrap 95\% intervals.}
 \label{fig:students}
 \end{figure}
 
@@ -538,7 +539,7 @@ the hard-label arm furthest at 0.727. Nothing rises above it.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_auc.pdf}
-\caption{Sarcasm-discrimination AUC of every analysed BERT-mini variant, first seed. Every pre-trained variant lies between 0.72 and 0.78, in sample or out; only removing pre-training moves the measure.}
+\caption[Sarcasm-discrimination AUC of every analysed variant]{Sarcasm-discrimination AUC of every analysed BERT-mini variant, first seed. Every pre-trained variant lies between 0.72 and 0.78, in sample or out; only removing pre-training moves the measure.}
 \label{fig:auc}
 \end{figure}
 
@@ -559,14 +560,14 @@ curve, they slide along it: among themselves they correlate at +0.922, with the 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_tradeoff.pdf}
-\caption{False-positive rate on benign sarcasm against recall on ironic abuse for all 184 evaluated models. Every family and objective lies along one trade-off line; the out-of-sample students slide along it rather than rising above it.}
+\caption[False-positive rate against recall, all 184 models]{False-positive rate on benign sarcasm against recall on ironic abuse for all 184 evaluated models. Every family and objective lies along one trade-off line; the out-of-sample students slide along it rather than rising above it.}
 \label{fig:tradeoff}
 \end{figure}
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Probe metrics by model family, averaged over all 184 evaluated models, at each model's argmax decision. The margin is recall minus false-positive rate.}
+\caption[Probe metrics by model family]{Probe metrics by model family, averaged over all 184 evaluated models, at each model's argmax decision. The margin is recall minus false-positive rate.}
 \label{tab:families}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lcccc}
@@ -632,7 +633,7 @@ BERT-mini, seed 1.
 \begin{table}[htbp]
 \centering
 \small
-\caption{Macro-F1 under synthetic character-level obfuscation of the abusive test rows: letters replaced by digits, adjacent characters swapped, spaces inserted, and all three together. BERT-mini, seed 1.}
+\caption[Macro-F1 under character-level obfuscation]{Macro-F1 under synthetic character-level obfuscation of the abusive test rows: letters replaced by digits, adjacent characters swapped, spaces inserted, and all three together. BERT-mini, seed 1.}
 \label{tab:robustness}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccccc}
@@ -655,7 +656,7 @@ Table~\ref{tab:efficiency} gives the median of five timed passes after warm-up o
 \begin{table}[htbp]
 \centering
 \small
-\caption{Deployment profile of the students and the largest teacher: parameters, latency at batch sizes 1 and 32, FLOPs per sequence, model size, and macro-F1 after INT8 dynamic quantisation.}
+\caption[Deployment profile of the students and the largest teacher]{Deployment profile of the students and the largest teacher: parameters, latency at batch sizes 1 and 32, FLOPs per sequence, model size, and macro-F1 after INT8 dynamic quantisation.}
 \label{tab:efficiency}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lccccccc}
@@ -678,3 +679,93 @@ INT8 dynamic quantisation halves its size for 0.003 macro-F1. BERT-mini's size f
 33 MB because 7.8M of its 11.2M parameters are the embedding table, which dynamic quantisation does
 not touch. The out-of-sample recipe adds nothing to inference: the transfer set is used once, in
 training, and the deployed student is the same model.
+
+\section{The Research Questions, Decided}
+\label{sec:5.11}
+The four questions of Section~\ref{sec:1.4} are decided here on the measurements above, under one rule
+fixed before any of them was run: a difference counts only if its paired bootstrap interval excludes
+zero, and on a test set of 4,326 posts that requires roughly 0.007 macro-F1 (Section~\ref{sec:4.7}).
+Table~\ref{tab:rq} states each decision beside the evidence that carries it; the paragraphs below give
+the numbers. Chapter~\ref{ch:6} takes up what the decisions mean.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption[The four research questions and their decisions]{Each research question, the rule that decides
+it, the measurement that decides it, and the decision.}
+\label{tab:rq}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{2.0cm}p{3.5cm}p{5.6cm}p{2.3cm}}
+\toprule
+Question & Decided by & Measurement & Decision \\
+\midrule
+RQ1: does the weighted committee beat no teacher at all, in sample? & Any interval excluding zero among
+the in-sample distillation-against-fine-tuning comparisons & 27 such comparisons, none excludes zero;
+best of six per student is $+0.0012$ to $+0.0071$, five intervals of five containing zero; weighting
+minus averaging is $-0.0034$ to $+0.0000$, every interval containing zero & \textbf{No}
+(Sections~\ref{sec:5.2}, \ref{sec:5.3}, \ref{sec:5.5}) \\
+RQ2: what explains that? & The mechanism has to be measured, not argued & Teachers end training at loss
+0.033 to 0.077 on the split the student is distilled on; weights 0.332 / 0.337 / 0.331 against a uniform
+0.333, and 0.318 / 0.356 / 0.326 even at $\tau = 0.05$; pairwise $\kappa$ 0.889 to 0.962, all four
+teachers right on 83.2 per cent of the test set and wrong together on 4.7 & \textbf{Memorised labels,
+saturated weights, spent diversity} (Sections~\ref{sec:5.4}, \ref{sec:5.6}) \\
+RQ3: does unlabelled text the teachers never saw help, and how? & Decision D20, written before the run:
+the 168k arm gains at least 0.012 with the interval clear of zero and still rising & $+0.0123$ [$+0.0035$,
+$+0.0211$] at 168,000 tweets, monotone over six sizes from $+0.0010$ at 5,000; generic text within
+$+0.0017$ [$-0.0066$, $+0.0113$] of abuse-domain text at the same size; fine-tuning for the same updates
+$-0.0013$ [$-0.0106$, $+0.0072$]; BiLSTM $+0.0163$ [$+0.0063$, $+0.0271$] & \textbf{Yes, and it is the
+text} (Sections~\ref{sec:5.7}, \ref{sec:5.8}) \\
+RQ4: does any of it improve the reading of implication? & A threshold-free AUC rising above the
+in-sample band of 0.756 to 0.777 & 28 in-sample pre-trained variants, mean 0.771, standard deviation
+0.004; out-of-sample arms 0.727 to 0.771, three below the band and none above; the randomly initialised
+student 0.613; across 184 models recall and false-positive rate correlate at $+0.772$ & \textbf{No}
+(Section~\ref{sec:5.9}) \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{RQ1 is decided against the method.} The grid makes 27 in-sample comparisons of a distilled
+student against the same student fine-tuned without teachers, and no interval excludes zero. Taking the
+best of six configurations per student, which flatters the method, gives $+0.0012$, $+0.0040$,
+$+0.0068$, $+0.0040$ and $+0.0071$ macro-F1, all five intervals containing zero and all five below the
+0.007 the test set can resolve. Per-instance weighting against uniform averaging gives $-0.0007$,
+$-0.0034$, $+0.0000$, $-0.0029$ and $-0.0029$, and across a hundredfold range of $\tau$ the headline
+student moves by 0.0007 and stays under fine-tuning at every value. Adding a teacher trained on labelled
+implication changes it by $+0.0005$ [$-0.0059$, $+0.0064$] under averaging and $-0.0005$ [$-0.0069$,
+$+0.0055$] under weighting. The answer is no at this resolution, and Section~\ref{sec:7.1} records that
+an absence at this resolution is not a zero.
+
+\textbf{RQ2 is decided by three measurements rather than by argument.} Four of the five teachers end
+their last epoch at a cross-entropy between 0.033 and 0.077 on the split the weights are read from and
+the student is distilled on, so their soft labels carry what the gold labels already carry; the one
+teacher that did not memorise the split, DeBERTa at 0.227, is the one whose weight moves, to 0.233 in a
+committee of four. The weights are therefore flat at every temperature the sweep reaches. And the
+committee has little to route between: pairwise agreement runs from $\kappa = 0.889$ to $0.962$, the
+four original teachers are right together on 83.2 per cent of the test set and wrong together on 4.7,
+and no combination rule that sees only their probabilities, including a stacked gate fitted by
+cross-validation on the test set, improves on their uniform mean by more than 0.005 against an oracle
+sitting 4 to 5 accuracy points higher.
+
+\textbf{RQ3 is decided for the data and against the committee.} Decision D20 fixed the rule before the
+run: if the largest arm gained at least 0.012 with an interval clear of zero and the curve was still
+rising, the constructive result would lead. It gained $+0.0123$ [$+0.0035$, $+0.0211$], the six sizes
+are ordered without inversion from $+0.0010$ at 5,000 tweets, and the curve had not flattened. The three
+controls hold: generic tweets of the same size come within $+0.0017$ [$-0.0066$, $+0.0113$] of
+abuse-domain ones, fine-tuning for the same number of updates gains $-0.0013$ [$-0.0106$, $+0.0072$],
+and the gain reappears on a second and third student, $+0.0163$ [$+0.0063$, $+0.0271$] on the BiLSTM and
+$+0.0057$ [$-0.0063$, $+0.0171$] on BERT-small. The committee is not part of it: against a single
+teacher on the same text it is $-0.0003$ [$-0.0061$, $+0.0056$], its corrected weighting adds $+0.0021$
+[$-0.0017$, $+0.0082$], and its hard pseudo-labels gain $+0.0020$ against $+0.0070$ for its soft ones.
+
+\textbf{RQ4 is decided against every intervention in the grid.} Measured without a threshold, 28
+in-sample pre-trained variants of the headline student, covering every objective, committee,
+temperature, sweep, ablation and control, have a sarcasm-discrimination AUC of mean 0.771 and standard
+deviation 0.004. The out-of-sample arms run from 0.727 to 0.771: three of five fall below that band and
+none rises above it, which is also where a pre-registered prediction failed as written. The only
+intervention that moves the measure is removing pre-training, which drops it to 0.613. Across all 184
+evaluated models recall on ironic abuse and the false-positive rate on benign sarcasm correlate at
+$+0.772$ with a margin of $0.357 \pm 0.046$, so what the interventions change is where a model sits on
+one trade-off line, not which line it is on. On a corpus that labels implication the same students rank
+implied abuse against benign text at 0.600 to 0.609 AUC, against 0.820 for the same architecture trained
+on that corpus.

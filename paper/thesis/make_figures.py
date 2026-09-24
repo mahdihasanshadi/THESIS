@@ -80,16 +80,16 @@ def fig_schematic():
     fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 3.35))
     panels = [
         ("In sample", LIGHT_GRAY, GRAY,
-         ["Labelled training split: 34,607 tweets",
-          "Teacher fine-tuned on these same tweets",
+         ["Labelled training split:\n34,607 tweets",
+          "Teacher fine-tuned on\nthese same tweets",
           "Soft labels \u2248 gold labels:\nthe teacher is almost always sure",
-          "Student learns only what the labels say"],
+          "Student learns only\nwhat the labels say"],
          "No gain over fine-tuning,\nwhatever the committee or weighting"),
         ("Out of sample", RAMP[3], BLUE,
-         ["Labelled split + up to 168,000 unlabelled\ntweets the teacher has never seen",
-          "The same frozen teacher labels the new tweets",
-          "Soft labels carry the teacher's uncertainty,\nwhich is new information",
-          "Student learns the boundary the labels\ndraw worst"],
+         ["Labelled split + 168,000 tweets\nthe teacher has never seen",
+          "The same frozen teacher\nlabels the new tweets",
+          "Soft labels carry the teacher's\nuncertainty, which is new",
+          "Student learns the boundary\nthe labels draw worst"],
          "+0.012 macro-F1 on BERT-mini,\ngrowing with the number of tweets"),
     ]
     for ax, (title, edge, accent, steps, outcome) in zip(axes, panels):
@@ -111,7 +111,7 @@ def fig_schematic():
                                      linewidth=0.9, color=INK2))
         ax.text(0.49, 0.12, outcome, ha="center", va="center", fontsize=7.8, linespacing=1.15,
                 color=BLUE if accent == BLUE else INK2, fontweight="bold")
-    fig.subplots_adjust(wspace=0.08)
+    fig.subplots_adjust(wspace=0.14)
     save(fig, "fig_schematic")
 
 

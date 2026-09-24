@@ -3,30 +3,31 @@
 
 \section{Answers to the Research Questions}
 \label{sec:6.1}
+Section~\ref{sec:5.11} decides the four questions on the measurements and records the numbers that
+decide them. This section states each answer and what follows from it.
 \begin{description}
   \item[RQ1. Does multi-teacher distillation with per-instance reliability weighting improve a compact
     cyberbullying detector over the same student fine-tuned without teachers?]
-    Not in sample. Across five students, three committees and seven weighting temperatures from 0.05 to 5,
-    no distilled student beats the same student fine-tuned without teachers by more than the test set can
-    resolve, and per-instance weighting never differs from uniform averaging (Sections~\ref{sec:5.2}
-    and~\ref{sec:5.3}). A teacher trained on labelled implication changes nothing either
-    (Section~\ref{sec:5.5}).
+    Not in sample, at a resolution of 0.007 macro-F1. What this licenses is narrow and worth stating
+    precisely: across every student, committee and temperature in the grid, a practitioner who ran the
+    committee and a practitioner who ran neither would not be able to tell their students apart on this
+    test set. It does not license the claim that the effect is zero.
   \item[RQ2. What mechanism explains the answer to RQ1?] The student imitates its teachers on the one
-    split they were themselves fine-tuned on, and they have memorised it. There their soft labels are
-    the gold labels, the reliability signal that weights them is saturated, and task adaptation has made them
-    agree on more than nine tweets in ten (Sections~\ref{sec:5.4} and~\ref{sec:5.6}).
+    split they were themselves fine-tuned on, and they have memorised it, so the soft labels repeat the
+    gold labels and the signal meant to weight them has nothing left to express. The mechanism is a
+    property of where the teachers are read, not of this implementation, and it applies to any scheme in
+    the error-weighted family that reads reliability on the training split.
   \item[RQ3. Does distillation on unlabelled text the teachers have never seen improve the student, and
     how does the gain depend on the amount and composition of that text, on the number of optimisation
-    updates, and on the student?] Yes. On BERT-mini the gain grows monotonically with the amount of
-    unlabelled text, from +0.0010 at 5,000 tweets to +0.0123 [+0.0035, +0.0211] at 168,000. Generic
-    tweets from the same platform work nearly as well as abuse-related ones, fine-tuning for the same
-    number of updates gains nothing, and the gain holds on the BiLSTM (+0.0163) and on BERT-small
-    (+0.0057, with an interval that includes zero). One teacher is enough: the committee, its weighting
-    and hard pseudo-labels add nothing (Sections~\ref{sec:5.7} and~\ref{sec:5.8}).
+    updates, and on the student?] Yes for the text, no for the committee. The gain grows with how much
+    unlabelled text the student sees, survives a control that spends the same number of updates without
+    it, holds on three students of two families, and comes from ordinary text of the platform rather
+    than from abuse-related text. One teacher supplies all of it.
   \item[RQ4. Does any of these interventions improve the student's ability to tell implied abuse from
-    harmless sarcasm?] No. Every pre-trained variant of the student, in sample or out, ranks ironic abuse
-    above benign sarcasm with an AUC between 0.73 and 0.78, and none rises above the in-sample band. The
-    interventions change how readily the student fires, not what it can tell apart (Section~\ref{sec:5.9}).
+    harmless sarcasm?] No. Measured without a threshold, the ability is set by pre-training, and the
+    interventions move only how readily the student fires. A method reporting recall at a fixed cut can
+    therefore show progress on implication while having none, which is why the measure here is an area
+    and not a decision.
 \end{description}
 
 \section{What the Findings Mean}

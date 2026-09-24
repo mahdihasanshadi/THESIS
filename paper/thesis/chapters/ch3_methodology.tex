@@ -11,7 +11,7 @@ the training procedure as an algorithm.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_schematic.pdf}
-\caption{In-sample against out-of-sample distillation. The same teacher and student are used in both settings; only the text on which the student imitates the teacher differs. In sample, on the tweets the teacher was fine-tuned on, its soft labels repeat the gold labels; out of sample, on tweets it has never seen, they carry its uncertainty.}
+\caption[In-sample against out-of-sample distillation]{In-sample against out-of-sample distillation. The same teacher and student are used in both settings; only the text on which the student imitates the teacher differs. In sample, on the tweets the teacher was fine-tuned on, its soft labels repeat the gold labels; out of sample, on tweets it has never seen, they carry its uncertainty.}
 \label{fig:schematic}
 \end{figure}
 \section{Notation and Committee}
@@ -38,6 +38,60 @@ in saying one thing and meaning another. The heterogeneous committee adds DeBERT
 \cite{he2023debertav3}. The third committee adds the implicit specialist of Section~\ref{sec:3.4}.
 Teachers are frozen after adaptation and their outputs cached once on every split the student will
 train on; the student never sees a teacher at run time.
+
+Table~\ref{tab:symbols} lists every symbol used in this chapter, with the set it is drawn from and
+the value it takes in the runs reported here; Sections~\ref{sec:3.2} to~\ref{sec:3.5} define each one
+where it is introduced.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption[Symbols used in Chapter 3]{Every symbol of this chapter, the set it is drawn from, and the
+value or range it takes in the runs of Chapter~\ref{ch:5}.}
+\label{tab:symbols}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llll}
+\toprule
+Symbol & Meaning & Domain & Value or range used \\
+\midrule
+$x_i$ & a text & strings & tweets, truncated to 128 word pieces \\
+$y_i$ & its majority label & $\{1,\dots,C\}$ & one of six classes \\
+$C$ & number of classes & $\mathbb{N}$ & 6 on tweets, 3 on the implicit benchmark \\
+$K$ & number of teachers & $\mathbb{N}$ & 3 or 4 \\
+$B$ & batch size & $\mathbb{N}$ & 32 \\
+$E$ & epochs & $\mathbb{N}$ & 6; 13 and 35 in the matched-steps controls \\
+$\mathcal{D}$ & labelled training split & set of texts & 34,607 tweets \\
+$\mathcal{V}$ & validation split & set of texts & 4,326 tweets \\
+$\mathcal{U}$ & unlabelled transfer set & set of texts & empty in sample; 5,000 to 205,593 out \\
+$z_k(x_i)$ & teacher $k$'s logits & $\mathbb{R}^C$ & cached once, never updated \\
+$h_k(x_i)$ & teacher $k$'s pooled state & $\mathbb{R}^{d_k}$ & masked mean of its last layer \\
+$d_k$ & teacher $k$'s width & $\mathbb{N}$ & 768, or 1024 for BERT-large \\
+$z_s(x_i)$ & student logits & $\mathbb{R}^C$ & updated every step \\
+$h_s(x_i)$ & student pooled state & $\mathbb{R}^{d_s}$ & masked mean, pooled as the teachers are \\
+$d_s$ & student width & $\mathbb{N}$ & 256 to 768; 512 for the BiLSTM \\
+$z^{\mathrm{irony}}_s(x_i)$ & auxiliary head logits & $\mathbb{R}^2$ & discarded at inference \\
+$z_{\mathrm{irony}}(x_i)$ & its target & $\mathbb{R}^2$ & from the irony checkpoint before adaptation \\
+$W_k$ & projection student $\to$ teacher $k$ & $\mathbb{R}^{d_k \times d_s}$ & learned, discarded at inference \\
+$T$ & distillation temperature & $(0, \infty)$ & 4; swept over $\{1, 2, 8\}$ \\
+$\tau$ & weight temperature & $(0, \infty)$ & 1; swept over 0.05 to 5 \\
+$\ell_k(i)$ & teacher $k$'s loss on $x_i$ & $[0, \infty)$ & 0.03 to 0.23 on $\mathcal{D}$ (Section~\ref{sec:5.6}) \\
+$w_k(i)$ & in-sample weight of teacher $k$ & $(0,1)$, $\sum_k w_k(i) = 1$ & 0.318 to 0.356 on average \\
+$\bar p(i)$ & the mixed soft target & simplex in $\mathbb{R}^C$ & near one-hot in sample \\
+$m_i$ & label mask & $\{0, 1\}$ & 1 on $\mathcal{D}$, 0 on $\mathcal{U}$ \\
+$\alpha, \beta$ & weight of the KL and hard terms & $[0, \infty)$ & 0.4 each; $\alpha$ swept over $\{0.2, 0.6\}$ \\
+$\gamma$ & weight of the hidden-state term & $[0, \infty)$ & 0.2; 0 in the ablation \\
+$\delta$ & weight of the irony term & $[0, \infty)$ & 0.3; swept over $\{0.1, 0.5\}$ \\
+$\mathcal{L}_{\mathrm{KL}}, \mathcal{L}_{\mathrm{hid}}, \mathcal{L}_{\mathrm{irony}}, \mathcal{L}$ & the loss terms and their sum & $[0, \infty)$ & minimised by AdamW \\
+$\nu$ & neighbours for the out-of-sample weight & $\mathbb{N}$ & 20 \\
+$c_k(v)$ & is teacher $k$ correct on $v$ & $\{0, 1\}$ & measured on $\mathcal{V}$ \\
+$r_k(x)$ & teacher $k$'s local accuracy & $(0, 1)$ & Laplace-smoothed, equation (3.7) \\
+$w_k^{\mathrm{knn}}(x)$ & out-of-sample weight & $(0,1)$, $\sum_k w_k^{\mathrm{knn}}(x) = 1$ & within 0.03 of uniform \\
+$\mathcal{K}_{\mathrm{homo}}, \mathcal{K}_{\mathrm{spec}}$ & the committees & sets of teachers & 3 and 4 members \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
 \section{Per-Instance Reliability}
 \label{sec:3.2}
 For each training instance the committee is weighted by how reliable each teacher is on it:
@@ -80,20 +134,21 @@ means instance-adaptive and nothing else.
 
 with $\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$ and $\tau = 1$ unless stated,
 and $m_i \in \{0, 1\}$ a label mask that is 1 on labelled rows and 0 on the unlabelled rows of
-Section~\ref{sec:3.5}. The hard-label term is averaged over the labelled rows of the batch, not over
-the batch, so appending unlabelled rows does not silently dilute supervision: the ratio of the two
-terms is the same in every arm of Section~\ref{sec:5.8}. The irony target comes from the irony
-checkpoint before adaptation, whose label space is irony against non-irony and cannot enter the
-committee's KL term, so it is distilled into a second head on the student's pooled state; the head
-is discarded at inference and exists to shape the shared representation. The same checkpoint, after
-task adaptation into the six-class label space, is the committee's third member. Uniform
-multi-teacher distillation sets $w_k(i) = 1/K$; single-teacher distillation uses BERT-large alone;
-fine-tune-only drops every teacher term and trains on the cross-entropy alone. Training: 6 epochs,
-AdamW \cite{loshchilov2019decoupled} at $3 \times 10^{-5}$ ($10^{-3}$ for the BiLSTM), 10 per cent
-warm-up and linear decay, batch 32, gradient clipping at 1.0, mixed precision on GPU, best
-validation macro-F1 epoch kept, early stopping with patience 2, implemented in PyTorch and
-Transformers \cite{paszke2019pytorch, wolf2020transformers}; the remaining settings are collected in
-Appendix~\ref{app:hyper}.
+Section~\ref{sec:3.5}. Every symbol in these five equations appears in Table~\ref{tab:symbols} with
+the set it is drawn from and the value it takes here. The hard-label term is averaged over the
+labelled rows of the batch, not over the batch, so appending unlabelled rows does not silently
+dilute supervision: the ratio of the two terms is the same in every arm of Section~\ref{sec:5.8}.
+The irony target comes from the irony checkpoint before adaptation, whose label space is irony
+against non-irony and cannot enter the committee's KL term, so it is distilled into a second head on
+the student's pooled state; the head is discarded at inference and exists to shape the shared
+representation. The same checkpoint, after task adaptation into the six-class label space, is the
+committee's third member. Uniform multi-teacher distillation sets $w_k(i) = 1/K$; single-teacher
+distillation uses BERT-large alone; fine-tune-only drops every teacher term and trains on the
+cross-entropy alone. Training: 6 epochs, AdamW \cite{loshchilov2019decoupled} at $3 \times 10^{-5}$
+($10^{-3}$ for the BiLSTM), 10 per cent warm-up and linear decay, batch 32, gradient clipping at
+1.0, mixed precision on GPU, best validation macro-F1 epoch kept, early stopping with patience 2,
+implemented in PyTorch and Transformers \cite{paszke2019pytorch, wolf2020transformers}; the
+remaining settings are collected in Appendix~\ref{app:hyper}.
 \section{The Implicit Specialist and Its Controls}
 \label{sec:3.4}
 No public checkpoint and neither established corpus holds knowledge of abuse by implication, so a
@@ -191,3 +246,23 @@ alone.
 \State \Return $S$, discarding the projections $W_k$ and the irony head
 \end{algorithmic}
 \end{algorithm}
+
+
+\textbf{What it costs.} Counting one forward-and-backward pass of the student over one text as the
+unit, and writing $c_k$ for the cost of one forward pass of teacher $k$ in the same unit, the
+procedure divides into work done once and work done every epoch. Adapting the teachers is
+$O\!\left(E_t \sum_k |\mathcal{D}|\, c_k\right)$ for $E_t = 5$ epochs, and caching their outputs over
+$\mathcal{D} \cup \mathcal{U}$ is one further pass each, $O\!\left((|\mathcal{D}| + |\mathcal{U}|)
+\sum_k c_k\right)$; both are paid once and reused by every student. An out-of-sample run adds the
+neighbour search of equation (3.7), which is $O(K |\mathcal{V}| \bar d)$ to embed the validation split
+and $O\!\left(K (|\mathcal{D}| + |\mathcal{U}|) |\mathcal{V}| \bar d\right)$ to query it exactly, for a
+mean teacher width $\bar d$; with $|\mathcal{V}| = 4{,}326$ this is small beside the caching and is
+also done once. Training the student is
+$O\!\left(E (|\mathcal{D}| + |\mathcal{U}|)\big(1 + K C + K d_k d_s\big)\right)$: one student pass per
+row, plus a $C$-way KL against each teacher and one $d_k \times d_s$ projection each, none of which
+involves a teacher forward pass because the logits and states are cached. The teacher terms are
+therefore a constant factor per row rather than a factor that grows with the student, and the only
+term that grows with the recipe is $|\mathcal{U}|$: the cost is linear in the size of the transfer
+set, which is what makes the curve of Section~\ref{sec:5.8} affordable and what sets its price, 18.4
+GPU-hours for the whole grid. Inference is $O(1)$ in this unit and unchanged by any of it, since
+$W_k$, the irony head and the teachers are all discarded.

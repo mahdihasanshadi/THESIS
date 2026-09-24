@@ -1,6 +1,13 @@
 \chapter{Literature Review}
 \label{ch:2}
-This chapter first sets out the concepts the rest of the thesis relies on, then reviews four lines of work, and ends with the gap they leave.
+This chapter sets out the concepts the rest of the thesis relies on, then reads six lines of work.
+The first two are the corpora this task is measured on, and the separate literature on abuse carried
+by implication. The next two are the line of compact language models, and what is known about the
+transfer set, which is the variable this thesis ends up measuring. The last two are multi-teacher
+and adaptive weighting, the family the audited method belongs to together with the one published
+system that applies it to this task, and evaluation practice, which supplies the resolution every
+claim is read against. The chapter ends with a table that reads each work for its method, its
+reported result, what limits it here, and where this thesis takes it up.
 
 \section{Preliminaries}
 \label{sec:prelim}
@@ -45,6 +52,17 @@ between two systems on each resample, and reports the central 95\% of those diff
 a difference whose interval excludes zero is unlikely to be an accident of the particular test set
 \cite{koehn2004statistical, dror2018hitchhiker}.
 
+\subsection{The compact student}
+A student is \emph{pre-trained} when its weights come from self-supervised training on unlabelled text
+before any distillation, and \emph{randomly initialised} when they do not. The distinction carries more
+of this thesis's variance than any part of the distillation objective (Section~\ref{sec:5.3}). Students
+are named here by parameter count: the BERT-mini and BERT-small checkpoints of Turc et al.
+\cite{turc2019wellread} at 11.2M and 28.8M, DistilBERT at 67.0M \cite{sanh2019distilbert},
+DeBERTa-v3-xsmall at 70.8M \cite{he2023debertav3}, and a two-layer BiLSTM at 10.4M
+\cite{tang2019distilling}. A student is \emph{homogeneous} with its teachers when it shares their
+architecture family and \emph{heterogeneous} when it does not, a distinction that matters because the
+hidden-state term of Section~\ref{sec:3.3} assumes a state worth projecting.
+
 \section{Cyberbullying, Toxicity, and Abuse Carried by Implication}
 \label{sec:2.1}
 Surveys frame cyberbullying detection as text classification with three persistent problems: scarce
@@ -78,6 +96,39 @@ committee would recruit were themselves trained on corpora of that kind. We are 
 that asks whether the ability to read implication can be moved into a deployable model, or by what
 mechanism; Section~\ref{sec:5.9} asks it and finds no intervention in this grid that moves it, and
 Section~\ref{sec:4.2} measures how far the label itself can be trusted.
+
+\subsection{What each corpus can support}
+The corpora differ in what a result on them is allowed to mean, and the differences decide the design of
+Chapter~\ref{ch:4}. The fine-grained cyberbullying corpus \cite{wang2020sosnet} labels the target of the
+abuse, age, ethnicity, gender or religion, with two residual classes for abuse that names no group and
+for text that is not abusive at all. It is large and its four targeted classes are close to separable by
+vocabulary, so an aggregate macro-F1 on it is dominated by classes a lexical model already solves; the
+work is in the two residual classes, and Section~\ref{sec:5.8} shows that this is exactly where the
+out-of-sample gain lands. Its published version repeats many tweets, some under more than one label, and
+the cleaning of Section~\ref{sec:4.1} removes them.
+
+The corpora of Davidson et al. \cite{davidson2017automated}, OLID \cite{zampieri2019olid}, HatEval
+\cite{basile2019hateval} and Founta et al. \cite{founta2018large} are the standard sources of
+abuse-domain tweets. Their label schemes differ from one another and from ours, which is why this thesis
+uses them as text and discards their labels (Section~\ref{sec:4.4}). Borkan et al.
+\cite{borkan2019nuanced} show how much a model's apparent quality depends on which subgroups the
+evaluation set contains, and Van Hee et al. \cite{vanhee2018automatic} document how duplicate-heavy
+corpora inflate held-out scores; both are reasons the splits here are asserted disjoint on normalised
+text rather than on identity.
+
+For implication two corpora annotate the distinction directly. The Implicit Hate Corpus
+\cite{elsherief2021latent} separates not-hate, explicit hate and implicit hate and adds a six-category
+taxonomy of how the implication is carried; ISHate \cite{ocampo2023indepth} separates hate speech into
+explicit and subtle layers over a partly overlapping pool of texts. Section~\ref{sec:4.2} reports that
+the two disagree on which of their shared hateful texts are implicit almost half the time, and that a
+classifier can tell the two corpora apart at 0.91 macro-F1, which is why the benchmark here is built
+from one of them and the other is held out whole. ToxiGen \cite{hartvigsen2022toxigen} generates
+implicit examples adversarially and HateXplain \cite{mathew2021hatexplain} adds token-level rationales;
+neither is used for training here, ToxiGen because its rows reach ISHate and would break the screen.
+Sarcasm is supplied by iSarcasm and iSarcasmEval \cite{oprea2020isarcasm, abufarha2022semeval}, whose
+labels come from the authors of the posts rather than from third-party annotators, which is what makes
+them usable as a benign-sarcasm control.
+
 \section{Distilling Compact Language Models, and the Transfer Set}
 \label{sec:2.2}
 Language models have grown far past what a moderation pipeline can run on every post
@@ -102,6 +153,67 @@ teacher's function sampled on many inputs, consistently, over long schedules
 \cite{beyer2022knowledge}. Our results are a domain-specific instance of these observations,
 measured with the controls they call for: the transfer set's size, its composition, the number of
 updates, the labeller, and the form of the label are each varied with the rest held fixed.
+
+\subsection{The line of compact BERT students}
+Five systems define what is achievable for a compact encoder, and each fixes a different variable.
+DistilBERT \cite{sanh2019distilbert} distils during pre-training into a six-layer student and reports
+about 97 per cent of BERT-base's language-understanding score at 40 per cent fewer parameters; the
+knowledge is general rather than task-specific, and no committee is involved. Patient Knowledge
+Distillation \cite{sun2019patient} has the student learn from several of the teacher's intermediate
+layers rather than its output alone, which is the ancestor of the hidden-state term audited in
+Section~\ref{sec:3.3}. TinyBERT \cite{jiao2020tinybert} distils in two stages, general then
+task-specific, and reports about 96.8 per cent of BERT-base on GLUE from a four-layer student; its
+task stage augments the training data heavily, so the reported gain mixes the distillation with the
+extra text, a confound Section~\ref{sec:5.8} separates deliberately. MiniLM \cite{wang2020minilm}
+distils the teacher's self-attention relations instead of its outputs, and MobileBERT
+\cite{sun2020mobilebert} redesigns the student around bottleneck blocks and distils from a specially
+built teacher; both change the architecture rather than the transfer set, and neither is tested here.
+
+Turc et al. \cite{turc2019wellread} is the result this thesis's grid most nearly reproduces. They
+separate pre-training the compact student from distilling into it, and find that the former carries more
+of the final score than the recipe used for the latter, while also treating the size and provenance of
+the unlabelled transfer data as variables in their own right rather than as a fixed setting. Our
+ablation agrees on the first point by a wide margin: removing pre-training costs 0.047 macro-F1, against
+at most 0.0014 for removing any component of the distillation objective (Section~\ref{sec:5.3}), and it
+is the only in-sample difference in the whole grid whose interval excludes zero. The second point is the
+subject of Section~\ref{sec:5.8}.
+
+Tang et al. \cite{tang2019distilling} distil BERT into a single-layer BiLSTM on rule-augmented text and
+report a student competitive with far larger models, which is the precedent for the BiLSTM student used
+here and, with TinyBERT, for the observation that the recipes reporting the largest gains for small
+students are the ones whose transfer set is larger than the labelled data.
+
+
+\section{The Transfer Set, and What Is Known About It}
+\label{sec:2.transfer}
+The transfer set is the variable this thesis ends up measuring, and it is older than the multi-teacher
+literature that displaced it. Buciluă et al. \cite{bucilua2006model} compress an ensemble by using it to
+label a large pool of \emph{synthesised, unlabelled} data and training one compact model on the result;
+the gain, in their account, comes from having the ensemble's function sampled at many points rather than
+from the ensemble itself. Hinton et al. \cite{hinton2015distilling} restate this for soft targets and
+say explicitly that the transfer set need not be the labelled training data, and that an unlabelled pool
+can be used where one is available. Both statements are about \emph{where the teacher's function is
+sampled}, and neither is a statement about how many teachers do the sampling.
+
+Three later results say why the sampling point matters. Stanton et al. \cite{stanton2021does} show that
+students frequently fail to match their teacher's function even when they have the capacity to do so,
+and that improved generalisation and improved fidelity to the teacher come apart: a student can score
+better while agreeing with its teacher no more closely, which is what makes ``the student beat its
+teacher'' a weak claim. Cho and Hariharan \cite{cho2019efficacy} show that a larger teacher is not
+reliably a better one, because the gap in capacity between teacher and student can itself be the
+obstacle. Beyer et al. \cite{beyer2022knowledge} give the account this thesis's results fit most
+closely: distillation is function matching, the teacher's function has to be sampled consistently and at
+many inputs, and the schedules that work are long. A function is learned where it is sampled; sampling
+it only where it already equals the gold label teaches the gold label.
+
+What none of this work provides for the present task is a measurement. The transfer sets in these papers
+are augmented copies of the task data \cite{jiao2020tinybert, tang2019distilling}, or unlabelled pools
+whose size and composition are fixed rather than varied \cite{turc2019wellread}, and the domain is not
+abusive language. Nor is the comparison that would isolate the transfer set, the same student trained
+for the same number of updates without it, the comparison those papers are built to make.
+Sections~\ref{sec:5.7} and~\ref{sec:5.8} make it: six nested sizes over a 34-fold range, a composition
+control at fixed size, two matched-update controls, and three students.
+
 \section{Multi-Teacher and Adaptive Distillation}
 \label{sec:2.3}
 Ensembles of teachers \cite{you2017learning, fukuda2017efficient} are combined with fixed or learned
@@ -126,6 +238,67 @@ teachers' own scores, and without seeds or intervals \cite{prasomphan2025mtkd}.
 Section~\ref{sec:5.5} tests both assumptions and finds both false on a committee assembled in the
 usual way, and Section~\ref{sec:5.7} finds the committee no better a labeller than one teacher out
 of sample either.
+
+\subsection{How the weights are computed, and on what data}
+The family divides by where each teacher's weight comes from. You et al. \cite{you2017learning} average
+the teachers' softened outputs and add a term matching the relative dissimilarity of their intermediate
+representations; the combination is fixed rather than per instance. Fukuda et al.
+\cite{fukuda2017efficient} avoid combining at all and train each batch against one randomly chosen
+teacher, on the argument that an average smooths away exactly the disagreement that carries information.
+Liu et al. \cite{liu2020adaptive} weight teachers adaptively and at several representation levels; Du et
+al. \cite{du2020agree} combine teachers in gradient space so that conflicting gradients are resolved
+rather than averaged; Yuan et al. \cite{yuan2021reinforced} learn a selector by reinforcement learning
+that picks which teachers to listen to per instance. Zhang et al. \cite{zhang2022confidence} weight by
+each teacher's confidence, and Zou et al. \cite{zou2025dynamic} apply the same idea to semantic parsing.
+
+MT-BERT \cite{wu2021one} is the closest of these to the method audited here: several pre-trained
+language-model teachers are co-fine-tuned on the task, their soft labels are weighted per instance by
+each teacher's prediction loss, and their hidden states are aligned to the student through learned
+projections. D-MTHD is that combination, with the weight read through a softmax at a temperature and an
+auxiliary head added for irony (Section~\ref{sec:3.3}); we do not claim the combination as novel.
+The heterogeneous student here is trained without the information-flow model of Passalis et al.
+\cite{passalis2020heterogeneous}, and Section~\ref{sec:7.1} names that as a confound rather than a
+result.
+
+Two assumptions run through all of it. The first is that the teachers collectively hold more than any one
+of them \emph{in a way their outputs reveal}, so that a rule reading only their probabilities can
+recover it. The second is that reliability scored against the gold label still means something after the
+teachers have been fine-tuned on the data the score is read from. Neither assumption is tested in the
+papers above, and the reason is structural rather than careless: a weighting scheme is compared against
+other weighting schemes, so a saturation that affects all of them equally never appears.
+Section~\ref{sec:5.4} tests the first assumption by scoring every combination rule directly on the
+teachers' saved probabilities, including a stacked gate fitted by cross-validation, and bounds what any
+such rule can gain. Section~\ref{sec:5.6} tests the second by reporting the teachers' training losses on
+the split the weights are read from.
+
+
+\section{Multi-Teacher Distillation Applied to Abusive Language}
+\label{sec:2.abusive}
+One published system applies this family to the task of this thesis. Prasomphan \cite{prasomphan2025mtkd}
+detects cyberbullying in Thai social-media text by distilling three transformer teachers, ThaiBERT,
+WangchanBERTa and mT5, each fine-tuned on the task data, into a gradient-boosted tree student. The
+teachers' soft probabilities are combined into one distilled distribution by a weighted sum, the student
+reads sentence embeddings reduced by principal components, and its objective adds a Kullback--Leibler
+term against the combined soft target to the supervised cross-entropy. Accuracies of 92.5, 90.5 and 91.0
+per cent are reported on three Thai corpora repurposed from sentiment annotation.
+
+The design is the recipe this thesis audits, in this application, and the differences between what it
+reports and what it establishes are the reason the audit exists. The teachers are fine-tuned on the same
+data the student is then distilled on, so the soft labels are read where Section~\ref{sec:5.6} shows
+them to be saturated. No student trained on the same features without teachers is reported, so the
+quantity the reader most needs, what the teachers added, is not available; the comparisons offered are
+against other classifiers rather than against the same classifier without distillation. The weights of
+the combination are not specified as a function of the data, so the term ``multi-teacher'' covers both a
+fixed average and a learned rule. Single runs are reported without seeds or intervals, and accuracy on
+corpora repurposed from sentiment labels is a measure the class balance can carry on its own.
+
+The system is nonetheless the right comparison to make, and it raises one question this thesis's grid
+does not answer. Its student is not a neural network, so the hidden-state term has nothing to align and
+the student cannot inherit anything from pre-training; every claim in Section~\ref{sec:5.9} about
+pre-training setting the ceiling is silent about such a student. Whether a tree student on frozen
+embeddings behaves like the compact encoders measured here is a question the design of this thesis
+supports and does not settle.
+
 \section{Evaluation Practice}
 \label{sec:2.4}
 Targeted functional tests expose what held-out accuracy hides \cite{rottger2021hatecheck}; our probe
@@ -138,30 +311,159 @@ benchmarks is larger than the differences reported \cite{card2020power}. On our 
 a paired interval is about 0.014 wide, so a difference under 0.007 macro-F1 is undetectable; every
 claim in this thesis is read against that.
 
+\subsection{What a test set of this size can decide}
+Card et al. \cite{card2020power} compute the statistical power of common NLP benchmarks and find that
+most are too small to detect the differences routinely reported on them, so that a published improvement
+is frequently indistinguishable from resampling noise. The consequence for a thesis is a number that has
+to be computed before any result is read: on the 4,326-post test set used here a paired bootstrap
+interval is about 0.014 wide, so a difference under roughly 0.007 macro-F1 cannot be separated from
+zero. Every in-sample distillation effect in this grid is smaller than that, which is a fact about the
+measurement and not only about the method, and Section~\ref{sec:7.1} states it as a limitation in both
+directions: an absence at this resolution is not a zero.
+
+Dodge et al. \cite{dodge2019show} argue that reported scores are uninterpretable without the search
+budget that produced them, since the best of many configurations is a biased estimate of any one of them;
+Section~\ref{sec:5.2} reports the best of six per student and says so in the same sentence. Koehn
+\cite{koehn2004statistical} and Dror et al. \cite{dror2018hitchhiker} give the paired bootstrap used
+throughout, and Guo et al. \cite{guo2017calibration} the calibration error reported for the teachers.
+Röttger et al. \cite{rottger2021hatecheck} build functional tests for hate-speech models, held-out sets
+constructed to isolate one capability rather than to sample the distribution, with human validation of
+every item; the probes of Section~\ref{sec:4.3} are in that spirit and are rule-built rather than
+validated, which Section~\ref{sec:7.1} records.
+
+The annotation literature adds the boundary case. Uma et al. \cite{uma2021learning}, Davani et al.
+\cite{davani2022dealing}, Plank \cite{plank2022problem} and Peterson et al. \cite{peterson2019human}
+argue that disagreement between annotators is signal rather than noise, and that a single majority label
+discards it. For this task the texts annotators disagree on are disproportionately the ones whose
+hostility is implied, which is the same population the oracle analysis of Section~\ref{sec:5.4} finds
+the committee's unreachable headroom to be made of.
+
+
 \section{Summary and Research Gap}
 \label{sec:gap}
-Table~\ref{tab:gap} summarises what each line of work establishes, what it leaves open for this thesis,
-and where the thesis addresses it.
+Table~\ref{tab:gap} reads the works this chapter has reviewed one at a time: what each does, what it
+reports, what limits it for the question of this thesis, and where the thesis takes it up. The pattern
+the table makes is the argument of Chapter~\ref{ch:5}. The multi-teacher rows report gains over other
+weighting schemes and none reports the comparison against a student trained with no teacher at all. The
+transfer-set rows establish that the text a student imitates on is a variable, and none varies it in
+this domain with the number of updates held fixed. The implication rows establish that the label exists
+and is contested, and none asks whether distillation can move it. The evaluation rows give the
+resolution every one of those claims should have been read against.
 
-\begin{table}[htbp]
-\centering
-\small
-\caption{What the literature establishes and what it leaves open.}
-\label{tab:gap}
-\begin{tabular}{p{3.2cm}p{4.3cm}p{4.3cm}p{2.4cm}}
+\begin{center}
+{\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{longtable}{p{2.45cm}p{3.35cm}p{2.5cm}p{3.15cm}p{2.5cm}}
+\caption[What the literature establishes and what it leaves open]{What each work establishes, what it
+reports, what limits it for this thesis, and where the thesis takes it up.}
+\label{tab:gap}\\
 \toprule
-Line of work & Establishes & Leaves open & Addressed in \\
+Work & Method & Reported & Limitation for this task & Taken up in \\
 \midrule
-Cyberbullying and toxicity detection & Benchmarks and strong fine-tuned encoders & Compact models are
-evaluated on aggregate F1 only; implicit abuse is not labelled & Chapter~\ref{ch:4}, Section~\ref{sec:5.9} \\
-Implicit hate & Implicit hate needs its own label and benchmark & Whether a compact model can learn it by
-distillation & Sections~\ref{sec:5.5} and~\ref{sec:5.9} \\
-Distilling compact models & Transfer sets and pre-training matter & Not measured in this domain with the
-confounds controlled & Sections~\ref{sec:5.7} and~\ref{sec:5.8} \\
-Multi-teacher weighting & Several teachers are claimed to beat one & The no-teacher control, seeds and
-intervals; reliability is read in sample & Sections~\ref{sec:5.2} to~\ref{sec:5.6} \\
-Evaluation practice & Functional tests, reporting standards, power & A threshold-free measure of
-implication for compact detectors & Sections~\ref{sec:4.6} and~\ref{sec:5.9} \\
+\endfirsthead
+\toprule
+Work & Method & Reported & Limitation for this task & Taken up in \\
+\midrule
+\endhead
 \bottomrule
-\end{tabular}
-\end{table}
+\endfoot
+\multicolumn{5}{l}{\emph{Foundations}} \\*
+Buciluă et al.\ \cite{bucilua2006model} & Label a large unlabelled pool with an ensemble and train one
+compact model on it & A compact model approaching the ensemble it was trained from & Pre-neural, no soft
+targets, and the pool is synthesised rather than in-domain & The claim that the gain comes from
+labelling new text, Section~\ref{sec:5.7} \\
+Hinton et al.\ \cite{hinton2015distilling} & Match temperature-softened teacher outputs; the transfer
+set need not be the labelled data & Ensembles compressed into single models & States that the transfer
+set may be unlabelled; does not measure how much of it, or which text & The KL term and its $T^2$
+scaling, Section~\ref{sec:3.3} \\
+Romero et al.\ \cite{romero2015fitnets} & Regress the student's intermediate layer onto the teacher's
+through a learned projection & Thin, deep students trainable where output matching alone fails & Shown
+for narrow convolutional nets, not for an encoder that is already pre-trained & The form of
+$\mathcal{L}_{\mathrm{hid}}$ and the ablation that measures it, Section~\ref{sec:5.3} \\
+\midrule
+\multicolumn{5}{l}{\emph{Compact language models}} \\*
+Sanh et al.\ \cite{sanh2019distilbert} & Distil during pre-training into a six-layer student & About 97
+per cent of BERT-base at 40 per cent fewer parameters & General rather than task-specific; no committee,
+no transfer-set variation & The 67.0M student, Section~\ref{sec:4.5} \\
+Sun et al.\ \cite{sun2019patient} & The student learns from several intermediate teacher layers & Gains
+over output-only distillation & Measured in sample throughout & The hidden-state term,
+Section~\ref{sec:3.3} \\
+Jiao et al.\ \cite{jiao2020tinybert} & Two-stage distillation, general then task-specific, with heavy
+data augmentation & About 96.8 per cent of BERT-base from a four-layer student & The augmentation and
+the distillation are varied together & That confound separated, Section~\ref{sec:5.8} \\
+Wang et al.\ \cite{wang2020minilm}; Sun et al.\ \cite{sun2020mobilebert} & Distil attention relations;
+rebuild the student around bottleneck blocks & Compact students near teacher quality & Architecture-level
+changes, orthogonal to the transfer set & Named, not tested, Section~\ref{sec:7.2} \\
+Turc et al.\ \cite{turc2019wellread} & Separate pre-training the compact student from distilling into
+it & Pre-training the student carries more than the recipe & Not measured for abusive language; the
+unlabelled pool is held fixed & Reproduced: pre-training is worth 0.047 here,
+Section~\ref{sec:5.3} \\
+Tang et al.\ \cite{tang2019distilling} & BERT into a single-layer BiLSTM on rule-augmented text & A
+small BiLSTM competitive with far larger models & The gain is confounded with the volume of augmented
+text & The BiLSTM student, Sections~\ref{sec:4.5} and~\ref{sec:5.8} \\
+\midrule
+\multicolumn{5}{l}{\emph{What is known about distillation itself}} \\*
+Stanton et al.\ \cite{stanton2021does} & Measure fidelity to the teacher separately from
+generalisation & Students often fail to match teachers they have the capacity to match & Vision and
+general NLP rather than this task & Why a student scoring above its teacher is a weak claim,
+Section~\ref{sec:5.2} \\
+Cho and Hariharan \cite{cho2019efficacy} & Vary the teacher's capacity against the student's & A larger
+teacher is not reliably a better one & No committee; one teacher at a time & Why a 335M teacher and an
+11M student need not pair well, Section~\ref{sec:6.2} \\
+Beyer et al.\ \cite{beyer2022knowledge} & Distillation as function matching: consistent views, long
+schedules & Large gains from sampling the teacher's function widely & Vision; schedule length and data
+are varied together & The account the size curve fits, and the matched-updates control,
+Section~\ref{sec:5.8} \\
+\midrule
+\multicolumn{5}{l}{\emph{Multi-teacher and adaptive weighting}} \\*
+You et al.\ \cite{you2017learning} & Average several teachers' soft outputs, plus a dissimilarity term &
+A committee beats its members & Fixed combination; no per-instance reliability; no no-teacher control &
+The uniform-averaging arm, Section~\ref{sec:5.2} \\
+Fukuda et al.\ \cite{fukuda2017efficient} & Train each batch against one randomly chosen teacher &
+Avoids averaging away disagreement & Not compared against a student trained without teachers & Bounded
+by the combination table, Section~\ref{sec:5.4} \\
+Liu et al.\ \cite{liu2020adaptive}; Du et al.\ \cite{du2020agree} & Adaptive multi-level weighting;
+combination in gradient space & Improvements over uniform averaging & The weights are read on the data
+the teachers were fitted on & The saturation that explains it, Section~\ref{sec:5.6} \\
+Yuan et al.\ \cite{yuan2021reinforced} & Reinforcement learning selects teachers per instance & A
+learned selector beats fixed rules & Needs a held-out reward; its cost is not reported against the
+gain & A stacked gate bounds any selector here, Section~\ref{sec:5.4} \\
+Zhang et al.\ \cite{zhang2022confidence}; Zou et al.\ \cite{zou2025dynamic} & Weight teachers per
+instance by their confidence & Gains on classification and on parsing & Confidence is saturated on the
+split the teachers were fine-tuned on & Measured directly, Sections~\ref{sec:5.3}
+and~\ref{sec:5.6} \\
+Wu et al.\ \cite{wu2021one} & Co-fine-tune several teachers, weight by prediction loss, align hidden
+states through projections & Multi-teacher above single-teacher distillation & Teachers fine-tuned on
+the split the student is then distilled on; no no-teacher control & The method audited here,
+Section~\ref{sec:3.3} and Sections~\ref{sec:5.2} to~\ref{sec:5.6} \\
+Passalis et al.\ \cite{passalis2020heterogeneous} & Model information flow when teacher and student
+architectures differ & Heterogeneous transfer improved & Our heterogeneous student is trained without
+such a model & Named as a confound, Section~\ref{sec:7.1} \\
+\midrule
+\multicolumn{5}{l}{\emph{This task}} \\*
+Prasomphan \cite{prasomphan2025mtkd} & Three Thai transformer teachers, weighted soft labels, a
+gradient-boosted tree student & 92.5, 90.5 and 91.0 per cent accuracy on three Thai corpora & In-sample
+teachers; no student without teachers; single runs; labels repurposed from sentiment & The closest
+published instance of what is audited here, Section~\ref{sec:2.abusive} \\
+Wang et al.\ \cite{wang2020sosnet} & A fine-grained cyberbullying corpus in six classes & Strong
+fine-tuned encoders on aggregate F1 & Repeated and conflicting rows; implication is not a label & The
+primary benchmark, after cleaning, Section~\ref{sec:4.1} \\
+ElSherief et al.\ \cite{elsherief2021latent}; Ocampo et al.\ \cite{ocampo2023indepth} & Annotate
+implicit against explicit hate & Models competent on explicit hate lose most of it on implicit & The two
+disagree on nearly half of their shared hateful texts & The single-source benchmark and the bound it
+carries, Section~\ref{sec:4.2} \\
+Caselli et al.\ \cite{caselli2021hatebert}; Barbieri et al.\ \cite{barbieri2020tweeteval} &
+Domain-specialised encoders for abuse and for tweets & Better starting points than general BERT & Their
+specialisation is spent by task adaptation & The teachers, Sections~\ref{sec:4.5} and~\ref{sec:5.4} \\
+\midrule
+\multicolumn{5}{l}{\emph{Evaluation practice}} \\*
+Röttger et al.\ \cite{rottger2021hatecheck} & Functional tests isolating one capability each, validated
+by annotators & Held-out accuracy hides specific failures & Built for hate speech in general, not for
+implication against sarcasm & The probes, Section~\ref{sec:4.3}; ours are rule-built,
+Section~\ref{sec:7.1} \\
+Card et al.\ \cite{card2020power} & Compute the statistical power of common benchmarks & Most are too
+small for the differences reported on them & Not applied in this application & The 0.007 resolution
+every claim here is read against, Section~\ref{sec:4.7} \\
+\end{longtable}
+}
+\end{center}

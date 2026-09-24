@@ -10,18 +10,18 @@ against all of them, supplies the out-of-sample text.
 \small
 \caption{The data used in this thesis.}
 \label{tab:data}
-\begin{tabular}{p{4.6cm}p{3.1cm}rrrp{1.7cm}}
+\begin{tabular}{p{5.4cm}p{2.6cm}rrrp{1.5cm}}
 \toprule
 Set & Role & Train & Validation & Test & Labels \\
 \midrule
-Cyberbullying tweets, cleaned & primary benchmark & 34,607 & 4,326 & 4,326 & 6 classes \\
-Implicit Hate Corpus, single source & implicit benchmark & 16,509 & 2,064 & 2,064 & 3 classes \\
-ISHate, held out whole & out-of-domain test & -- & -- & 27,096 & 3 classes \\
-Benign sarcasm probe & inference only & -- & -- & 883 & -- \\
-Ironic abuse probe & inference only & -- & -- & 1,560 & -- \\
-Implicit abuse probe, a subset of it & inference only & -- & -- & 763 & -- \\
-Transfer set, abuse-domain base & training, unlabelled & 42,013 & -- & -- & none \\
-Transfer set, extended & training, unlabelled & 205,593 & -- & -- & none \\
+Cyberbullying tweets, cleaned \cite{wang2020sosnet} & primary benchmark & 34,607 & 4,326 & 4,326 & 6 classes \\
+Implicit Hate Corpus, single source \cite{elsherief2021latent} & implicit benchmark & 16,509 & 2,064 & 2,064 & 3 classes \\
+ISHate, held out whole \cite{ocampo2023indepth} & out-of-domain test & -- & -- & 27,096 & 3 classes \\
+Benign sarcasm probe \cite{abufarha2022semeval, oprea2020isarcasm} & inference only & -- & -- & 883 & -- \\
+Ironic abuse probe \cite{elsherief2021latent, ocampo2023indepth} & inference only & -- & -- & 1,560 & -- \\
+Implicit abuse probe, a subset of it \cite{ocampo2023indepth} & inference only & -- & -- & 763 & -- \\
+Transfer set, abuse-domain base \cite{davidson2017automated, zampieri2019olid, basile2019hateval} & training, unlabelled & 42,013 & -- & -- & none \\
+Transfer set, extended \cite{barbieri2020tweeteval} & training, unlabelled & 205,593 & -- & -- & none \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -152,7 +152,7 @@ Table~\ref{tab:transfer} records every count.
 \begin{table}[htbp]
 \centering
 \small
-\caption{Construction of the transfer set. Upper part: rows read and kept per source. Lower part: rows
+\caption[Construction of the transfer set]{Construction of the transfer set. Upper part: rows read and kept per source. Lower part: rows
 matching each screen; a row can match more than one screen, so the screens do not sum to the difference.}
 \label{tab:transfer}
 \begin{tabular}{lrr}

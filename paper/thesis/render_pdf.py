@@ -1141,16 +1141,17 @@ class Thesis:
                 % (' id="%s"' % a if a else "", Math.render(content.strip(), self.inline, display=True), num))
 
     def caption_of(self, content):
+        """(full caption, short caption or None, content without the \\caption)."""
         m = re.search(r"\\caption\s*(\[)?", content)
         if not m:
-            return None, content
+            return None, None, content
         i = m.end() - (1 if m.group(1) else 0)
-        _, i = read_opt(content, i)
+        short, i = read_opt(content, i)
         text, j = read_group(content, i)
-        return text, content[:m.start()] + content[j:]
+        return text, short, content[:m.start()] + content[j:]
 
     def figure(self, content):
-        cap, rest = self.caption_of(content)
+        cap, short, rest = self.caption_of(content)
         self.fig += 1
         num = "%s.%d" % (self.chapnum(), self.fig)
         a = self.anchor("fig-" + num)
@@ -1169,12 +1170,12 @@ class Thesis:
             svg = "figures/" + os.path.splitext(os.path.basename(path))[0] + ".svg"
             imgs.append('<img src="%s" style="width:%s" alt="">' % (svg, width))
         cap_html = self.inline(cap or "")
-        self.lof.append((num, cap_html, a))
+        self.lof.append((num, self.inline(short) if short else cap_html, a))
         return ('<figure class="float" id="%s">%s<figcaption><span class="caplabel">Figure %s:</span> %s'
                 '</figcaption></figure>' % (a, "".join(imgs), num, cap_html))
 
     def table(self, content):
-        cap, rest = self.caption_of(content)
+        cap, short, rest = self.caption_of(content)
         self.tab += 1
         num = "%s.%d" % (self.chapnum(), self.tab)
         a = self.anchor("tab-" + num)
@@ -1186,7 +1187,7 @@ class Thesis:
         spec, j = read_group(rest, m.end())
         ce, _ = env_end(rest, j, "tabular")
         cap_html = self.inline(cap or "")
-        self.lot.append((num, cap_html, a))
+        self.lot.append((num, self.inline(short) if short else cap_html, a))
         return ('<div class="float tablefloat" id="%s"><div class="caption"><span class="caplabel">Table %s:</span> %s</div>'
                 '<div class="fit%s">%s</div></div>'
                 % (a, num, cap_html, " fs-" + size if size else "", self.tabular(spec, rest[j:ce], "booktabs")))
@@ -1197,7 +1198,7 @@ class Thesis:
         parts = re.split(r"\\(endfirsthead|endhead|endfoot|endlastfoot)\b", body)
         before = {parts[k]: parts[k - 1] for k in range(1, len(parts), 2)}  # each marker ends the part before it
         first = before.get("endfirsthead", before.get("endhead", parts[0]))
-        cap, first = self.caption_of(first)
+        cap, short, first = self.caption_of(first)
         self.tab += 1
         num = "%s.%d" % (self.chapnum(), self.tab)
         a = self.anchor("tab-" + num)
@@ -1209,7 +1210,7 @@ class Thesis:
         rows = parts[-1] if len(parts) > 1 else ""
         foot = before.get("endfoot", "")
         cap_html = self.inline(cap or "")
-        self.lot.append((num, cap_html, a))
+        self.lot.append((num, self.inline(short) if short else cap_html, a))
         table = self.tabular(spec, first + rows + foot, "booktabs", long=True)
         return ('<div class="longtable-wrap" id="%s"><div class="caption"><span class="caplabel">Table %s:</span> %s</div>'
                 '%s</div>' % (a, num, cap_html, table))
@@ -1217,7 +1218,7 @@ class Thesis:
     def tabular(self, spec, body, style, long=False):
         cols = self.colspec(spec)
         items = []
-        for row, extra in self.rows(body):
+        for row, extra, keep in self.rows(body):
             while True:
                 m = re.match(r"\s*\\(toprule|midrule|bottomrule|hline|cmidrule(?:\([^)]*\))?\{[^}]*\})", row)
                 if not m:
@@ -1226,7 +1227,7 @@ class Thesis:
                 items.append(("rule", "mid" if kind.startswith("cmidrule") or kind == "hline" else kind[:-4]))
                 row = row[m.end():]
             if row.strip():
-                items.append(("row", self.cells(row), extra))
+                items.append(("row", self.cells(row), extra, keep))
         head_end = -1
         if style == "booktabs":
             mids = [k for k, it in enumerate(items) if it == ("rule", "mid")]
@@ -1244,6 +1245,8 @@ class Thesis:
             if pending in ("top", "mid"):
                 cls.append("r-" + pending)
             pending = None
+            if it[3]:
+                cls.append("r-keep")
             html_rows.append((k < head_end, cls, it[1], it[2]))
         out = []
         for is_head, cls, cells, extra in html_rows:
@@ -1322,10 +1325,13 @@ class Thesis:
                 if body.startswith("\\\\", i):
                     content = body[start:i]
                     i += 2
+                    keep = i < len(body) and body[i] == "*"   # \\* : keep this row with the next
+                    if keep:
+                        i += 1
                     opt, j = read_opt(body, i)
                     if opt is not None:
                         i = j
-                    rows.append((content, opt))
+                    rows.append((content, opt, keep))
                     start = i
                     continue
                 i += 2
@@ -1338,7 +1344,7 @@ class Thesis:
                 i = math_end(body, i)
             i += 1
         if body[start:].strip():
-            rows.append((body[start:], None))
+            rows.append((body[start:], None, False))
         return rows
 
     @staticmethod
@@ -1363,7 +1369,7 @@ class Thesis:
         return cells
 
     def algorithm(self, content):
-        cap, rest = self.caption_of(content)
+        cap, _short, rest = self.caption_of(content)
         self.alg += 1
         num = str(self.alg)
         a = self.anchor("alg-" + num)
@@ -1497,6 +1503,7 @@ figure.float img { display: block; margin: 0 auto; }
 .caption, figcaption { font-size: 0.913em; line-height: 1.3; display: table; margin: 0.55em auto 0; text-align: justify;
   text-indent: 0; hyphens: auto; }
 .tablefloat .caption, .longtable-wrap .caption { margin: 0 auto 0.5em; }
+table.tab tr.r-keep { break-after: avoid; page-break-after: avoid; }
 .caplabel { font-weight: bold; }
 .float.tablefloat { margin: 1.2em 0; break-inside: avoid; }
 .fit { width: 100%; }
