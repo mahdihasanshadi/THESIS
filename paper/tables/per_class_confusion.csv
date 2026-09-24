@@ -1,0 +1,8 @@
+Arm,other->not,not->other,other correct,not correct,macro delta,"share from the two residual classes, per cent"
+Fine-tune only,106,126,419,401,+0.0000,
+"Fine-tune, 35 epochs",115,132,415,411,-0.0013,182
+"Single teacher, in sample",107,132,422,401,+0.0012,-58
++ 42k transfer rows,98,124,432,411,+0.0070,56
++ 168k transfer rows,101,117,433,421,+0.0123,55
+"BiLSTM, fine-tune only",110,117,426,424,+0.0000,
+"BiLSTM, + 168k transfer rows",109,94,438,463,+0.0163,74

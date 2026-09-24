@@ -156,7 +156,7 @@ is implied \cite{uma2021learning, davani2022dealing, plank2022problem, peterson2
 follow for a thesis about compact models. A corpus that does not label implication cannot be used to
 train for it, and the domain-specialised encoders a distillation committee would recruit were
 themselves trained on corpora of that kind. We are not aware of work that asks whether the ability to
-read implication can be moved into a deployable model, or by what mechanism; Section 5.9 asks it and
+read implication can be moved into a deployable model, or by what mechanism; Section 5.10 asks it and
 finds no intervention in this grid that moves it, and Section 4.2 measures how far the label itself can
 be trusted.
 
@@ -504,7 +504,7 @@ benchmark are not run and are named where they would bear on a claim.
 
 The sections run in the order of the argument, not the order the runs were made: the in-sample audit
 (5.1 to 5.5), its mechanism (5.6), the out-of-sample result and its curve (5.7 and 5.8), what never
-transferred (5.9), and what survives for practice (5.10). Every difference is a paired bootstrap
+transferred (5.10), and what survives for practice (5.11). Every difference is a paired bootstrap
 interval; single-seed rows are marked and treated as indicative.
 
 ### 5.1 The teachers clear the bar
@@ -522,9 +522,14 @@ Three of the original four teachers beat the fine-tune-only headline student and
 pre-registered stop rule passes. DeBERTa-v3-base sits below the floor and is retained only as the
 heterogeneous committee member, which is what it is there to test. The implicit specialist, trained on
 different data under a different label scheme, lands within 0.005 of the other three after adaptation.
+The calibration column carries something the macro-F1 column hides: expected calibration error runs
+from 0.053 to 0.076, so every teacher is over-confident on the test set, and the best-calibrated of
+them, DeBERTa at 0.053, is the one that scores worst. Calibration and accuracy are not ordered
+together here, which is the first sign that a rule reading confidence will not recover a rule reading
+correctness.
 Two columns of this table carry the rest of the paper. The training losses say that every task-adapted
 teacher has, by its last epoch, assigned the gold label a probability near one on the split the student
-will be distilled on (Section 5.6). And the probe columns already show the pattern Section 5.9 makes
+will be distilled on (Section 5.6). And the probe columns already show the pattern Section 5.10 makes
 precise: ordered by false-positive rate on harmless sarcasm, the teachers are almost exactly ordered by
 recall on ironic abuse.
 
@@ -559,7 +564,7 @@ single-teacher, -0.0019 [-0.0082, +0.0041] with the DeBERTa committee, -0.0003 [
 -0.0019 [-0.0093, +0.0049] with the specialist committee under averaging and weighting.
 
 The efficiency claim sits in this table. DistilBERT with a uniform heterogeneous committee reaches
-0.8975 against BERT-large's 0.8973 at a fifth of the parameters and latency (Section 5.10). We state
+0.8975 against BERT-large's 0.8973 at a fifth of the parameters and latency (Section 5.11). We state
 that as parity, not as the student beating the teacher.
 
 ### 5.3 Per-instance weighting does not differ from uniform averaging at any temperature
@@ -712,7 +717,13 @@ training losses are 0.033 (BERT-large), 0.059 (HateBERT), 0.077 (irony), 0.061 (
 and 0.227 (DeBERTa-v3-base). On the data the weights are read from, every task-adapted teacher assigns
 the gold label a probability near one on nearly every instance, cross-entropy differences between them
 are a few hundredths, and the softmax of Section 3.2 is flat at any temperature that does not amplify
-noise. The one teacher that did not memorise the split, DeBERTa, is the one whose weight moves (0.233
+noise. The arithmetic bounds what any weighting could do here. A mean cross-entropy of 0.033 is a
+geometric mean probability of $e^{-0.033} = 0.968$ on the gold class, leaving 0.032 to be shared
+among the other five; at 0.077, the highest of the four, it is 0.926 and 0.074. A rule that separates
+teachers by their loss is therefore separating 0.033 from 0.077, and after the softmax of equation
+(3.2) at $\tau = 1$ that is the distance between weights of 0.332 and 0.337. No temperature recovers
+a signal from a difference that small without amplifying the noise in it too, which is what the sweep
+down to $\tau = 0.05$ measures and reports as 0.318 against 0.356. The one teacher that did not memorise the split, DeBERTa, is the one whose weight moves (0.233
 in a committee of four). The reliability signal is measuring memorisation, not reliability, and this is
 a property of the error-weighted family \cite{wu2021one, zhang2022confidence}, not of our
 implementation: any scheme that scores reliability against the gold label on the training data will
@@ -835,7 +846,7 @@ with the unlabelled text, it comes from any tweets of the platform, and it holds
 students of two families while fine-tuning for the same number of updates gains nothing. What it does
 not have is a second corpus, which Section 7 lists first.
 
-### 5.9 What never transferred: discrimination of implied abuse is fixed by pre-training
+### 5.10 What never transferred: discrimination of implied abuse is fixed by pre-training
 
 **The failure is discrimination, not blindness.** Diagnostic on BERT-mini fine-tune-only, seed 1.
 Recall on the ironic-abuse probe is 0.91 on the 43 items containing explicit profanity and 0.76 on the
@@ -913,7 +924,7 @@ the same architecture trained on the corpus. D-MTHD transfers no better: binary 
 students have learned about abuse, in sample or out, does not include what makes an implication
 hateful; there was little of that knowledge in the committee to receive, and none in the transfer text.
 
-### 5.10 Character-level obfuscation and deployment cost
+### 5.11 Character-level obfuscation and deployment cost
 
 Synthetic obfuscation of the abusive test rows, BERT-mini, seed 1, macro-F1:
 

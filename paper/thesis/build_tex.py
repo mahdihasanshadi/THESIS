@@ -761,7 +761,7 @@ corpora repurposed from sentiment labels is a measure the class balance can carr
 
 The system is nonetheless the right comparison to make, and it raises one question this thesis's grid
 does not answer. Its student is not a neural network, so the hidden-state term has nothing to align and
-the student cannot inherit anything from pre-training; every claim in Section~\ref{sec:5.9} about
+the student cannot inherit anything from pre-training; every claim in Section~\ref{sec:5.10} about
 pre-training setting the ceiling is silent about such a student. Whether a tree student on frozen
 embeddings behaves like the compact encoders measured here is a question the design of this thesis
 supports and does not settle.
@@ -1337,7 +1337,7 @@ R = {
                  inserts=[("| Arm | Transfer rows |", FIG["size"]),
                           ("**Optimisation length does not explain", FIG["validation"]),
                           ("| Student | Fine-tune only |", FIG["students"])]),
-    "5.9 ": dict(tables=[("Probe metrics by model family, averaged over all 184 evaluated models, at each model's "
+    "5.10 ": dict(tables=[("Probe metrics by model family, averaged over all 184 evaluated models, at each model's "
                           "argmax decision. The margin is recall minus false-positive rate.", "tab:families"),
                          ("The implicit benchmark: the compact student, the specialist and the classical floor, "
                           "one seed.", "tab:implicit")],
@@ -1349,7 +1349,7 @@ R = {
                         "**Nothing raises the discrimination** ([[Figure:fig:auc]]).")],
                  inserts=[("**Across the grid, methods differ", FIG["tradeoff"]),
                           ("**Nothing raises the discrimination", FIG["auc"])]),
-    "5.10 ": dict(subs=[("Synthetic obfuscation of the abusive test rows, BERT-mini, seed 1, macro-F1:",
+    "5.11 ": dict(subs=[("Synthetic obfuscation of the abusive test rows, BERT-mini, seed 1, macro-F1:",
                          "[[Table:tab:robustness]] gives macro-F1 under synthetic obfuscation of the abusive test "
                          "rows, on BERT-mini, seed 1."),
                         ("Median of five timed passes after warm-up on an idle machine:",
@@ -1364,7 +1364,7 @@ R = {
 }
 CH5_DECISIONS = r"""
 \section{The Research Questions, Decided}
-\label{sec:5.11}
+\label{sec:5.12}
 The four questions of Section~\ref{sec:1.4} are decided here on the measurements above, under one rule
 fixed before any of them was run: a difference counts only if its paired bootstrap interval excludes
 zero, and on a test set of 4,326 posts that requires roughly 0.007 macro-F1 (Section~\ref{sec:4.7}).
@@ -1402,7 +1402,7 @@ RQ4: does any of it improve the reading of implication? & A threshold-free AUC r
 in-sample band of 0.756 to 0.777 & 28 in-sample pre-trained variants, mean 0.771, standard deviation
 0.004; out-of-sample arms 0.727 to 0.771, three below the band and none above; the randomly initialised
 student 0.613; across 184 models recall and false-positive rate correlate at $+0.772$ & \textbf{No}
-(Section~\ref{sec:5.9}) \\
+(Section~\ref{sec:5.10}) \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -1454,11 +1454,116 @@ implied abuse against benign text at 0.600 to 0.609 AUC, against 0.820 for the s
 on that corpus.
 """
 
+CH5_PER_CLASS = r"""
+\section{Where the Gain Lands: The Classes, and the Confusion Between Them}
+\label{sec:5.9}
+A macro-F1 of 0.8516 is an average over six classes that are not equally hard, so the number alone
+does not say what the unlabelled text taught. This section takes the arms of the two sections above
+apart class by class, from the saved test predictions of every seed
+(\texttt{scripts/per\_class.py}). Table~\ref{tab:per-class} gives the per-class F1 and
+Table~\ref{tab:confusion} the confusion that moves.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Per-class test F1 across the arms]{Per-class test F1, mean over three seeds, for the arms of
+Sections~\ref{sec:5.7} and~\ref{sec:5.8}. The first four columns are the classes that name a target,
+the last two the residual classes.}
+\label{tab:per-class}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lcccccc}
+\toprule
+Arm & age & ethnicity & gender & religion & other\_cb & not\_cb \\
+\midrule
+Fine-tune only & 0.963 & 0.942 & 0.864 & 0.917 & 0.707 & 0.644 \\
+Fine-tune, 35 epochs & 0.962 & 0.944 & 0.865 & 0.920 & 0.693 & 0.643 \\
+Single teacher, in sample & 0.964 & 0.946 & 0.865 & 0.922 & 0.702 & 0.644 \\
+$+$ 42k transfer rows & 0.965 & 0.947 & 0.871 & 0.921 & 0.714 & 0.660 \\
+$+$ 168k transfer rows & 0.969 & 0.946 & 0.880 & 0.924 & \textbf{0.721} & \textbf{0.671} \\
+\midrule
+BiLSTM, fine-tune only & 0.977 & 0.982 & 0.897 & 0.950 & 0.719 & 0.690 \\
+BiLSTM, $+$ 168k transfer rows & 0.981 & 0.983 & 0.913 & 0.955 & \textbf{0.747} & \textbf{0.734} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{The benchmark is two tasks.} Fine-tuning alone already scores 0.864 to 0.963 on the four
+classes that name a target, and 0.644 and 0.707 on the two that do not. The spread is a property of
+the labels rather than of the method: a tweet that attacks a religion contains the words of that
+religion, while a tweet sorted into other\_cyberbullying or not\_cyberbullying is sorted on whether
+it is abusive at all. Every method in this thesis inherits that split, and it is the reason aggregate
+macro-F1 is a blunt instrument here. Four sixths of it is settled before any teacher is involved.
+
+\textbf{The out-of-sample gain is concentrated where the labels are hardest.} Against fine-tuning the
+168k arm moves the four targeted classes by $+0.005$, $+0.005$, $+0.016$ and $+0.007$, and the two
+residual classes by $+0.014$ and $+0.027$. Those two are two sixths of the macro average and carry 55
+per cent of its change; on the BiLSTM they carry 74 per cent of a larger change, $+0.028$ and
+$+0.044$. The 42k arm has the same shape at half the size, $+0.007$ and $+0.017$. The recipe does not
+raise the score uniformly. It works on the boundary the labelled split draws worst, which is the
+boundary between abuse that names no group and text that is not abuse at all.
+
+\textbf{Neither in-sample distillation nor more optimisation does this.} Distilling from the same
+teacher on the labelled split alone moves the four targeted classes by $+0.001$ to $+0.005$ and the
+two residual classes by $+0.000$ and $-0.004$: what little it gains, it gains where the task was
+already solved. Fine-tuning for the 168k arm's number of updates is worse on the class that matters,
+$-0.013$ on other\_cyberbullying, while gaining $+0.002$ and $+0.003$ on ethnicity and religion.
+Both controls move the easy classes and leave the hard ones alone, which is the per-class form of the
+null of Section~\ref{sec:5.2} and of the matched-steps control of Section~\ref{sec:5.8}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Confusion between the two residual classes]{Confusion between the two residual classes, mean
+counts over three seeds. The test split holds 583 other\_cyberbullying and 617 not\_cyberbullying
+rows, so these two errors are most of what either class loses.}
+\label{tab:confusion}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lcccc}
+\toprule
+Arm & other $\rightarrow$ not & not $\rightarrow$ other & other correct & not correct \\
+\midrule
+Fine-tune only & 106 & 126 & 419 & 401 \\
+Fine-tune, 35 epochs & 115 & 132 & 415 & 411 \\
+Single teacher, in sample & 107 & 132 & 422 & 401 \\
+$+$ 42k transfer rows & 98 & 124 & 432 & 411 \\
+$+$ 168k transfer rows & 101 & 117 & 433 & \textbf{421} \\
+\midrule
+BiLSTM, fine-tune only & 110 & 117 & 426 & 424 \\
+BiLSTM, $+$ 168k transfer rows & 109 & \textbf{94} & 438 & \textbf{463} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{What changes is one direction of one confusion.} Fine-tuning sends 126 of the 617
+not\_cyberbullying rows into other\_cyberbullying and 106 of the 583 other\_cyberbullying rows the
+other way; between them those two errors are most of what either class loses. Adding 168,000
+unlabelled tweets takes the first from 126 to 117 and raises the rows called correctly from 401 to
+421, while the reverse error moves from 106 to 101. On the BiLSTM the same intervention takes the
+first error from 117 to 94 and the correct count from 424 to 463, a shift of 39 rows in a class of
+617. The student has become less willing to call an ordinary tweet abusive, and it learned that on
+text where no label said so.
+
+That is the same behaviour Section~\ref{sec:5.10} measures on the probes and reports as a cost.
+Firing less readily is an improvement when the tweet is not abusive and a loss when it is ironically
+abusive, so the per-class table and the probe trade-off are two views of one change rather than two
+findings. It also says where the ceiling of this recipe is. The gain arrives as a few dozen rows
+moved across one boundary, and 101 and 117 rows are still on the wrong side of it.
+"""
+
 CH5 = ["\\chapter{Results and Analysis}", "\\label{ch:5}", convert(body("5. Results"), (), (), [
-    ("transferred (5.9), and what survives for practice (5.10).",
-     "transferred (5.9), what survives for practice (5.10), and the decision each research question "
-     "comes to on this evidence (5.11).")])]
-for k in ["5.1 ", "5.2 ", "5.3 ", "5.4 ", "5.5 ", "5.6 ", "5.7 ", "5.8 ", "5.9 ", "5.10 "]:
+    ("transferred (5.10), and what survives for practice (5.11).",
+     "where that gain lands class by class (5.9), what never transferred (5.10), what survives for "
+     "practice (5.11), and the decision each research question comes to on this evidence "
+     "(5.12).")])]
+for k in ["5.1 ", "5.2 ", "5.3 ", "5.4 ", "5.5 ", "5.6 ", "5.7 ", "5.8 "]:
+    spec = R[k]
+    CH5.append("\\section{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
+                                                      convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
+                                                              spec.get("subs", ()))))
+CH5.append(CH5_PER_CLASS)
+for k in ["5.10 ", "5.11 "]:
     spec = R[k]
     CH5.append("\\section{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
                                                       convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
@@ -1470,7 +1575,7 @@ CH5 = "\n".join(CH5)
 CH6_RQ = r"""
 \section{Answers to the Research Questions}
 \label{sec:6.1}
-Section~\ref{sec:5.11} decides the four questions on the measurements and records the numbers that
+Section~\ref{sec:5.12} decides the four questions on the measurements and records the numbers that
 decide them. This section states each answer and what follows from it.
 \begin{description}
   \item[RQ1. Does multi-teacher distillation with per-instance reliability weighting improve a compact

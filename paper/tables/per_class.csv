@@ -1,0 +1,8 @@
+Arm,Seeds,age,ethnicity,gender,not_cyberbullying,other_cyberbullying,religion
+Fine-tune only,3,0.963,0.942,0.864,0.644,0.707,0.917
+"Fine-tune, 35 epochs",3,0.962,0.944,0.865,0.643,0.693,0.920
+"Single teacher, in sample",3,0.964,0.946,0.865,0.644,0.702,0.922
++ 42k transfer rows,3,0.965,0.947,0.871,0.660,0.714,0.921
++ 168k transfer rows,3,0.969,0.946,0.880,0.671,0.721,0.924
+"BiLSTM, fine-tune only",3,0.977,0.982,0.897,0.690,0.719,0.950
+"BiLSTM, + 168k transfer rows",3,0.981,0.983,0.913,0.734,0.747,0.955
