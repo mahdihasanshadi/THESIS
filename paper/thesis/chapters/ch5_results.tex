@@ -65,12 +65,11 @@ BiLSTM & 10.4M & 0.8693 & 0.8748 & 0.8761 & 0.8732 & 0.8760 & 0.8764 \\
 Best distilled configuration against fine-tune-only: BERT-mini +0.0012 [$-$0.0057, +0.0079],
 BERT-small +0.0040 [$-$0.0058, +0.0126], DistilBERT +0.0068 [$-$0.0013, +0.0139], DeBERTa-v3-xsmall
 +0.0040 [$-$0.0024, +0.0109], BiLSTM +0.0071 [$-$0.0039, +0.0195]. Five of five positive, which is
-the result the control was added to test and which the Pre-Thesis II version of this work failed;
-and none of the five intervals excludes zero, nor does any of the 27 in-sample
-distillation-against-fine-tuning comparisons in the grid. Taking the best of six configurations per
-student also flatters the difference. The supportable claim is the modest one: in sample,
-distillation moves every student in the same direction, by 0.001 to 0.007 macro-F1, which a test set
-of 4,326 posts cannot resolve.
+the result the control was added to test; and none of the five intervals excludes zero, nor does any
+of the 27 in-sample distillation-against-fine-tuning comparisons in the grid. Taking the best of six
+configurations per student also flatters the difference. The supportable claim is the modest one: in
+sample, distillation moves every student in the same direction, by 0.001 to 0.007 macro-F1, which a
+test set of 4,326 posts cannot resolve.
 
 Two students deserve a remark. The most heterogeneous student, the BiLSTM, gains the most, and the
 student that shares the teachers' architecture most closely, BERT-mini, gains the least; the

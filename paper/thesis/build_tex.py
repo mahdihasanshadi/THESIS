@@ -428,13 +428,13 @@ CH1 = r"""
 \label{sec:1.1}
 <<P0>>
 
-This thesis continues the Pre-Thesis II report of February 2026, which proposed Dynamic Multi-Teacher
-Homogeneous Knowledge Distillation (D-MTHD) and evaluated it on the Wikipedia Talk personal-attacks corpus
-with two teachers and a DistilBERT student. That report found the student at 0.8947 macro-F1 against
-teachers at 0.8936 and 0.8904, from one run of each configuration, and named two tasks for this phase:
-extending the method to sarcastic and implicit cyberbullying, and testing it against a student trained
-without teachers. This thesis does both, on a cleaned fine-grained cyberbullying corpus, and what it
-finds changes the method.
+This thesis builds that method in full and measures it. Dynamic Multi-Teacher Homogeneous Knowledge
+Distillation (D-MTHD) is a committee of task-adapted teachers whose softened outputs are weighted per
+instance by how reliable each teacher is on that instance, aligned to the student through learned
+projections of their hidden states, with an auxiliary head for irony. We evaluate it on a cleaned
+fine-grained cyberbullying corpus, extend it to sarcastic and implicit abuse, and test it against the
+control this literature omits, the same student trained with no teacher at all. What the measurements
+find changes the method.
 
 \section{Motivation}
 \label{sec:1.2}
@@ -459,8 +459,7 @@ is implication: the abuse that detectors and annotators miss most is carried by 
 coded reference, and the widely used benchmarks do not label it. The third is evidence: the methods
 proposed to close the first gap, committees of teachers weighted per instance, are usually reported
 without the control that would show whether the teachers helped at all, which is the same student
-trained without a teacher, and without repeated runs or confidence intervals. The Pre-Thesis II report
-shared this gap. A distillation method that is not shown to beat that control cannot be said to work, and
+trained without a teacher, and without repeated runs or confidence intervals. A distillation method that is not shown to beat that control cannot be said to work, and
 a gain that is not measured on implicit abuse cannot be said to address it.
 
 \section{Research Questions and Objectives}
@@ -987,11 +986,11 @@ The design of this thesis changed four times, and each change was forced by a me
 chosen in advance. Every change is recorded, with the evidence that forced it, in the decision log of
 the project's repository.
 \begin{enumerate}
-  \item \textbf{From the Pre-Thesis II method to a controlled grid.} The Pre-Thesis II report distilled two
-    teachers into DistilBERT on the Wikipedia corpus and reported the student above its teachers from one
-    run, without a student trained without teachers. On the cleaned tweet corpus we added that control,
-    three seeds and paired bootstrap intervals, and distillation then raised every student by less than
-    the test set can resolve.
+  \item \textbf{From the method as proposed to a controlled grid.} The method was to be evaluated the
+    way this literature evaluates it, by setting a distilled student against its teachers. We added the
+    baseline those comparisons leave out, the same student trained with no teacher, along with three
+    seeds and paired bootstrap intervals, and distillation then raised every student by less than the
+    test set can resolve.
   \item \textbf{From dynamic weighting to its mechanism.} The per-instance weights sat close to uniform at
     the default temperature and barely sharpened at a twentieth of it, and the score did not move.
     Measuring the teachers explained why: they had memorised the training split and agreed with one
@@ -1005,8 +1004,8 @@ the project's repository.
     its predictions written down beforehand, then measured the gain, its growth with the amount of text,
     and its survival under the matched-compute and second-student controls.
 \end{enumerate}
-The title changed with the evidence. The registered title named a dynamic, multi-teacher, homogeneous
-and robust framework. The grid measured the first three of those properties and found none of them to
+The title changed with the evidence. The title this work began under named a dynamic, multi-teacher,
+homogeneous and robust framework. The grid measured the first three of those properties and found none of them to
 be the source of the gain; the fourth was tested only under synthetic character edits, which this
 thesis does not call robustness. The final title names what the evidence supports.
 """

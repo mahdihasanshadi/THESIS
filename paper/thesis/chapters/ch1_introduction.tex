@@ -16,13 +16,13 @@ split, and the student is distilled on that same split \cite{wu2021one, prasomph
 promise is that a committee of teachers with complementary expertise holds more of what the task
 requires than any one of them, and that the student, small enough to run on a phone, receives it.
 
-This thesis continues the Pre-Thesis II report of February 2026, which proposed Dynamic Multi-Teacher
-Homogeneous Knowledge Distillation (D-MTHD) and evaluated it on the Wikipedia Talk personal-attacks corpus
-with two teachers and a DistilBERT student. That report found the student at 0.8947 macro-F1 against
-teachers at 0.8936 and 0.8904, from one run of each configuration, and named two tasks for this phase:
-extending the method to sarcastic and implicit cyberbullying, and testing it against a student trained
-without teachers. This thesis does both, on a cleaned fine-grained cyberbullying corpus, and what it
-finds changes the method.
+This thesis builds that method in full and measures it. Dynamic Multi-Teacher Homogeneous Knowledge
+Distillation (D-MTHD) is a committee of task-adapted teachers whose softened outputs are weighted per
+instance by how reliable each teacher is on that instance, aligned to the student through learned
+projections of their hidden states, with an auxiliary head for irony. We evaluate it on a cleaned
+fine-grained cyberbullying corpus, extend it to sarcastic and implicit abuse, and test it against the
+control this literature omits, the same student trained with no teacher at all. What the measurements
+find changes the method.
 
 \section{Motivation}
 \label{sec:1.2}
@@ -47,8 +47,7 @@ is implication: the abuse that detectors and annotators miss most is carried by 
 coded reference, and the widely used benchmarks do not label it. The third is evidence: the methods
 proposed to close the first gap, committees of teachers weighted per instance, are usually reported
 without the control that would show whether the teachers helped at all, which is the same student
-trained without a teacher, and without repeated runs or confidence intervals. The Pre-Thesis II report
-shared this gap. A distillation method that is not shown to beat that control cannot be said to work, and
+trained without a teacher, and without repeated runs or confidence intervals. A distillation method that is not shown to beat that control cannot be said to work, and
 a gain that is not measured on implicit abuse cannot be said to address it.
 
 \section{Research Questions and Objectives}

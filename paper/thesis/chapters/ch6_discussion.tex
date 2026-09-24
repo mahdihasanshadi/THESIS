@@ -99,11 +99,11 @@ The design of this thesis changed four times, and each change was forced by a me
 chosen in advance. Every change is recorded, with the evidence that forced it, in the decision log of
 the project's repository.
 \begin{enumerate}
-  \item \textbf{From the Pre-Thesis II method to a controlled grid.} The Pre-Thesis II report distilled two
-    teachers into DistilBERT on the Wikipedia corpus and reported the student above its teachers from one
-    run, without a student trained without teachers. On the cleaned tweet corpus we added that control,
-    three seeds and paired bootstrap intervals, and distillation then raised every student by less than
-    the test set can resolve.
+  \item \textbf{From the method as proposed to a controlled grid.} The method was to be evaluated the
+    way this literature evaluates it, by setting a distilled student against its teachers. We added the
+    baseline those comparisons leave out, the same student trained with no teacher, along with three
+    seeds and paired bootstrap intervals, and distillation then raised every student by less than the
+    test set can resolve.
   \item \textbf{From dynamic weighting to its mechanism.} The per-instance weights sat close to uniform at
     the default temperature and barely sharpened at a twentieth of it, and the score did not move.
     Measuring the teachers explained why: they had memorised the training split and agreed with one
@@ -117,7 +117,7 @@ the project's repository.
     its predictions written down beforehand, then measured the gain, its growth with the amount of text,
     and its survival under the matched-compute and second-student controls.
 \end{enumerate}
-The title changed with the evidence. The registered title named a dynamic, multi-teacher, homogeneous
-and robust framework. The grid measured the first three of those properties and found none of them to
+The title changed with the evidence. The title this work began under named a dynamic, multi-teacher,
+homogeneous and robust framework. The grid measured the first three of those properties and found none of them to
 be the source of the gain; the fourth was tested only under synthetic character edits, which this
 thesis does not call robustness. The final title names what the evidence supports.

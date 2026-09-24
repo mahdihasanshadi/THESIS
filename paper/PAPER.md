@@ -205,8 +205,7 @@ collectively know more than any one of them in a way their outputs reveal, and t
 against the gold label on the training data still means something once the teachers have been fine-tuned
 on that data. In the abusive-language literature the claim that several teachers beat one is typically
 reported without a no-distillation control, without the teachers' own scores, and without seeds or
-intervals \cite{prasomphan2025mtkd}; the Pre-Thesis II report this work grew out of reported its
-teachers' scores but omitted the control, the seeds and the intervals. Section
+intervals \cite{prasomphan2025mtkd}. Section
 5.5 tests both assumptions and finds both false on a committee assembled in the usual way, and Section
 5.7 finds the committee no better a labeller than one teacher out of sample either.
 
@@ -544,7 +543,7 @@ Test macro-F1, mean over three seeds; classical floor 0.8798.
 Best distilled configuration against fine-tune-only: BERT-mini +0.0012 [-0.0057, +0.0079], BERT-small
 +0.0040 [-0.0058, +0.0126], DistilBERT +0.0068 [-0.0013, +0.0139], DeBERTa-v3-xsmall +0.0040 [-0.0024,
 +0.0109], BiLSTM +0.0071 [-0.0039, +0.0195]. Five of five positive, which is the result the control was
-added to test and which the Pre-Thesis II version of this work failed; and none of the five intervals
+added to test; and none of the five intervals
 excludes zero, nor does any of the 27 in-sample distillation-against-fine-tuning comparisons in the
 grid. Taking the best of six configurations per student also flatters the difference. The supportable
 claim is the modest one: in sample, distillation moves every student in the same direction, by 0.001
@@ -1162,8 +1161,8 @@ one file.
 ## Appendix C. Hyper-parameters
 
 The distillation hyper-parameters ($\alpha = \beta = 0.4$, $\gamma = 0.2$, $\delta = 0.3$, $T = 4$,
-$\tau = 1$) are carried over from the Pre-Thesis II report's Table 3.1 unchanged, so that the audit
-tests the method as proposed; Section 5.3 sweeps each of them around those defaults. Every other
+$\tau = 1$) are the values the method is proposed with and are left unchanged, so that the audit
+tests it as proposed; Section 5.3 sweeps each of them around those defaults. Every other
 setting, for the teachers and for the students, is in the table below, which is the single source for
 all of them.
 
@@ -1184,8 +1183,7 @@ Sections 5.7 to 5.9.
 ## Appendix E. How the study changed
 
 The thesis version of this document carries, as an appendix, the decision log's account of how the
-framing moved: from a multi-teacher method (Pre-Thesis II), to a rebuilt pipeline with the missing
-control,
-to the finding that the weighting does nothing, to the specialist that did not help, to the audit of
+framing moved: from a multi-teacher method, to the pipeline with the missing control, to the finding
+that the weighting does nothing, to the specialist that did not help, to the audit of
 implication, to the mechanism, and finally to the out-of-sample result and its curve. It is omitted
 from the journal version.
