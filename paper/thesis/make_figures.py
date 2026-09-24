@@ -33,10 +33,26 @@ GRAY, LIGHT_GRAY = "#898781", "#c3c2b7"
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e1e0d9"
 RAMP = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6",
         "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"]
-WIDTH = 6.3  # inches, the text width of an A4 page with 2.54 cm margins
+WIDTH = 5.906  # inches, the 150 mm text width of the department's template
+
+# the figures are set in the document's own face; Latin Modern is read from the files the renderer
+# embeds, and mathtext falls back to matplotlib's Computer Modern, which is the same design
+FONT_DIR = os.path.join(HERE, "fonts")
+FAMILY = "DejaVu Sans"
+if os.path.isdir(FONT_DIR):
+    from matplotlib import font_manager
+    for name in sorted(os.listdir(FONT_DIR)):
+        if name.startswith("lmroman") and name.endswith(".otf"):
+            try:
+                font_manager.fontManager.addfont(os.path.join(FONT_DIR, name))
+            except Exception:
+                pass
+    if any(f.name == "Latin Modern Roman" for f in font_manager.fontManager.ttflist):
+        FAMILY = "Latin Modern Roman"
 
 plt.rcParams.update({
-    "font.family": "DejaVu Sans", "font.size": 8.5, "axes.titlesize": 9, "axes.labelsize": 8.5,
+    "font.family": FAMILY, "mathtext.fontset": "cm",
+    "font.size": 8.5, "axes.titlesize": 9, "axes.labelsize": 8.5,
     "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "axes.edgecolor": LIGHT_GRAY,
     "axes.linewidth": 0.8, "axes.labelcolor": INK, "xtick.color": INK2, "ytick.color": INK2,
     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6, "grid.linestyle": "-",
@@ -82,7 +98,7 @@ def fig_schematic():
         ("In sample", LIGHT_GRAY, GRAY,
          ["Labelled training split:\n34,607 tweets",
           "Teacher fine-tuned on\nthese same tweets",
-          "Soft labels \u2248 gold labels:\nthe teacher is almost always sure",
+          "Soft labels $\\approx$ gold labels:\nthe teacher is almost always sure",
           "Student learns only\nwhat the labels say"],
          "No gain over fine-tuning,\nwhatever the committee or weighting"),
         ("Out of sample", RAMP[3], BLUE,
@@ -168,17 +184,17 @@ def fig_tau(archive):
     a.axhline(1 / 3, color=GRAY, lw=1.0)
     a.text(0.052, 1 / 3 + 0.0008, "uniform weight 1/3", ha="left", va="bottom", fontsize=7.4, color=INK2)
     a.set_xscale("log")
-    a.set_xlabel("weight temperature \u03c4")
+    a.set_xlabel("weight temperature $\\tau$")
     a.set_ylabel("largest weight per tweet, mean")
     a.set_title("a. The weights barely leave uniform", loc="left")
     a.set_ylim(0.325, 0.385)
-    b.plot(diag["tau"], f1, color=BLUE, lw=1.5, marker="o", ms=5, mec="#ffffff", mew=1.2, label="D-MTHD at each \u03c4")
+    b.plot(diag["tau"], f1, color=BLUE, lw=1.5, marker="o", ms=5, mec="#ffffff", mew=1.2, label="D-MTHD at each $\\tau$")
     b.axhline(ft1, color=INK2, lw=1.0)
     b.axhline(uni1, color=LIGHT_GRAY, lw=1.0)
     b.text(0.052, ft1 + 0.0002, "fine-tune only", ha="left", va="bottom", fontsize=7.4, color=INK2)
     b.text(0.052, uni1 - 0.0002, "uniform averaging", ha="left", va="top", fontsize=7.4, color=INK2)
     b.set_xscale("log")
-    b.set_xlabel("weight temperature \u03c4")
+    b.set_xlabel("weight temperature $\\tau$")
     b.set_ylabel("test macro-F1, seed 1")
     b.set_title("b. and the score does not move", loc="left")
     b.set_ylim(0.8360, 0.8410)

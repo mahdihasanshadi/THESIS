@@ -415,7 +415,7 @@ of the public corpora this work is built on, and Kaggle for the GPU time on whic
 
 \chapter*{List of Abbreviations}
 \phantomsection\addcontentsline{toc}{chapter}{List of Abbreviations}
-\begin{tabular}{@{}ll@{}}
+\begin{tabular}{@{}lp{11.6cm}@{}}
 AUC & Area under the receiver operating characteristic curve\\
 BERT & Bidirectional Encoder Representations from Transformers\\
 BiLSTM & Bidirectional long short-term memory network\\
@@ -810,8 +810,8 @@ resolution every one of those claims should have been read against.
 
 \begin{center}
 {\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{longtable}{p{2.45cm}p{3.35cm}p{2.5cm}p{3.15cm}p{2.5cm}}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{p{2.35cm}p{3.2cm}p{2.4cm}p{3.0cm}p{2.4cm}}
 \caption[What the literature establishes and what it leaves open]{What each work establishes, what it
 reports, what limits it for this thesis, and where the thesis takes it up.}
 \label{tab:gap}\\
@@ -1834,7 +1834,8 @@ MAIN = r"""
 \clearpage
 \pagenumbering{arabic}
 \setcounter{page}{1}
-\onehalfspacing
+% the department's reference sets its body single-spaced, 14.5 pt on 12 pt
+\singlespacing
 \input{chapters/ch1_introduction}
 \input{chapters/ch2_literature}
 \input{chapters/ch3_methodology}

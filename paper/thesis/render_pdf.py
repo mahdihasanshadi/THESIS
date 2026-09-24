@@ -1456,20 +1456,51 @@ class Thesis:
 
 
 # ------------------------------------------------------------------------------------------------ page
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+
+
+def font_css():
+    """@font-face for Latin Modern, the Unicode Computer Modern the department's template is set in."""
+    faces = [("Latin Modern Roman", "lmroman12-regular", "normal", "normal"),
+             ("Latin Modern Roman", "lmroman12-italic", "italic", "normal"),
+             ("Latin Modern Roman", "lmroman12-bold", "normal", "bold"),
+             ("Latin Modern Roman", "lmroman10-bolditalic", "italic", "bold"),
+             ("Latin Modern Mono", "lmmono10-regular", "normal", "normal"),
+             ("Latin Modern Mono", "lmmono10-italic", "italic", "normal"),
+             ("Latin Modern Math", "latinmodern-math", "normal", "normal")]
+    out = []
+    for family, stem, style, weight in faces:
+        path = os.path.join(FONT_DIR, stem + ".otf")
+        if not os.path.exists(path):
+            warn("font missing, falling back to a system serif: " + stem)
+            continue
+        url = "file:///" + path.replace("\\", "/")
+        out.append('@font-face { font-family: "%s"; src: url("%s") format("opentype"); '
+                   "font-style: %s; font-weight: %s; font-display: block; }" % (family, url, style, weight))
+    return "\n".join(out)
+
+
 CSS = r"""
-@page { size: A4; margin: 25.4mm; }
+/* the page box is 6 mm wider than the text block and the text block is centred in it, so the
+   margins are the template's 30 mm and a stray millimetre of overflow cannot make Chromium
+   scale all 90-odd pages down to fit it */
+@page { size: A4; margin: 24.5mm 27mm; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { margin: 0; width: 159.2mm; font-family: Cambria, "Cambria Math", Georgia, serif; font-size: 11pt; color: #000;
+body { margin: 0 auto; width: 150mm; font-family: "Latin Modern Roman", "CMU Serif", Cambria, Georgia, serif;
+  font-size: 12pt; color: #000;
   background: #fff; text-align: justify; hyphens: auto; font-kerning: normal; text-rendering: geometricPrecision; }
-math { font-family: "Cambria Math", math; }
+math { font-family: "Latin Modern Math", "Cambria Math", math; }
 a { color: inherit; text-decoration: none; }
-code { font-family: Consolas, "Courier New", monospace; font-size: 0.9em; overflow-wrap: anywhere; hyphens: none; }
+code { font-family: "Latin Modern Mono", Consolas, "Courier New", monospace; font-size: 0.92em; overflow-wrap: anywhere; hyphens: none; }
 .nobr { white-space: nowrap; }
 .sc { font-variant: small-caps; }
-p { margin: 0; text-indent: 1.5em; orphans: 2; widows: 2; }
+/* the template runs its paragraphs flush left with half a line between them, not indented */
+p { margin: 0 0 0.6em; text-indent: 0; orphans: 2; widows: 2; }
+p:last-child { margin-bottom: 0; }
+.caption p, figcaption p, table p, .titlepage p, .desc p { margin-bottom: 0; }
 p.noindent { text-indent: 0; }
 p.center, .center p { text-align: center; text-indent: 0; }
-.sp-single { line-height: 1.22; }
+.sp-single { line-height: 1.208; }
 .sp-onehalf { line-height: 1.5; }
 .sp-onehalf .toc, .sp-onehalf table.tab, .sp-onehalf .caption, .sp-onehalf figcaption { line-height: 1.25; }
 .vgap { display: block; }
@@ -1490,8 +1521,8 @@ h1.chapter .chap-title { display: block; font-size: 2.07em; }
 /* the number hangs, a quad before the title, and the title wraps under itself, as LaTeX's \@hangfrom does */
 h2.section, h3.subsection { display: flex; align-items: baseline; font-weight: bold; break-after: avoid;
   break-inside: avoid; text-align: left; hyphens: manual; line-height: 1.25; }
-h2.section { font-size: 1.36em; margin: 1.15em 0 0.55em; }
-h3.subsection { font-size: 1.17em; margin: 1em 0 0.4em; }
+h2.section { font-size: 1.44em; margin: 1.3em 0 0.6em; }
+h3.subsection { font-size: 1.2em; margin: 1.1em 0 0.45em; }
 h2 .secnum, h3 .secnum { flex: none; margin-right: 1em; }
 
 .titlepage { height: 245mm; display: flex; flex-direction: column; text-align: center; break-after: page; line-height: 1.3; }
@@ -1516,6 +1547,8 @@ table.tab .al-l { text-align: left; } table.tab .al-c { text-align: center; } ta
 table.tab .al-p { text-align: left; }
 table.booktabs td.al-l, table.booktabs td.al-c, table.booktabs td.al-r { white-space: nowrap; }
 table.plain td { white-space: nowrap; }
+/* an l/c/r column does not wrap, but a p{} column is a paragraph and must */
+table.plain td.al-p, table.booktabs td.al-p { white-space: normal; }
 table.booktabs th.al-l, table.booktabs th.al-c, table.booktabs th.al-r { white-space: normal; }
 tr.r-top > * { border-top: 0.08em solid #000; padding-top: calc(0.65ex + 0.13em); }
 tr.r-mid > * { border-top: 0.05em solid #000; padding-top: calc(0.65ex + 0.13em); }
@@ -1529,7 +1562,7 @@ table.long thead { display: table-header-group; }
 .plain-tabular.center > table, .center .plain-tabular > table { margin: 0 auto; }
 table.plain td { padding: 0.05em var(--tcs, 6pt); vertical-align: baseline; }
 
-.equation { display: grid; grid-template-columns: 3.4em 1fr 3.4em; align-items: center; margin: 0.75em 0;
+.equation { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) 3.4em; align-items: center; margin: 0.75em 0;
   break-inside: avoid; text-indent: 0; }
 .equation .eq-body { grid-column: 2; text-align: center; }
 .equation .eq-num { grid-column: 3; text-align: right; }
@@ -1566,7 +1599,7 @@ ol.list li, ul.list li { margin: 0.15em 0; padding-left: 0.2em; }
 .toc-gap { height: 0.7em; }
 
 .bibliography { line-height: 1.22; }
-.bib-entry { display: grid; grid-template-columns: var(--bibw) 1fr; column-gap: 0.55em; margin: 0 0 0.45em; break-inside: avoid; }
+.bib-entry { display: grid; grid-template-columns: var(--bibw) minmax(0, 1fr); column-gap: 0.55em; margin: 0 0 0.45em; break-inside: avoid; }
 .bib-label { text-align: right; }
 .bib-text { text-align: justify; hyphens: auto; }
 .url { font-family: Consolas, "Courier New", monospace; font-size: 0.9em; }
@@ -1576,12 +1609,39 @@ JS = r"""
 <script>
 (function () {
   // adjustbox{max width=\textwidth}: shrink a table that is still wider than the text once its headers wrap
-  document.querySelectorAll('.fit').forEach(function (box) {
-    var t = box.firstElementChild;
+  document.querySelectorAll('.fit, .longtable-wrap').forEach(function (box) {
+    var t = box.querySelector('table');
     if (!t) return;
     var need = t.getBoundingClientRect().width, avail = box.getBoundingClientRect().width;
-    if (need > avail + 0.5) { t.style.zoom = (avail / need).toFixed(4); t.setAttribute('data-zoom', t.style.zoom); }
+    if (need <= avail + 0.5) return;
+    // one per cent of slack: Chromium shrinks the whole document for a sliver of overflow
+    var z = avail / need * 0.99;
+    for (var i = 0; i < 6; i++) {
+      t.style.zoom = z.toFixed(4);
+      if (t.getBoundingClientRect().width <= avail) break;
+      z *= 0.98;
+    }
+    t.setAttribute('data-zoom', t.style.zoom);
   });
+  // Chromium scales the whole document down to fit its widest box, so any box wider than the text
+  // block silently shrinks every page. Find them and name them rather than let that happen quietly.
+  (function () {
+    var lim = document.body.getBoundingClientRect().width + 1, hits = [];
+    document.querySelectorAll('body *').forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.width <= lim || r.width === 0) return;
+      if (hits.some(function (h) { return h.contains(el); })) return;  // the outermost box of each subtree
+      hits.push(el);
+    });
+    hits.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      var what = el.id || (el.closest('[id]') || {}).id ||
+                 ((el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 44) || el.tagName);
+      el.setAttribute('data-overwide', what + ' [' + el.tagName.toLowerCase() +
+                      (el.className ? '.' + String(el.className).split(' ')[0] : '') + '] x' +
+                      (r.width / (lim - 1)).toFixed(3));
+    });
+  })();
   // an equation whose formula is wider than the space between the equation-number columns
   document.querySelectorAll('.eq-body').forEach(function (b) {
     var m = b.firstElementChild;
@@ -1589,8 +1649,20 @@ JS = r"""
     var r = document.createRange();
     r.selectNodeContents(m);
     var w = r.getBoundingClientRect().width, line = b.parentElement.getBoundingClientRect().width;
+    var cell = b.getBoundingClientRect().width;
     b.setAttribute('data-width', (w / line).toFixed(3));
-    if (w > b.getBoundingClientRect().width + 0.5) b.setAttribute('data-overfull', (w / line).toFixed(3));
+    if (w > cell + 0.5) {
+      // scale it into the cell, as \resizebox would, rather than let it overflow the text block
+      b.setAttribute('data-overfull', (w / line).toFixed(3));
+      var z = cell / w * 0.99;
+      for (var i = 0; i < 6; i++) {
+        m.style.zoom = z.toFixed(4);
+        r.selectNodeContents(m);
+        if (r.getBoundingClientRect().width <= cell) break;
+        z *= 0.98;
+      }
+      b.setAttribute('data-eqzoom', m.style.zoom);
+    }
   });
 })();
 </script>
@@ -1606,9 +1678,10 @@ def glue_math(content):
 
 def page(title, body, anchors):
     links = "".join('<a href="#%s"></a>' % a for a in anchors)
-    return ('<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><title>%s</title><style>%s</style></head>'
+    return ('<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><title>%s</title>'
+            '<style>%s</style><style>%s</style></head>'
             '<body><div class="sp-single">%s</div><div style="display:none">%s</div>%s</body></html>'
-            % (esc(title), CSS, body, links, JS))
+            % (esc(title), font_css(), CSS, body, links, JS))
 
 
 def load(path):
@@ -1621,6 +1694,22 @@ def expand_inputs(src, base):
         path = os.path.join(base, name if name.endswith(".tex") else name + ".tex")
         return expand_inputs(strip_comments(load(path)), base)
     return re.sub(r"\\input\{([^}]*)\}", repl, src)
+
+
+def printed_scale(pdf_path, nominal=12.0):
+    """The scale Chromium applied, read back from the type size on a body page (1.0 means none)."""
+    import collections
+    import fitz
+    doc = fitz.open(pdf_path)
+    sizes = collections.Counter()
+    for i in range(len(doc) // 3, min(len(doc), len(doc) // 3 + 12)):
+        for b in doc[i].get_text("dict")["blocks"]:
+            for ln in b.get("lines", []):
+                for sp in ln["spans"]:
+                    if sp["text"].strip():
+                        sizes[round(sp["size"], 2)] += len(sp["text"].strip())
+    doc.close()
+    return (sizes.most_common(1)[0][0] / nominal) if sizes else None
 
 
 def print_pdf(browser, html_path, pdf_path):
@@ -1723,7 +1812,9 @@ def finalize(raw_pdf, out_pdf, labels, thesis, dests, title, authors):
     from reportlab.pdfgen import canvas
 
     font = "Times-Roman"
-    for path, idx in ((r"C:\Windows\Fonts\cambria.ttc", 0), ("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", None)):
+    for path, idx in ((os.path.join(FONT_DIR, "lmroman12-regular.otf"), None),
+                      (r"C:\Windows\Fonts\cambria.ttc", 0),
+                      ("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", None)):
         if os.path.exists(path):
             try:
                 pdfmetrics.registerFont(TTFont("PageFont", path, subfontIndex=idx) if idx is not None else TTFont("PageFont", path))
@@ -1736,8 +1827,8 @@ def finalize(raw_pdf, out_pdf, labels, thesis, dests, title, authors):
     w, _ = A4
     for lab in labels:
         if lab:
-            c.setFont(font, 11)
-            c.drawCentredString(w / 2, 42, lab)
+            c.setFont(font, 12)
+            c.drawCentredString(w / 2, 40.9, lab)  # its descenders land 13.5 mm from the foot, as the template's do
         c.showPage()
     c.save()
     overlay = PdfReader(overlay_path)
@@ -1854,14 +1945,22 @@ def main():
     dom = dump_dom(browser, html_path)
     zooms = re.findall(r'data-zoom="([\d.]+)"', dom)
     overfull = re.findall(r'data-overfull="([\d.]+)"', dom)
+    for hit in re.findall(r'data-overwide="([^"]+)"', dom):
+        warn("wider than the text block, which makes Chromium scale the page: " + hit)
     widths = re.findall(r'data-width="([\d.]+)"', dom)
     pdf_path = os.path.join(out, args.name)
     finalize(raw_pdf, pdf_path, labels, thesis, dests, title, authors)
     os.remove(raw_pdf)
     print("floats deferred past running text: %s" % (", ".join("%s by %d" % kv for kv in sorted(moves.items())) or "none"))
     print("tables shrunk to fit: %s" % (", ".join(zooms) or "none"))
-    print("equation widths as a fraction of the line: %s; wider than the space between the numbers: %s"
-          % (", ".join(widths) or "none", ", ".join(overfull) or "none"))
+    eqzoom = re.findall(r'data-eqzoom="([\d.]+)"', dom)
+    print("equation widths as a fraction of the line: %s; wider than the space between the numbers: %s%s"
+          % (", ".join(widths) or "none", ", ".join(overfull) or "none",
+             (", scaled to " + ", ".join(eqzoom)) if eqzoom else ""))
+    scale = printed_scale(pdf_path)
+    if scale is not None and abs(scale - 1) > 0.005:
+        warn("Chromium scaled the page to %.3f of full size, so the type is %.1f pt rather than 12 pt; "
+             "something in the document is wider than the text block" % (scale, 12 * scale))
     print("%d chapters, %d figures, %d tables, %d equations, %d citations of %d references"
           % (sum(1 for e in thesis.toc if e[0] == 0 and e[1]), sum(1 for x in thesis.lof if x != "gap"),
              sum(1 for x in thesis.lot if x != "gap"), sum(1 for a in thesis.anchors if a.startswith("eq-")),
