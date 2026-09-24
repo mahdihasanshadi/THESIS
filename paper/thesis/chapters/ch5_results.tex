@@ -1,11 +1,35 @@
-\chapter{Results and Analysis}
+\chapter{Result Analysis}
 \label{ch:5}
-The sections run in the order of the argument, not the order the runs were made: the in-sample audit
-(5.1 to 5.5), its mechanism (5.6), the out-of-sample result and its curve (5.7 and 5.8), what never
-where that gain lands class by class (5.9), what never transferred (5.10), what survives for
-practice (5.11), and the decision each research question comes to on this evidence (5.12). Every
-difference is a paired bootstrap interval; single-seed rows are marked and treated as indicative.
-\section{The Teachers Clear the Bar}
+The sections run in the order of the argument rather than the order the runs were made.
+Section~\ref{sec:5.perf} states what was measured and how, and reports the teachers and the
+in-sample grid. Section~\ref{sec:5.analysis} takes the design apart: the weighting, the committee,
+the specialist teacher, and the mechanism behind all three. Section~\ref{sec:5.adjust} reports the
+adjustment that followed and the curve it produced. Section~\ref{sec:5.stats} gives the statistics
+every claim is read against, Section~\ref{sec:5.compare} the comparisons across models and against
+the deployment budget, and Section~\ref{sec:5.discuss} decides the research questions and discusses
+what the answers mean. Every difference is a paired bootstrap interval; single-seed rows are marked
+and treated as indicative.
+\section{Performance Evaluation}
+\label{sec:5.perf}
+\subsection{Key Evaluation Metrics and Criteria}
+\label{sec:5.metrics}
+The headline measure is macro-F1 on the 4,326-post test split, the unweighted mean of the six
+per-class F1 scores, so that the two residual classes count as much as the four that name a target.
+Beside it the thesis reports accuracy, expected calibration error and per-class F1. The reading of
+implication is measured threshold-free, as the area under the curve separating the ironic-abuse
+probe from the benign-sarcasm probe, with the recall-against-false-positive pair beside it because a
+deployment must choose a threshold even though an evaluation should not. Deployment is measured as
+parameters, latency at batch 1 and batch 32, FLOPs per sequence, stored size and macro-F1 after INT8
+quantisation. Section~\ref{sec:4.6} defines each of these.
+\subsection{Testing Methodology}
+\label{sec:5.testing}
+Section~\ref{sec:4.7} gives the protocol; three of its provisions decide how the sections below
+should be read. Main configurations are run at three seeds and ablations and sweeps at one, and
+every single-seed row is marked as such. Differences are paired bootstrap intervals rather than
+differences of means, and the tables carrying them are generated from the run outputs rather than
+transcribed. And the test set resolves about 0.007 macro-F1, which is the yardstick every number
+below is held to: a difference smaller than that is reported as undetectable rather than as small.
+\subsection{The Teachers Clear the Bar}
 \label{sec:5.1}
 \begin{table}[htbp]
 \centering
@@ -42,7 +66,7 @@ task-adapted teacher has, by its last epoch, assigned the gold label a probabili
 split the student will be distilled on (Section~\ref{sec:5.6}). And the probe columns already show
 the pattern Section~\ref{sec:5.10} makes precise: ordered by false-positive rate on harmless
 sarcasm, the teachers are almost exactly ordered by recall on ironic abuse.
-\section{In Sample, Distillation Raises Every Student by Less Than the Test Set Can Resolve}
+\subsection{In Sample, Distillation Raises Every Student by Less Than the Test Set Can Resolve}
 \label{sec:5.2}
 Table~\ref{tab:main} gives the in-sample grid: test macro-F1 of every student under every objective
 and committee, against a classical floor of 0.8798.
@@ -89,7 +113,9 @@ $-$0.0019 [$-$0.0093, +0.0049] with the specialist committee under averaging and
 The efficiency claim sits in this table. DistilBERT with a uniform heterogeneous committee reaches
 0.8975 against BERT-large's 0.8973 at a fifth of the parameters and latency
 (Section~\ref{sec:5.11}). We state that as parity, not as the student beating the teacher.
-\section{Per-Instance Weighting Does Not Differ from Uniform Averaging at Any Temperature}
+\section{Analysis of Design Solutions}
+\label{sec:5.analysis}
+\subsection{Per-Instance Weighting Does Not Differ from Uniform Averaging at Any Temperature}
 \label{sec:5.3}
 \begin{table}[htbp]
 \centering
@@ -168,7 +194,7 @@ Hyper-parameters behave the same way, against 0.8385 at the defaults on the same
 \{0.1, 0.5\}$ 0.8389 / 0.8399. The objective is flat in every direction we can move it, and adding a
 DeBERTa-v3 teacher to the homogeneous committee changes the five students by $-$0.0005, +0.0006,
 +0.0032, $-$0.0005 and +0.0006.
-\section{The Committee Is Worth More Than Its Best Member, and the Student Receives None of It}
+\subsection{The Committee Is Worth More Than Its Best Member, and the Student Receives None of It}
 \label{sec:5.4}
 Table~\ref{tab:committee} scores the teachers' saved test probabilities directly, before any student
 is involved.
@@ -252,7 +278,7 @@ against single-teacher distillation is $-$0.0019 [$-$0.0077, +0.0038], +0.0017 [
 $-$0.0003 [$-$0.0070, +0.0060], $-$0.0003 [$-$0.0072, +0.0070] and +0.0014 [$-$0.0073, +0.0099]
 across the five students. A better label on the same 34,607 training texts does not make a better
 student, and Section~\ref{sec:5.6} says why: on those texts the label is not better.
-\section{A Teacher That Has Seen Implication Labelled Does Not Help Either}
+\subsection{A Teacher That Has Seen Implication Labelled Does Not Help Either}
 \label{sec:5.5}
 The implicit specialist is the sharpest case of the previous section. It learned from a different
 corpus under a different label scheme, and it comes back from adaptation as the closest thing in the
@@ -321,7 +347,7 @@ label, a shift says only that a teacher fits other\_cyberbullying better than th
 not that it reads implication. On this corpus, a teacher that has learned implication from labelled
 data passes nothing a compact student's decisions can use, whether weighted, averaged, used alone or
 replaced by pre-training on its data.
-\section{Why Nothing Moved: The Soft Labels Are the Gold Labels in Sample}
+\subsection{Why Nothing Moved: The Soft Labels Are the Gold Labels in Sample}
 \label{sec:5.6}
 The weights are computed from cached teacher logits on the training split, the split each teacher
 was fine-tuned on, and the student is distilled on the same split. By their last epoch the teachers'
@@ -351,7 +377,9 @@ side: the committee's half point exists on the test set, where the teachers are 
 on the training set, where they are not. It also says where to look. If a teacher's soft labels
 carry information only where the teacher is uncertain, the student should be distilled on text the
 teacher has never fitted. The rest of the results test that sentence.
-\section{Out of Sample, the Gain Appears, and It Is in the Data, Not the Committee}
+\section{Final Design Adjustments}
+\label{sec:5.adjust}
+\subsection{Out of Sample, the Gain Appears, and It Is in the Data, Not the Committee}
 \label{sec:5.7}
 A transfer set of 42,013 unlabelled tweets (Section~\ref{sec:4.4}) was appended to training; on
 those rows the student has no gold label and trains on the committee's soft labels and hidden states
@@ -400,7 +428,7 @@ arm as decisive. What the run established is the direction: the gain is in the d
 imitates on, not in the committee, its weighting or its specialist, and it is a distillation result
 rather than a multi-teacher one. Two things it left open, the slope and the optimisation-length
 confound, are the subject of the next section.
-\section{The Gain Grows with the Transfer Set, from Any Tweets, and Survives Matched Compute}
+\subsection{The Gain Grows with the Transfer Set, from Any Tweets, and Survives Matched Compute}
 \label{sec:5.8}
 Two further runs measured the slope and the confounds, each with its predictions written before it
 ran (decisions D20 and D21) and scored by a script against the tables. One teacher labels, since the
@@ -517,9 +545,9 @@ move by at most 0.016. The unlabelled text teaches the boundary the labelled spl
 The constructive sentence of this paper is therefore measured on four axes: the gain exists, it
 grows with the unlabelled text, it comes from any tweets of the platform, and it holds on three
 compact students of two families while fine-tuning for the same number of updates gains nothing.
-What it does not have is a second corpus, which Chapter~\ref{ch:7} lists first.
+What it does not have is a second corpus, which the limitations list first.
 
-\section{Where the Gain Lands: The Classes, and the Confusion Between Them}
+\subsection{Where the Gain Lands: The Classes, and the Confusion Between Them}
 \label{sec:5.9}
 A macro-F1 of 0.8516 is an average over six classes that are not equally hard, so the number alone
 does not say what the unlabelled text taught. This section takes the arms of the two sections above
@@ -615,7 +643,32 @@ abusive, so the per-class table and the probe trade-off are two views of one cha
 findings. It also says where the ceiling of this recipe is. The gain arrives as a few dozen rows
 moved across one boundary, and 101 and 117 rows are still on the wrong side of it.
 
-\section{What Never Transferred: Discrimination of Implied Abuse Is Fixed by Pre-Training}
+\section{Statistical Analysis}
+\label{sec:5.stats}
+Every comparison in the grid is in Appendix~\ref{app:significance}: 99 paired bootstrap differences,
+each with its 95 per cent interval and whether that interval excludes zero. Nine of the 99 do. One
+is the ablation that removes the student's pre-training, $-$0.0488 [$-$0.0603, $-$0.0376], and the
+other eight are out-of-sample distillation arms. None of the 27 comparisons that set in-sample
+distillation against fine-tuning is among them.
+Two properties of that table matter more than any single row. The first is that it is generated from
+the run outputs rather than transcribed, so the intervals in the text and the intervals in the
+appendix cannot drift apart. The second is that its resolution is fixed by the test set rather than
+by the method: at 4,326 posts a paired interval is about 0.014 wide, so a difference under about
+0.007 macro-F1 cannot be separated from zero however many seeds are run. Every in-sample effect in
+this thesis is smaller than that, which is why Section~\ref{sec:7.1} states the in-sample result as
+an absence rather than as a zero. The out-of-sample endpoint, +0.0123 [+0.0035, +0.0211] at 168,000
+tweets, is above it.
+The out-of-sample runs carry a second kind of evidence, which an interval cannot supply. Each was
+predicted in writing before it ran, so the question of which arms to report was settled before the
+numbers existed; Appendix~\ref{app:predictions} scores all eleven predictions against the generated
+tables. What matters here is that the three that failed are reported in the sections they bear on,
+not only in the appendix: the committee was predicted to be the better labeller and was not
+(Section~\ref{sec:5.7}), the pre-registered arm was predicted to gain at least 0.010 and gained
+0.007 (Section~\ref{sec:5.7}), and the sarcasm-discrimination AUC was predicted to hold its
+in-sample band and fell below it on three arms of five (Section~\ref{sec:5.10}).
+\section{Comparisons and Relationships}
+\label{sec:5.compare}
+\subsection{What Never Transferred: Discrimination of Implied Abuse Is Fixed by Pre-Training}
 \label{sec:5.10}
 \textbf{The failure is discrimination, not blindness.} Diagnostic on BERT-mini fine-tune-only, seed
 1. Recall on the ironic-abuse probe is 0.91 on the 43 items containing explicit profanity and 0.76
@@ -733,7 +786,7 @@ ROC-AUC 0.608). On implicit hate against posts that are not hateful it catches 8
 0.411, the same two AUCs at 0.609 and 0.600. Whatever the tweet students have learned about abuse,
 in sample or out, does not include what makes an implication hateful; there was little of that
 knowledge in the committee to receive, and none in the transfer text.
-\section{Character-Level Obfuscation and Deployment Cost}
+\subsection{Character-Level Obfuscation and Deployment Cost}
 \label{sec:5.11}
 Table~\ref{tab:robustness} gives macro-F1 under synthetic obfuscation of the abusive test rows, on
 BERT-mini, seed 1.
@@ -787,14 +840,16 @@ INT8 dynamic quantisation halves its size for 0.003 macro-F1. BERT-mini's size f
 33 MB because 7.8M of its 11.2M parameters are the embedding table, which dynamic quantisation does
 not touch. The out-of-sample recipe adds nothing to inference: the transfer set is used once, in
 training, and the deployed student is the same model.
+\section{Discussions}
+\label{sec:5.discuss}
 
-\section{The Research Questions, Decided}
+\subsection{The Research Questions, Decided}
 \label{sec:5.12}
 The four questions of Section~\ref{sec:1.4} are decided here on the measurements above, under one rule
 fixed before any of them was run: a difference counts only if its paired bootstrap interval excludes
 zero, and on a test set of 4,326 posts that requires roughly 0.007 macro-F1 (Section~\ref{sec:4.7}).
 Table~\ref{tab:rq} states each decision beside the evidence that carries it; the paragraphs below give
-the numbers. Chapter~\ref{ch:6} takes up what the decisions mean.
+the numbers. Section~\ref{sec:6.2} takes up what they mean.
 
 \begin{table}[htbp]
 \centering
@@ -877,3 +932,202 @@ $+0.772$ with a margin of $0.357 \pm 0.046$, so what the interventions change is
 one trade-off line, not which line it is on. On a corpus that labels implication the same students rank
 implied abuse against benign text at 0.600 to 0.609 AUC, against 0.820 for the same architecture trained
 on that corpus.
+
+
+\subsection{Answers to the Research Questions}
+\label{sec:6.1}
+Section~\ref{sec:5.12} decides the four questions on the measurements and records the numbers that
+decide them. This section states each answer and what follows from it.
+\begin{description}
+  \item[RQ1. Does multi-teacher distillation with per-instance reliability weighting improve a compact
+    cyberbullying detector over the same student fine-tuned without teachers?]
+    Not in sample, at a resolution of 0.007 macro-F1. What this licenses is narrow and worth stating
+    precisely: across every student, committee and temperature in the grid, a practitioner who ran the
+    committee and a practitioner who ran neither would not be able to tell their students apart on this
+    test set. It does not license the claim that the effect is zero.
+  \item[RQ2. What mechanism explains the answer to RQ1?] The student imitates its teachers on the one
+    split they were themselves fine-tuned on, and they have memorised it, so the soft labels repeat the
+    gold labels and the signal meant to weight them has nothing left to express. The mechanism is a
+    property of where the teachers are read, not of this implementation, and it applies to any scheme in
+    the error-weighted family that reads reliability on the training split.
+  \item[RQ3. Does distillation on unlabelled text the teachers have never seen improve the student, and
+    how does the gain depend on the amount and composition of that text, on the number of optimisation
+    updates, and on the student?] Yes for the text, no for the committee. The gain grows with how much
+    unlabelled text the student sees, survives a control that spends the same number of updates without
+    it, holds on three students of two families, and comes from ordinary text of the platform rather
+    than from abuse-related text. One teacher supplies all of it.
+  \item[RQ4. Does any of these interventions improve the student's ability to tell implied abuse from
+    harmless sarcasm?] No. Measured without a threshold, the ability is set by pre-training, and the
+    interventions move only how readily the student fires. A method reporting recall at a fixed cut can
+    therefore show progress on implication while having none, which is why the measure here is an area
+    and not a decision.
+\end{description}
+
+\subsection{What the Findings Mean}
+\label{sec:6.2}
+
+\textbf{What the audit says about error-weighted multi-teacher distillation.} The family's weighting
+rule scores each teacher's reliability against the gold label on the training set. For teachers
+fine-tuned on that set the score is saturated, and the weights it produces are uniform whatever the
+temperature. The estimate has to be corrected before the rule can mean anything, either by scoring
+reliability out of sample as Section~\ref{sec:3.5} does or by fitting a gate on held-out data. On a
+committee assembled the usual way that is necessary and not sufficient. Where the teachers disagree
+their outputs do not carry the information needed to pick the right one, so the reachable gain over
+uniform averaging is a few tenths of a point, in sample and out. The oracle's four to five points of
+accuracy over the best teacher are real, and made of instances on which the teachers, and very
+likely the annotators, are uncertain.
+
+\textbf{What it says about the committee.} Assembling specialists for complementary expertise and
+then fine-tuning them on one corpus produces teachers that agree at kappa 0.9 and share their
+errors. The adaptation cannot be skipped, because it is what makes the specialists' outputs
+comparable; it can only be paid for. A committee that keeps its diversity needs at least one member
+whose knowledge was not obtained by fitting the target training set. Out of sample, where the
+committee does hold a better label than any of its members, the student still receives no more from
+three teachers than from one: on this task a single large teacher's soft labels on unseen text are
+the whole of what distillation transfers, and the cost of a committee is three times the caching for
+nothing.
+
+\textbf{What it says about where distillation's gain is.} In sample the teachers' soft labels are
+the gold labels and distillation reduces to fine-tuning; out of sample they carry information the
+gold labels do not, and a compact student receives it in proportion to how much such text it sees.
+The recipes that report large gains for small students distil on transfer sets larger than the
+labelled data \cite{tang2019distilling, jiao2020tinybert, turc2019wellread}, and Beyer et al.'s
+account of distillation as function matching says why: a function is learned where it is sampled,
+and sampling it only where it equals the label teaches the label \cite{beyer2022knowledge}. What our
+measurements add is the domain-specific shape. The curve is monotone over six nested subsets
+spanning a 34-fold range of size, with composition held fixed to 42,013 rows and generic text
+appended beyond it, and it has not saturated at 168,000 rows. Generic tweets carry most of the
+value, so the text need not be abuse-related, only in the register the student will meet. The gain
+is not optimisation length: fine-tuning alone overfits from the thirteenth epoch. And removing the
+hidden-state term costs 0.0009 on the headline student, which places the effect in the soft labels
+rather than in the alignment of states. The heterogeneous student, which cannot share the teacher's
+representation at all, gains most, which points the same way, though family, capacity and starting
+score differ with it. The cost is one forward pass of one teacher over the unlabelled text and a
+longer student run; the deployed model is unchanged.
+
+\textbf{What it says about implication.} The gain lands on the two classes the labelled split draws
+worst, not\_cyberbullying and other\_cyberbullying, and nowhere else. Recall at a fixed threshold
+and the false-positive rate on harmless sarcasm move together across 184 models; a method that
+reports only the first can claim progress on implication by lowering its threshold, and the
+out-of-sample students do the opposite, firing less on sarcasm of both kinds while discriminating no
+better. The threshold-free measure shows the ability to be fixed by pre-training: it does not move
+for any objective, committee, teacher or transfer set in the grid, and three out-of-sample arms fall
+below the in-sample band. If unlabelled text is to teach implication, its composition is the
+variable, not its size: nothing in 205,593 tweets of offence and sentiment carries the distinction
+the probes measure, and a transfer set that did would have to be built from text in which
+implication is present and marked, which is the corpus of Section~\ref{sec:4.2} and not the
+platform's ordinary stream.
+
+\textbf{What it says about reporting.} Every out-of-sample result in this thesis was predicted in
+writing before the run that tested it, with thresholds and a decision rule, and scored by a script
+against the generated tables; three of the eleven predictions failed as written and are reported as
+such. A test set of 4,326 posts cannot resolve differences under 0.007 macro-F1, which is larger
+than every in-sample distillation effect in the grid and than most differences reported in this
+literature. The multi-teacher results we reviewed for this task (Section~\ref{sec:2.3}) were
+obtained without the fine-tuning control, the teachers' own scores, seeds or intervals; under those
+conditions our in-sample grid would also have read as a success.
+\subsection{Limitations}
+\label{sec:7.1}
+\textbf{One corpus.} Every claim here, the audit and the curve alike, rests on one benchmark, one
+platform and one language. Three evaluations were built and not run within the compute available:
+the Wikipedia grid, the student grid on the implicit benchmark, and the 27,096-row held-out ISHate
+set, which exists as an out-of-domain test set and is screened against throughout but carries no
+result in this thesis. The curve on DistilBERT and DeBERTa-v3-xsmall was not run either. The claim
+is stated for compact students on this corpus, in the plural because it holds on three students of
+two families, and for nothing wider.
+
+\textbf{BERT-small's interval includes zero.} Its fine-tuning seeds vary by 0.008, and its
+out-of-sample gain of +0.0057 sits inside that variance; the direction agrees with the other two
+students and the per-class pattern is the same, but the number is a mean and is reported as one.
+
+\textbf{Two machines disagree about the same configuration.} BERT-mini fine-tune-only scores 0.8779
+on a laptop CPU and 0.8393 on a Kaggle T4 with identical code, data, seeds and hyper-parameters.
+Mixed precision accounts for 0.0014 (full-precision Kaggle: 0.8407); the gold-label sequences match
+row for row; re-running the current code on the laptop reproduces its result to sixteen significant
+figures. The Kaggle run learns more slowly from the first epoch (training loss 1.02 against 0.87,
+validation macro-F1 0.80 against 0.84), which points at the software stack, since the library
+versions differ, rather than at the accelerator. Every table therefore comes from one environment
+and comparisons are made only within it; the ranking of methods is unaffected because every run
+shares the condition, and the discrimination AUC of the two environments' models differs by 0.003.
+Absolute BERT-mini and BERT-small numbers may be under-trained by up to four points, which is also
+why both sit below the classical floor in sample.
+
+\textbf{Test-set size and seeds.} 4,326 test posts give paired intervals about 0.014 wide; three
+seeds for the main configurations and for every control of Sections~\ref{sec:5.7} and~\ref{sec:5.8},
+one seed for the ablations and the temperature sweeps. Differences are read from intervals, not from
+seed variance, and single-seed rows are indicative only. The threshold-free probe analysis covers
+the first seed of each configuration.
+
+\textbf{The in-sample result is an absence, not a zero.} A test set of this size cannot separate
+``no effect'' from ``an effect below 0.007 macro-F1''. Every one of the five students moved in the
+same direction, and the consistent sign is worth stating; what the design licenses is that no
+in-sample effect is large enough for this test set to resolve, not that the effect is zero.
+
+\textbf{The gain is measured against a baseline this environment may under-train.} The +0.0123 sits
+inside a four-point deficit that the environment note below describes, so part of it could be
+optimisation the stack lost rather than knowledge the transfer set added. The 35-epoch
+matched-updates control, which gains nothing on its own, is the evidence against that reading, and
+it is not decisive.
+
+\textbf{The transfer set's provenance.} Its sources are public abusive-language and sentiment
+corpora whose labels we discard; their texts were collected by other researchers under their own
+sampling, and the generic portion is dominated by the emoji-prediction corpus. The screens against
+every evaluation set are exact-match on normalised text; near-duplicates that differ by more than
+punctuation, casing or mentions would pass them.
+
+\textbf{Teacher variance is not estimated.} Each teacher is trained once, so the committee's
+behaviour is measured at one draw of teacher weights.
+
+\textbf{The heterogeneous comparisons are confounded.} DeBERTa-v3-xsmall is a weaker model on this
+task than the BERT-lineage students, so the student swap mixes family with quality; the BiLSTM
+differs from the teachers in family, capacity and starting score at once. The hidden-state ablation
+is the controlled version of the question both are used to raise.
+
+\textbf{The probes are rule-built}: 883 benign-sarcasm, 1,560 ironic-abuse and 763 implicit-abuse
+items, with a 300-item human annotation in progress. Probe metrics are reported only for models
+trained on Twitter-domain data.
+
+\textbf{The recommended recipe costs recall.} As the transfer set grows, recall on ironic abuse at a
+0.5 threshold falls from 0.74 to 0.57 on BERT-mini and to 0.50 on the BiLSTM, against false-positive
+rates on harmless sarcasm that fall with it. A deployment that cares about catching ironic abuse
+more than about false alarms should set its threshold accordingly, and know that the discrimination
+behind both numbers has not improved.
+
+\textbf{The label is contested.} The two corpora that annotate implication agree on 48.2 per cent of
+shared hateful texts about whether the hate is implied, and every result on that class is bounded by
+it.
+
+\textbf{Robustness was not measured.} What was measured is degradation under synthetic character
+edits, which is not evasion by people trying to evade.
+
+\textbf{Distillation on an unlabelled transfer set is not new.} The contribution is the controlled
+measurement in this domain, and a reader should not take the title's first clause as a method claim.
+
+\subsection{How the Study Changed}
+\label{sec:6.3}
+The design of this thesis changed four times, and each change was forced by a measurement rather than
+chosen in advance. Every change is recorded, with the evidence that forced it, in the decision log of
+the project's repository.
+\begin{enumerate}
+  \item \textbf{From the method as proposed to a controlled grid.} The method was to be evaluated the
+    way this literature evaluates it, by setting a distilled student against its teachers. We added the
+    baseline those comparisons leave out, the same student trained with no teacher, along with three
+    seeds and paired bootstrap intervals, and distillation then raised every student by less than the
+    test set can resolve.
+  \item \textbf{From dynamic weighting to its mechanism.} The per-instance weights sat close to uniform at
+    the default temperature and barely sharpened at a twentieth of it, and the score did not move.
+    Measuring the teachers explained why: they had memorised the training split and agreed with one
+    another on more than nine tweets in ten.
+  \item \textbf{From a specialist teacher to the implication audit.} A teacher trained on labelled
+    implication was added to supply the missing expertise. After task adaptation it behaved almost exactly
+    like HateBERT, and no student became better at telling implied abuse from harmless sarcasm; the
+    threshold-free measure showed that ability fixed by pre-training.
+  \item \textbf{From the audit to out-of-sample distillation.} If the teachers' soft labels equal the gold
+    labels on the training split, the lever is text the teachers have not fitted. Three runs, each with
+    its predictions written down beforehand, then measured the gain, its growth with the amount of text,
+    and its survival under the matched-compute and second-student controls.
+\end{enumerate}
+The title changed with the evidence. The title this work began under named a dynamic, multi-teacher,
+homogeneous and robust framework. The grid measured the first three of those properties and found none of them to
+be the source of the gain; the fourth was tested only under synthetic character edits, which this
+thesis does not call robustness. The final title names what the evidence supports.

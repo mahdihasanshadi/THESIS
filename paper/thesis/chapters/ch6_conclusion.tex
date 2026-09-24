@@ -1,0 +1,102 @@
+\chapter{Conclusion}
+\label{ch:6}
+\section{Summary of Findings}
+\label{sec:6.summary}
+We built the multi-teacher distillation method the abusive-language literature keeps proposing, gave
+it the teacher it was missing, and measured it under the controls it is rarely given.
+
+In sample the method fails its own test. It does not beat a compact student trained with no teacher
+on any of five students; its per-instance weighting does not differ from averaging at any
+temperature; and a teacher trained on labelled implication adds nothing, in a committee, alone, or
+as pre-training. The reason is measurable. The student is distilled on the split the teachers were
+fine-tuned on, where they have memorised the labels, so their soft labels are the gold labels and
+the reliability signal that weights them has nothing left to express.
+
+Out of sample the same teacher earns its place. Its soft labels on unlabelled tweets raise the
+headline 11M student by 0.012 macro-F1 at 168,000 tweets, with an interval clear of zero, and the
+gain grows monotonically over six sizes. Generic tweets of the platform work nearly as well as
+abuse-related ones. Fine-tuning alone for the same number of updates gains nothing. The 10M BiLSTM
+gains 0.016, also clear of zero, and a 29M BERT gains 0.006 on the mean, with an interval that
+includes it. At no point does the committee, its weighting or its hard pseudo-labels add anything to
+what one teacher does.
+
+What does not move is the part of the task the thesis set out to reach. Measured without a
+threshold, the ability to tell implied abuse from harmless sarcasm is set by pre-training; no
+objective, committee, teacher or transfer set we tried raises it, and recall at a fixed cut measures
+only how readily a model fires. More unlabelled text helps, more teachers do not, and neither
+teaches implication.
+
+For practice, the recipe that survives is the oldest one in distillation, now measured in this
+domain: one teacher, its soft labels on unlabelled text from the platform the student will serve,
+screened against every evaluation set, and a compact student that is unchanged at inference. Two
+caveats travel with it. The measurements run to 168,000 unlabelled tweets on one corpus in one
+language, and the curve had not flattened there, so the ceiling is unknown. And the recipe buys its
+gain by firing less: on the probes, recall on ironic abuse falls as the transfer set grows, which a
+deployment must decide about knowingly.
+\section{Contributions to the Field}
+\label{sec:6.contrib}
+
+What this thesis leaves the field is a measurement and the apparatus that produced it, not a method.
+Four things are reusable by someone who never repeats our experiment. The first is the controlled
+comparison itself: a grid of five students, three committees, four objectives and three seeds in which
+every distilled arm is set against the same student trained with no teacher, which is the comparison
+the abusive-language multi-teacher literature omits and the one that decides whether a committee earns
+its cost. The second is the mechanism behind the answer, stated as a property of where reliability is
+read rather than of any implementation: a teacher fine-tuned on the split it is scored on has
+memorised it, so its soft labels are the gold labels and any rule weighting teachers by their loss on
+that split is weighting memorisation. Any scheme in the error-weighted family inherits that, and the
+way out is to move the text rather than to refine the rule.
+
+The third is a threshold-free protocol for implication and the evidence that it is necessary. Recall
+on ironic abuse and the false-positive rate on harmless sarcasm move together across 184 models at
+$r = 0.772$, so a method reporting only the first can show progress on implied abuse while having
+none; an area under the curve cannot be moved that way. The fourth is a set of artefacts: a
+single-source implicit-abuse benchmark with per-row provenance, a transfer-set construction screened
+against every evaluation set including a held-out corpus that one of its sources is incorporated in,
+and build scripts and manifests that let a reader rebuild both row by row without either party
+redistributing text.
+
+The practical recommendation that follows is narrow and, we think, dependable: distil a compact
+student from one large teacher on unlabelled text from the platform it will serve, screen that text
+against every evaluation set, and spend nothing on a committee.
+
+
+\section{Recommendations for Future Work}
+\label{sec:7.2}
+\begin{enumerate}
+  \item \textbf{Transfer text that carries implication.} The out-of-sample gain is a task gain because
+    nothing in the transfer text marks implication. Composing the transfer set from text in which implied
+    abuse is present and labelled, such as the Implicit Hate Corpus used here as a benchmark, is the
+    direct test of whether distillation can teach it.
+  \item \textbf{A second corpus and the remaining students.} The Wikipedia personal-attacks pipeline is
+    built and was not run within the compute available; the size curve on DistilBERT and
+    DeBERTa-v3-xsmall was not run either.
+  \item \textbf{Where the curve saturates.} The gain was still rising at 168,000 tweets. Larger transfer
+    sets would locate its ceiling and its cost.
+  \item \textbf{Human validation of the probes.} A 300-item annotation of sarcastic abuse by four
+    annotators, with Fleiss' kappa, would replace rule-built probes with verified ones.
+  \item \textbf{A teacher that keeps its diversity.} A committee member whose knowledge was not obtained
+    by fitting the training split, such as a large language model used zero-shot, is the one committee
+    for which per-instance reliability could have something to express.
+  \item \textbf{Bengali.} The work was motivated by abuse in Bengali social media, for which no sarcasm
+    teacher is available; the out-of-sample recipe needs only unlabelled text and one teacher, which makes
+    it the natural first step there.
+\end{enumerate}
+
+\section{Final Remark}
+\label{sec:6.final}
+
+The method this thesis set out to evaluate does not work in the setting its literature evaluates it
+in, and the reason is not a flaw in the method but a property of that setting. Measured against the
+control those papers leave out, a committee of teachers weighted by their reliability on the split
+they were fine-tuned on adds nothing a compact student can use, because on that split there is nothing
+left to add. Move the student's imitation to text no teacher has fitted and a gain appears, grows with
+how much of that text there is, and survives every control we could put against it; but it is a gain
+in task score, and the part of the task the work set out to reach, telling abuse that is implied from
+sarcasm that harms nobody, does not move at all.
+
+We think the useful result is the shape of that pair rather than either half of it. A field that
+reports gains without the no-teacher control will keep finding committees that work, and a field that
+reports recall at an unstated threshold will keep finding progress on implication. Both are cheap to
+rule out. The apparatus for doing so is released with this thesis, and the numbers it produced are in
+the appendices with the predictions that were written before them.

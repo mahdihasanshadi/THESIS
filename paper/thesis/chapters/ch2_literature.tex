@@ -12,7 +12,7 @@ reported result, what limits it here, and where this thesis takes it up.
 \section{Preliminaries}
 \label{sec:prelim}
 
-\subsection{Knowledge distillation}
+\subsection{Knowledge Distillation}
 A teacher and a student produce logits $z_t(x), z_s(x) \in \mathbb{R}^C$ for a text $x$ and $C$ classes.
 Softened distributions $p^{(T)}_t = \mathrm{softmax}(z_t/T)$ and $p^{(T)}_s = \mathrm{softmax}(z_s/T)$
 are compared at a temperature $T > 1$, and the student minimises
@@ -28,20 +28,20 @@ there. The argument of this thesis turns on when that information exists. If a t
 so well that it assigns the gold class a probability near one, its soft label and the gold label are the
 same thing.
 
-\subsection{Multi-teacher distillation}
+\subsection{Multi-Teacher Distillation}
 With $K$ teachers the target is a mixture $\bar p = \sum_k w_k\, p^{(T)}_k$. The weights can be uniform,
 fixed per teacher, or computed per instance from each teacher's confidence or from its loss against the
 gold label, so that the student trusts each teacher where it is reliable \cite{you2017learning,
 wu2021one, zhang2022confidence}. Intermediate representations can be matched as well, through learned
 projections from the student's width to each teacher's \cite{romero2015fitnets, wu2021one}.
 
-\subsection{The transfer set}
+\subsection{The Transfer Set}
 The text on which the student imitates the teacher is called the \emph{transfer set}
 \cite{hinton2015distilling}. When it is the labelled split the teachers were fine-tuned on, we call the
 distillation \emph{in sample}; when it contains text outside every teacher's training split,
 \emph{out of sample}. Section~\ref{sec:3.5} defines both precisely.
 
-\subsection{Measures used throughout}
+\subsection{Measures Used Throughout}
 \emph{Macro-F1} is the unweighted mean of the per-class F1 scores, so that small classes count as much
 as large ones. \emph{ROC-AUC} is the probability that a randomly chosen positive is ranked above a
 randomly chosen negative; 0.5 is chance and 1.0 is perfect, and it needs no decision threshold.
@@ -52,7 +52,7 @@ between two systems on each resample, and reports the central 95\% of those diff
 a difference whose interval excludes zero is unlikely to be an accident of the particular test set
 \cite{koehn2004statistical, dror2018hitchhiker}.
 
-\subsection{The compact student}
+\subsection{The Compact Student}
 A student is \emph{pre-trained} when its weights come from self-supervised training on unlabelled text
 before any distillation, and \emph{randomly initialised} when they do not. The distinction carries more
 of this thesis's variance than any part of the distillation objective (Section~\ref{sec:5.3}). Students
@@ -63,7 +63,9 @@ DeBERTa-v3-xsmall at 70.8M \cite{he2023debertav3}, and a two-layer BiLSTM at 10.
 architecture family and \emph{heterogeneous} when it does not, a distinction that matters because the
 hidden-state term of Section~\ref{sec:3.3} assumes a state worth projecting.
 
-\section{Cyberbullying, Toxicity, and Abuse Carried by Implication}
+\section{Review of Existing Research}
+\label{sec:2.review}
+\subsection{Cyberbullying, Toxicity, and Abuse Carried by Implication}
 \label{sec:2.1}
 Surveys frame cyberbullying detection as text classification with three persistent problems: scarce
 and inconsistent data, weak evaluation practice, and poor transfer across platforms
@@ -97,8 +99,7 @@ that asks whether the ability to read implication can be moved into a deployable
 mechanism; Section~\ref{sec:5.10} asks it and finds no intervention in this grid that moves it, and
 Section~\ref{sec:4.2} measures how far the label itself can be trusted.
 
-\subsection{What each corpus can support}
-The corpora differ in what a result on them is allowed to mean, and the differences decide the design of
+\textbf{What each corpus can support.} The corpora differ in what a result on them is allowed to mean, and the differences decide the design of
 Chapter~\ref{ch:4}. The fine-grained cyberbullying corpus \cite{wang2020sosnet} labels the target of the
 abuse, age, ethnicity, gender or religion, with two residual classes for abuse that names no group and
 for text that is not abusive at all. It is large and its four targeted classes are close to separable by
@@ -129,7 +130,7 @@ Sarcasm is supplied by iSarcasm and iSarcasmEval \cite{oprea2020isarcasm, abufar
 labels come from the authors of the posts rather than from third-party annotators, which is what makes
 them usable as a benign-sarcasm control.
 
-\section{Distilling Compact Language Models, and the Transfer Set}
+\subsection{Distilling Compact Language Models, and the Transfer Set}
 \label{sec:2.2}
 Language models have grown far past what a moderation pipeline can run on every post
 \cite{brown2020language}, which is the pressure distillation answers. It transfers a large model's
@@ -154,8 +155,7 @@ teacher's function sampled on many inputs, consistently, over long schedules
 measured with the controls they call for: the transfer set's size, its composition, the number of
 updates, the labeller, and the form of the label are each varied with the rest held fixed.
 
-\subsection{The line of compact BERT students}
-Five systems define what is achievable for a compact encoder, and each fixes a different variable.
+\textbf{The line of compact BERT students.} Five systems define what is achievable for a compact encoder, and each fixes a different variable.
 DistilBERT \cite{sanh2019distilbert} distils during pre-training into a six-layer student and reports
 about 97 per cent of BERT-base's language-understanding score at 40 per cent fewer parameters; the
 knowledge is general rather than task-specific, and no committee is involved. Patient Knowledge
@@ -184,7 +184,7 @@ here and, with TinyBERT, for the observation that the recipes reporting the larg
 students are the ones whose transfer set is larger than the labelled data.
 
 
-\section{The Transfer Set, and What Is Known About It}
+\subsection{The Transfer Set, and What Is Known About It}
 \label{sec:2.transfer}
 The transfer set is the variable this thesis ends up measuring, and it is older than the multi-teacher
 literature that displaced it. Buciluă et al. \cite{bucilua2006model} compress an ensemble by using it to
@@ -214,7 +214,7 @@ for the same number of updates without it, the comparison those papers are built
 Sections~\ref{sec:5.7} and~\ref{sec:5.8} make it: six nested sizes over a 34-fold range, a composition
 control at fixed size, two matched-update controls, and three students.
 
-\section{Multi-Teacher and Adaptive Distillation}
+\subsection{Multi-Teacher and Adaptive Distillation}
 \label{sec:2.3}
 Ensembles of teachers \cite{you2017learning, fukuda2017efficient} are combined with fixed or learned
 weights: adaptive multi-level weighting \cite{liu2020adaptive}, gradient-space adaptation
@@ -239,8 +239,7 @@ Section~\ref{sec:5.5} tests both assumptions and finds both false on a committee
 usual way, and Section~\ref{sec:5.7} finds the committee no better a labeller than one teacher out
 of sample either.
 
-\subsection{How the weights are computed, and on what data}
-The family divides by where each teacher's weight comes from. You et al. \cite{you2017learning} average
+\textbf{How the weights are computed, and on what data.} The family divides by where each teacher's weight comes from. You et al. \cite{you2017learning} average
 the teachers' softened outputs and add a term matching the relative dissimilarity of their intermediate
 representations; the combination is fixed rather than per instance. Fukuda et al.
 \cite{fukuda2017efficient} avoid combining at all and train each batch against one randomly chosen
@@ -272,7 +271,7 @@ such rule can gain. Section~\ref{sec:5.6} tests the second by reporting the teac
 the split the weights are read from.
 
 
-\section{Multi-Teacher Distillation Applied to Abusive Language}
+\subsection{Multi-Teacher Distillation Applied to Abusive Language}
 \label{sec:2.abusive}
 One published system applies this family to the task of this thesis. Prasomphan \cite{prasomphan2025mtkd}
 detects cyberbullying in Thai social-media text by distilling three transformer teachers, ThaiBERT,
@@ -299,7 +298,7 @@ pre-training setting the ceiling is silent about such a student. Whether a tree 
 embeddings behaves like the compact encoders measured here is a question the design of this thesis
 supports and does not settle.
 
-\section{Evaluation Practice}
+\subsection{Evaluation Practice}
 \label{sec:2.4}
 Targeted functional tests expose what held-out accuracy hides \cite{rottger2021hatecheck}; our probe
 sets and threshold-free AUC (Section~\ref{sec:4.6}) are in that spirit, built by rule from published
@@ -311,8 +310,7 @@ benchmarks is larger than the differences reported \cite{card2020power}. On our 
 a paired interval is about 0.014 wide, so a difference under 0.007 macro-F1 is undetectable; every
 claim in this thesis is read against that.
 
-\subsection{What a test set of this size can decide}
-Card et al. \cite{card2020power} compute the statistical power of common NLP benchmarks and find that
+\textbf{What a test set of this size can decide.} Card et al. \cite{card2020power} compute the statistical power of common NLP benchmarks and find that
 most are too small to detect the differences routinely reported on them, so that a published improvement
 is frequently indistinguishable from resampling noise. The consequence for a thesis is a number that has
 to be computed before any result is read: on the 4,326-post test set used here a paired bootstrap
@@ -339,7 +337,7 @@ hostility is implied, which is the same population the oracle analysis of Sectio
 the committee's unreachable headroom to be made of.
 
 
-\section{Summary and Research Gap}
+\section{Summary of Key Findings}
 \label{sec:gap}
 Table~\ref{tab:gap} reads the works this chapter has reviewed one at a time: what each does, what it
 reports, what limits it for the question of this thesis, and where the thesis takes it up. The pattern

@@ -24,7 +24,7 @@ fine-grained cyberbullying corpus, extend it to sarcastic and implicit abuse, an
 control this literature omits, the same student trained with no teacher at all. What the measurements
 find changes the method.
 
-\section{Motivation}
+\section{Rational of the Study or Motivation}
 \label{sec:1.2}
 Moderation at the scale of a social platform depends on detectors cheap enough to run on every post,
 and increasingly on the device where the post is written \cite{zhou2019edge, schwartz2020green}.
@@ -50,7 +50,7 @@ without the control that would show whether the teachers helped at all, which is
 trained without a teacher, and without repeated runs or confidence intervals. A distillation method that is not shown to beat that control cannot be said to work, and
 a gain that is not measured on implicit abuse cannot be said to address it.
 
-\section{Research Questions and Objectives}
+\section{Objective}
 \label{sec:1.4}
 The thesis asks four questions.
 \begin{description}
@@ -76,7 +76,7 @@ To answer them, the thesis sets four objectives.
     that labels implication.
 \end{enumerate}
 
-\section{Approach and Summary of Findings}
+\section{Methodology in Brief}
 \label{sec:1.5}
 We tested that promise under the controls it is rarely given, and then tested the alternative the
 controls pointed to. The first half of this thesis is an audit. We built the method the literature
@@ -131,6 +131,36 @@ committee, teacher or transfer set we tried raises it. The out-of-sample gain is
 the student learns from the unlabelled text is the boundary between the two classes the labelled
 split draws worst, not the reading of implication.
 
+\section{Scopes and Challenges}
+\label{sec:1.scope}
+\textbf{What the study covers.} The work is scoped to compact detectors of abusive language on one
+platform and one language: a cleaned six-class cyberbullying corpus of 43,259 English tweets, five
+students from 10.4M to 70.8M parameters across three architecture families, three committees of
+task-adapted teachers, four objectives, weighting temperatures over a hundredfold range, and an
+unlabelled transfer set of up to 205,593 tweets drawn from public corpora and screened against every
+evaluation set. Reading of implication is measured on two rule-built probes and on a single-source
+implicit-hate benchmark. Everything is trained and evaluated in one environment, and every difference
+is reported with a paired bootstrap interval.
+
+\textbf{What it does not cover.} A second corpus, a second language, evasion by people rather than by
+synthetic character edits, a student that is not a neural network, and transfer sets larger than
+168,000 rows are all outside the work reported here; Section~\ref{sec:7.2} states which of them are
+built and waiting for compute rather than merely proposed.
+
+\textbf{The challenges the work met.} Six shaped the design, and each is a measurement rather than an
+opinion. The control this literature omits had to be built before anything could be compared, because
+a distilled student can only be said to gain against the same student trained with no teacher. The
+teachers turned out to have memorised the split their reliability was scored on, which is why the
+weighting had nothing to express and why the study moved to text the teachers had never seen. The two
+public corpora that annotate implication disagree with one another and can be told apart by a
+classifier at 0.91 macro-F1, so the benchmark had to be rebuilt from a single source. The unlabelled
+transfer set had to be screened against every split, probe and benchmark, and one of those screens
+removed 9,988 rows that occur in a held-out evaluation set. Two environments running identical code,
+data and seeds produced results four points apart, so every table in this thesis comes from one of
+them and comparisons are made only within it. And a test set of 4,326 posts resolves differences of
+about 0.007 macro-F1, which is larger than every in-sample effect measured here and bounds what the
+study is entitled to claim.
+
 \section{Contributions}
 \label{sec:1.6}
 The contributions are as follows.
@@ -165,10 +195,10 @@ confounds removed.
 
 \section{Thesis Organisation}
 \label{sec:1.7}
-Chapter~\ref{ch:2} reviews the literature on cyberbullying and implicit abuse, on distilling compact
-language models, on multi-teacher distillation, and on evaluation practice. Chapter~\ref{ch:3} describes
-the audited method and the out-of-sample setting. Chapter~\ref{ch:4} describes the data, the probe sets,
-the transfer set and the protocol. Chapter~\ref{ch:5} reports the results in the order of the argument.
-Chapter~\ref{ch:6} answers the research questions, discusses what the findings mean and records how the
-study changed. Chapter~\ref{ch:7} states the limitations and future work, and Chapter~\ref{ch:8}
-concludes.
+Chapter~\ref{ch:2} reviews the literature: the concepts the thesis relies on, six lines of existing
+research, and the gap they leave. Chapter~\ref{ch:3} states the requirements the system was built to,
+and the societal, environmental, ethical, legal and economic constraints it was built under.
+Chapter~\ref{ch:4} gives the proposed methodology: the audited method and the out-of-sample setting,
+the data and how it was collected and cleaned, and the implementation. Chapter~\ref{ch:5} analyses the
+results, decides each research question on them, and discusses what they mean and what limits them.
+Chapter~\ref{ch:6} concludes.

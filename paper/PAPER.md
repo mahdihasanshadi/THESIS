@@ -495,7 +495,7 @@ on the clean test split before any distillation ran, and the predictions for the
 runs were written into the decision log before each ran and scored by a script against the tables.
 
 **One rule constrains every table.** The same code, data and seeds produce systematically different
-results on a laptop CPU and on a Kaggle T4 (Section 7), so every number comes from the Kaggle grid
+results on a laptop CPU and on a Kaggle T4 (Section 7.1), so every number comes from the Kaggle grid
 alone. Comparisons within it are valid because everything in it was trained identically; numbers
 produced elsewhere are excluded rather than reconciled. The tweet grid is complete: 179 student runs
 in 18.4 GPU-hours over the five Kaggle sessions that ran to completion. The Wikipedia grid and the student grid on the implicit
@@ -844,7 +844,7 @@ unlabelled text teaches the boundary the labelled split draws worst.
 The constructive sentence of this paper is therefore measured on four axes: the gain exists, it grows
 with the unlabelled text, it comes from any tweets of the platform, and it holds on three compact
 students of two families while fine-tuning for the same number of updates gains nothing. What it does
-not have is a second corpus, which Section 7 lists first.
+not have is a second corpus, which the limitations list first.
 
 ### 5.10 What never transferred: discrimination of implied abuse is fixed by pre-training
 

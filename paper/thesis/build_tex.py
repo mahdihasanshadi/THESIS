@@ -239,6 +239,18 @@ def heading(prefix):
     return inline(" ".join(out))
 
 
+def demote(block):
+    """A block written with \\section headings, placed one level deeper."""
+    return block.replace("\\section{", "\\subsection{")
+
+
+def runin(block, title):
+    """A \\subsection heading inside a block becomes a bold run-in, one level being unavailable."""
+    old = "\\subsection{%s}\n" % title
+    assert block.count(old) == 1, ("run-in heading not found", title)
+    return block.replace(old, "\\textbf{%s.} " % title)
+
+
 def figure(name, caption, label):
     return "\n".join(["\\begin{figure}[htbp]", "\\centering", "\\includegraphics[width=\\textwidth]{figures/%s.pdf}" % name,
                       cap_tex(caption, label), "\\label{%s}" % label, "\\end{figure}"])
@@ -407,14 +419,15 @@ for their guidance and their patience with a thesis that changed direction when 
 thank the Department of Computer Science and Engineering at BRAC University for its support, the authors
 of the public corpora this work is built on, and Kaggle for the GPU time on which every experiment ran.
 
+\phantomsection\addcontentsline{toc}{chapter}{Table of Contents}
 \tableofcontents
 \clearpage\phantomsection\addcontentsline{toc}{chapter}{List of Figures}
 \listoffigures
 \clearpage\phantomsection\addcontentsline{toc}{chapter}{List of Tables}
 \listoftables
 
-\chapter*{List of Abbreviations}
-\phantomsection\addcontentsline{toc}{chapter}{List of Abbreviations}
+\chapter*{Nomenclature}
+\phantomsection\addcontentsline{toc}{chapter}{Nomenclature}
 \begin{tabular}{@{}lp{11.6cm}@{}}
 AUC & Area under the receiver operating characteristic curve\\
 BERT & Bidirectional Encoder Representations from Transformers\\
@@ -467,7 +480,7 @@ fine-grained cyberbullying corpus, extend it to sarcastic and implicit abuse, an
 control this literature omits, the same student trained with no teacher at all. What the measurements
 find changes the method.
 
-\section{Motivation}
+\section{Rational of the Study or Motivation}
 \label{sec:1.2}
 Moderation at the scale of a social platform depends on detectors cheap enough to run on every post,
 and increasingly on the device where the post is written \cite{zhou2019edge, schwartz2020green}.
@@ -493,7 +506,7 @@ without the control that would show whether the teachers helped at all, which is
 trained without a teacher, and without repeated runs or confidence intervals. A distillation method that is not shown to beat that control cannot be said to work, and
 a gain that is not measured on implicit abuse cannot be said to address it.
 
-\section{Research Questions and Objectives}
+\section{Objective}
 \label{sec:1.4}
 The thesis asks four questions.
 \begin{description}
@@ -519,7 +532,7 @@ To answer them, the thesis sets four objectives.
     that labels implication.
 \end{enumerate}
 
-\section{Approach and Summary of Findings}
+\section{Methodology in Brief}
 \label{sec:1.5}
 <<P1>>
 
@@ -528,6 +541,36 @@ To answer them, the thesis sets four objectives.
 <<P3>>
 
 <<P4>>
+
+\section{Scopes and Challenges}
+\label{sec:1.scope}
+\textbf{What the study covers.} The work is scoped to compact detectors of abusive language on one
+platform and one language: a cleaned six-class cyberbullying corpus of 43,259 English tweets, five
+students from 10.4M to 70.8M parameters across three architecture families, three committees of
+task-adapted teachers, four objectives, weighting temperatures over a hundredfold range, and an
+unlabelled transfer set of up to 205,593 tweets drawn from public corpora and screened against every
+evaluation set. Reading of implication is measured on two rule-built probes and on a single-source
+implicit-hate benchmark. Everything is trained and evaluated in one environment, and every difference
+is reported with a paired bootstrap interval.
+
+\textbf{What it does not cover.} A second corpus, a second language, evasion by people rather than by
+synthetic character edits, a student that is not a neural network, and transfer sets larger than
+168,000 rows are all outside the work reported here; Section~\ref{sec:7.2} states which of them are
+built and waiting for compute rather than merely proposed.
+
+\textbf{The challenges the work met.} Six shaped the design, and each is a measurement rather than an
+opinion. The control this literature omits had to be built before anything could be compared, because
+a distilled student can only be said to gain against the same student trained with no teacher. The
+teachers turned out to have memorised the split their reliability was scored on, which is why the
+weighting had nothing to express and why the study moved to text the teachers had never seen. The two
+public corpora that annotate implication disagree with one another and can be told apart by a
+classifier at 0.91 macro-F1, so the benchmark had to be rebuilt from a single source. The unlabelled
+transfer set had to be screened against every split, probe and benchmark, and one of those screens
+removed 9,988 rows that occur in a held-out evaluation set. Two environments running identical code,
+data and seeds produced results four points apart, so every table in this thesis comes from one of
+them and comparisons are made only within it. And a test set of 4,326 posts resolves differences of
+about 0.007 macro-F1, which is larger than every in-sample effect measured here and bounds what the
+study is entitled to claim.
 
 \section{Contributions}
 \label{sec:1.6}
@@ -539,13 +582,13 @@ To answer them, the thesis sets four objectives.
 
 \section{Thesis Organisation}
 \label{sec:1.7}
-Chapter~\ref{ch:2} reviews the literature on cyberbullying and implicit abuse, on distilling compact
-language models, on multi-teacher distillation, and on evaluation practice. Chapter~\ref{ch:3} describes
-the audited method and the out-of-sample setting. Chapter~\ref{ch:4} describes the data, the probe sets,
-the transfer set and the protocol. Chapter~\ref{ch:5} reports the results in the order of the argument.
-Chapter~\ref{ch:6} answers the research questions, discusses what the findings mean and records how the
-study changed. Chapter~\ref{ch:7} states the limitations and future work, and Chapter~\ref{ch:8}
-concludes.
+Chapter~\ref{ch:2} reviews the literature: the concepts the thesis relies on, six lines of existing
+research, and the gap they leave. Chapter~\ref{ch:3} states the requirements the system was built to,
+and the societal, environmental, ethical, legal and economic constraints it was built under.
+Chapter~\ref{ch:4} gives the proposed methodology: the audited method and the out-of-sample setting,
+the data and how it was collected and cleaned, and the implementation. Chapter~\ref{ch:5} analyses the
+results, decides each research question on them, and discusses what they mean and what limits them.
+Chapter~\ref{ch:6} concludes.
 """
 for k in range(8):
     CH1 = CH1.replace("<<P%d>>" % k, bt(k))
@@ -555,7 +598,7 @@ CH2_PRELIM = r"""
 \section{Preliminaries}
 \label{sec:prelim}
 
-\subsection{Knowledge distillation}
+\subsection{Knowledge Distillation}
 A teacher and a student produce logits $z_t(x), z_s(x) \in \mathbb{R}^C$ for a text $x$ and $C$ classes.
 Softened distributions $p^{(T)}_t = \mathrm{softmax}(z_t/T)$ and $p^{(T)}_s = \mathrm{softmax}(z_s/T)$
 are compared at a temperature $T > 1$, and the student minimises
@@ -571,20 +614,20 @@ there. The argument of this thesis turns on when that information exists. If a t
 so well that it assigns the gold class a probability near one, its soft label and the gold label are the
 same thing.
 
-\subsection{Multi-teacher distillation}
+\subsection{Multi-Teacher Distillation}
 With $K$ teachers the target is a mixture $\bar p = \sum_k w_k\, p^{(T)}_k$. The weights can be uniform,
 fixed per teacher, or computed per instance from each teacher's confidence or from its loss against the
 gold label, so that the student trusts each teacher where it is reliable \cite{you2017learning,
 wu2021one, zhang2022confidence}. Intermediate representations can be matched as well, through learned
 projections from the student's width to each teacher's \cite{romero2015fitnets, wu2021one}.
 
-\subsection{The transfer set}
+\subsection{The Transfer Set}
 The text on which the student imitates the teacher is called the \emph{transfer set}
 \cite{hinton2015distilling}. When it is the labelled split the teachers were fine-tuned on, we call the
 distillation \emph{in sample}; when it contains text outside every teacher's training split,
 \emph{out of sample}. Section~\ref{sec:3.5} defines both precisely.
 
-\subsection{Measures used throughout}
+\subsection{Measures Used Throughout}
 \emph{Macro-F1} is the unweighted mean of the per-class F1 scores, so that small classes count as much
 as large ones. \emph{ROC-AUC} is the probability that a randomly chosen positive is ranked above a
 randomly chosen negative; 0.5 is chance and 1.0 is perfect, and it needs no decision threshold.
@@ -595,7 +638,7 @@ between two systems on each resample, and reports the central 95\% of those diff
 a difference whose interval excludes zero is unlikely to be an accident of the particular test set
 \cite{koehn2004statistical, dror2018hitchhiker}.
 
-\subsection{The compact student}
+\subsection{The Compact Student}
 A student is \emph{pre-trained} when its weights come from self-supervised training on unlabelled text
 before any distillation, and \emph{randomly initialised} when they do not. The distinction carries more
 of this thesis's variance than any part of the distillation objective (Section~\ref{sec:5.3}). Students
@@ -797,7 +840,7 @@ the committee's unreachable headroom to be made of.
 """
 
 CH2_GAP = r"""
-\section{Summary and Research Gap}
+\section{Summary of Key Findings}
 \label{sec:gap}
 Table~\ref{tab:gap} reads the works this chapter has reviewed one at a time: what each does, what it
 reports, what limits it for the question of this thesis, and where the thesis takes it up. The pattern
@@ -939,16 +982,17 @@ CH2 = "\n".join([
          "reads each work for its method, its reported result, what limits it here, and where this "
          "thesis takes it up."),
     CH2_PRELIM,
-    "\\section{%s}\n\\label{sec:2.1}\n%s" % (heading("2.1 "), convert(body("2.1 "))),
-    CH2_CORPORA,
-    "\\section{%s}\n\\label{sec:2.2}\n%s" % (heading("2.2 "), convert(body("2.2 "))),
-    CH2_DISTIL_LINE,
-    CH2_TRANSFER_SECTION,
-    "\\section{%s}\n\\label{sec:2.3}\n%s" % (heading("2.3 "), convert(body("2.3 "))),
-    CH2_MULTI_TEACHER,
-    CH2_ABUSIVE_SECTION,
-    "\\section{%s}\n\\label{sec:2.4}\n%s" % (heading("2.4 "), convert(body("2.4 "))),
-    CH2_EVALUATION,
+    "\\section{Review of Existing Research}\n\\label{sec:2.review}",
+    "\\subsection{%s}\n\\label{sec:2.1}\n%s" % (heading("2.1 "), convert(body("2.1 "))),
+    runin(CH2_CORPORA, "What each corpus can support"),
+    "\\subsection{%s}\n\\label{sec:2.2}\n%s" % (heading("2.2 "), convert(body("2.2 "))),
+    runin(CH2_DISTIL_LINE, "The line of compact BERT students"),
+    demote(CH2_TRANSFER_SECTION),
+    "\\subsection{%s}\n\\label{sec:2.3}\n%s" % (heading("2.3 "), convert(body("2.3 "))),
+    runin(CH2_MULTI_TEACHER, "How the weights are computed, and on what data"),
+    demote(CH2_ABUSIVE_SECTION),
+    "\\subsection{%s}\n\\label{sec:2.4}\n%s" % (heading("2.4 "), convert(body("2.4 "))),
+    runin(CH2_EVALUATION, "What a test set of this size can decide"),
     CH2_GAP,
 ])
 
@@ -1077,21 +1121,224 @@ CH3_SUBS = {
          "$m_i \\in \\{0, 1\\}$ a label mask that is 1 on labelled rows and 0 on the unlabelled rows of Section 3.5. Every symbol in these five equations "
          "appears in [[Table:tab:symbols]] with the set it is drawn from and the value it takes here.")],
 }
-CH3 = "\n".join([
-    "\\chapter{Methodology}", "\\label{ch:3}",
-    wrap("This chapter describes the method the thesis set out to evaluate, D-MTHD, and the change of setting "
-         "that turned out to matter. Figure~\\ref{fig:schematic} shows the distinction the thesis turns on: in "
-         "both settings the same teacher and the same student are used, and only the text on which the student "
-         "imitates the teacher differs. Sections~\\ref{sec:3.1} to~\\ref{sec:3.4} define the committee, the "
-         "per-instance weighting, the objective and the specialist teacher exactly as they were audited; "
-         "Section~\\ref{sec:3.5} defines in-sample and out-of-sample distillation and their controls; "
-         "Section~\\ref{sec:3.6} states what is measured about the weighting; and Section~\\ref{sec:3.7} gives the "
-         "training procedure as an algorithm."),
-    FIG["schematic"],
-] + ["\\section{%s}\n\\label{sec:3.%d}\n%s%s" % (heading("3.%d " % k), k,
-                                               convert(body("3.%d " % k), (), (), CH3_SUBS.get(k, ())),
-                                               SYMBOL_TABLE if k == 1 else "")
-     for k in range(1, 7)] + [ALGORITHM])
+CH3 = r"""
+\chapter{Requirements, Impacts and Constraints}
+\label{ch:3}
+This chapter states what the system was required to do, what it costs, whom it can affect and under
+what constraints it was built. The requirements were fixed before the grid was run and are checked
+against measurement in Chapter~\ref{ch:5}; the impacts and constraints are the conditions under which
+a detector of this kind may responsibly be deployed.
+
+\section{Final Specifications and Requirements}
+\label{sec:req}
+
+\subsection{Functional Requirements}
+\label{sec:req.func}
+\begin{enumerate}[label=F\arabic*., leftmargin=3.1em]
+  \item \textbf{Classify.} Assign every input post one of the corpus's six classes, four of which name
+    the group a post attacks and two of which hold abuse that names no group and text that is not
+    abusive at all.
+  \item \textbf{Score, not only decide.} Expose a probability for each class, so that a deployment can
+    choose its own operating point and so that discrimination can be measured without a threshold
+    (Section~\ref{sec:4.6}).
+  \item \textbf{Run without its teachers.} Perform inference from the student alone. The projections,
+    the auxiliary irony head and every teacher are discarded after training
+    (Section~\ref{sec:3.7}).
+  \item \textbf{Train from unlabelled text.} Accept unlabelled rows alongside the labelled split and
+    learn from the teacher's soft labels on them, with the supervised term averaged over the labelled
+    rows only so that adding unlabelled text does not dilute supervision (Section~\ref{sec:3.5}).
+  \item \textbf{Rebuild from source.} Regenerate every corpus, split, probe and transfer set from
+    public sources through the build scripts, and verify a rebuild row by row against a manifest of
+    split, label, source and the SHA-1 of the normalised text (Section~\ref{sec:4.2}).
+  \item \textbf{Report its own evidence.} Generate every table and interval from the run outputs by
+    script rather than by transcription, and score each pre-registered prediction against the
+    generated tables (Appendix~\ref{app:predictions}).
+\end{enumerate}
+
+\subsection{Non-Functional Requirements}
+\label{sec:req.nonfunc}
+Table~\ref{tab:requirements} states each non-functional requirement, the target set before the runs,
+and what was measured against it.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Non-functional requirements and what was measured]{Non-functional requirements, the target
+fixed before the grid was run, and the measurement that meets or misses it.}
+\label{tab:requirements}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{2.6cm}p{4.3cm}p{4.9cm}p{1.5cm}}
+\toprule
+Requirement & Target & Measured & Met \\
+\midrule
+Latency & Single-post inference in a few milliseconds on ordinary hardware & BERT-mini 3.47 ms at batch
+1 and 0.37 ms at batch 32; the BiLSTM 2.57 ms and 0.18 ms (Section~\ref{sec:5.11}) & yes \\
+Memory & A deployable model well under the 1,279 MB of the largest teacher & 43 MB for BERT-mini in
+fp32 and 33 MB after INT8 quantisation; 255 MB and 132 MB for DistilBERT & yes \\
+Compute at inference & The recipe must not add to inference cost & The transfer set is used once, in
+training; the deployed student is unchanged (Section~\ref{sec:5.11}) & yes \\
+Accuracy & A compact student within reach of the largest teacher & DistilBERT 0.8975 against
+BERT-large's 0.8973 macro-F1, at a fifth of the parameters (Section~\ref{sec:5.2}) & yes \\
+Resolution & Every claimed difference larger than the test set can resolve & A paired interval on
+4,326 posts is about 0.014 wide, so 0.007 is the floor; every in-sample effect falls below it and is
+reported as undetectable (Section~\ref{sec:4.7}) & partly \\
+Reproducibility & Fixed seeds, one environment, generated tables & Three seeds for every main
+configuration, 179 runs from one environment, all tables generated
+(Section~\ref{sec:4.8}) & yes \\
+Reading of implication & A measurable improvement in telling implied abuse from harmless sarcasm &
+No intervention in the grid raises the threshold-free AUC above its in-sample band of 0.756 to 0.777
+(Section~\ref{sec:5.10}) & no \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+The last row is the requirement the work does not meet, and Section~\ref{sec:5.10} reports it as such
+rather than as an open question.
+
+\section{Societal Impact}
+\label{sec:impact.social}
+Automated moderation acts on people, and it fails unevenly. The literature documents systems that
+misclassify dialect, reclaimed slurs and in-group speech as abuse
+\cite{davidson2017automated, borkan2019nuanced, vidgen2020directions}, and the benign-sarcasm probe
+used here measures one such failure directly: a compact student trained on this corpus calls between
+14 and 59 per cent of author-labelled sarcastic tweets abusive, depending on the model, while those
+tweets attack nobody (Section~\ref{sec:5.10}). A detector deployed at platform scale turns that rate
+into a volume of wrongly flagged posts.
+
+The recipe this thesis recommends changes that rate, and not only for the better. As the transfer set
+grows, the student fires less readily on sarcasm of both kinds: the false-positive rate on harmless
+sarcasm falls from 0.35 to 0.25 on BERT-mini and to 0.18 on the BiLSTM, and recall on ironic abuse
+falls with it, from 0.74 to 0.57 and to 0.50. Fewer people are wrongly flagged and more implied abuse
+is missed. That is a trade between two harms rather than an improvement, the discrimination behind it
+does not change, and Section~\ref{sec:5.10} reports both sides of it so a deployment can choose its
+operating point knowingly rather than by accident.
+
+\section{Environmental Impact}
+\label{sec:impact.env}
+The energy cost of a detector is dominated by inference rather than training, because a moderation
+pipeline runs the model on every post while training happens once
+\cite{schwartz2020green, patterson2021carbon}. That is the case for compact students, and it is the
+case this thesis's measurements support: BERT-mini uses 0.87 GFLOPs per sequence against BERT-large's
+78.92, a factor of 91, at 0.0018 of the teacher's macro-F1 deficit once the transfer set is used.
+
+Training for the whole thesis took 18.4 GPU-hours on Kaggle T4 accelerators across five sessions that
+ran to completion (Section~\ref{sec:4.8}). The teachers, the implicit specialist and the pre-trained
+student were each trained once and resumed by every later session rather than retrained. The
+out-of-sample recipe adds one forward pass of one teacher over the unlabelled text and a longer
+student run; it adds nothing at inference, which is where the energy is spent. The two failed sessions
+are counted in the record even though they produced no result, and the driver now kills any command
+that writes nothing for two hours rather than burning a session on a hung process.
+
+\section{Ethical Issues}
+\label{sec:ethics}
+The corpora contain offensive, hateful and harassing text. They are existing public research datasets,
+used under their licences and as text only; no new user data was collected, and no attempt was made to
+identify the authors of any post. Where a corpus's labels were not needed, as in the transfer set,
+they were discarded before anything read them (Section~\ref{sec:4.4}).
+
+Three ethical constraints bear on what the results can claim. The label for implication is contested:
+the two expert annotation efforts that mark it agree on only 48.2 per cent of the hateful texts they
+share, so every result on that class is bounded by a disagreement between annotators rather than by
+the model (Section~\ref{sec:4.2}). The annotation literature argues that such disagreement is signal
+and that a single majority label discards it
+\cite{uma2021learning, davani2022dealing, plank2022problem, peterson2019human}; the oracle analysis of
+Section~\ref{sec:5.4} finds the committee's unreachable headroom to be made of exactly that
+population. And the probes are built by rule from published corpora rather than validated by
+annotators, which Section~\ref{sec:7.1} records as a limitation; a 300-item human annotation is in
+progress. The models are released for research. Deployment would require human review, calibration to
+the platform, and monitoring for disparate impact, none of which this thesis evaluates.
+
+\section{Legal Impact}
+\label{sec:legal}
+Every corpus is used under its own licence: the cyberbullying tweet corpus as distributed under CC0;
+OLID, HatEval, the Davidson et al. corpus and TweetEval's configurations under their research licences;
+ISHate under BSL-1.0; the Implicit Hate Corpus and iSarcasmEval for research use. No corpus is
+redistributed. The implicit benchmark and the transfer set are released as build scripts together with
+a per-row manifest carrying the split, the label, the source and the SHA-1 of the normalised text, so
+that a reader can verify a rebuild row by row without either party redistributing text
+(Sections~\ref{sec:4.2} and~\ref{sec:4.4}).
+
+The texts are public posts and no author identifiers are retained, which is what keeps the work inside
+the terms the corpora were released under. A deployment would sit under different obligations from a
+research artefact: platform moderation is increasingly subject to duties of transparency, appeal and
+record-keeping, and the threshold-free reporting of Section~\ref{sec:4.6} is the form of evidence
+those duties require, because a single recall figure at an unstated threshold cannot support them.
+
+\section{Project Management Plan}
+\label{sec:pm}
+The work was organised around sessions of bounded length and decisions recorded before the run that
+tested them. Compute came in Kaggle sessions of at most twelve hours, so one driver script runs the
+whole grid and resumes finished work from the previous session's output; Table~\ref{tab:sessions}
+lists the seven sessions, what each added, and the cumulative number of student runs. A CPU smoke test
+runs every stage on tiny models before any GPU session begins.
+
+Design decisions are kept in the repository's decision log rather than in the thesis, and the four
+that changed the study are recorded with the evidence that forced each one (Section~\ref{sec:6.3}).
+The out-of-sample runs were pre-registered: nothing about them was decided after the numbers were
+seen, and Section~\ref{sec:5.stats} says what that buys and what it cost when a prediction failed.
+
+\section{Risk Management}
+\label{sec:risk}
+Table~\ref{tab:risks} lists the risks that materialised and what was done about each. They are not
+hypothetical: every row happened.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Risks that materialised, and the response to each]{The risks that materialised during the
+work, what each would have cost, and the response.}
+\label{tab:risks}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{3.1cm}p{4.6cm}p{5.6cm}}
+\toprule
+Risk & What it would have cost & Response \\
+\midrule
+Evaluation contamination & A transfer set that overlaps an evaluation set turns a leak into an
+apparent gain & Exact-match screens on normalised text against every split, probe and benchmark file;
+one screen alone removed 9,988 rows that occur in the held-out ISHate set
+(Section~\ref{sec:4.4}) \\
+A benchmark solvable by artefact & Pooling the two implicit-hate corpora gives a benchmark a
+classifier can score by recognising the source at 0.91 macro-F1 & Splits built from one corpus, the
+other held out whole as an out-of-domain test set (Section~\ref{sec:4.2}) \\
+Environment divergence & Identical code, data and seeds scored four points apart on a laptop and on
+Kaggle & Every table comes from one environment; comparisons are made only within it and numbers from
+elsewhere are excluded rather than reconciled (Section~\ref{sec:7.1}) \\
+Lost sessions & Two of seven Kaggle sessions failed, one at teacher caching and one frozen in a
+diagnostic cell & Resume from the previous session's output, and a watchdog that kills any command
+writing nothing for two hours; both sessions are reported rather than hidden
+(Section~\ref{sec:4.8}) \\
+Confirmation bias & A grid this large offers many arms to report selectively & Predictions and
+decision rules written before each out-of-sample run and scored by script; three of eleven failed and
+are reported as failures (Appendix~\ref{app:predictions}) \\
+Underpowered claims & Differences smaller than the test set can resolve read as results & The minimum
+detectable difference, about 0.007 macro-F1, computed before the results and stated wherever a
+difference falls below it (Section~\ref{sec:4.7}) \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Economic Analysis}
+\label{sec:econ}
+The economics of this task are a question about inference, not training. Training the entire grid,
+179 student runs and every teacher, took 18.4 GPU-hours; at the rate a commercial provider charges for
+a T4-class accelerator that is roughly the cost of a single working day of one engineer, and it was
+paid here in free Kaggle quota. The marginal cost of the recipe this thesis recommends over ordinary
+fine-tuning is one forward pass of one teacher over 168,000 unlabelled tweets, which is cached once
+and reused by every student, plus a student run over a training set about six times larger.
+
+Against that stands what the compact student saves at inference, and it recurs on every post. BERT-mini
+answers a single post in 3.47 ms and a batch of 32 in 0.37 ms per post, against 26.56 ms and 21.65 ms
+for BERT-large: a factor of 59 at batch 32, on the same machine. DistilBERT matches BERT-large's
+macro-F1 at a fifth of the parameters and 5.8 times lower batch-32 latency, and INT8 quantisation
+halves its stored size for 0.003 macro-F1. A platform running a detector on every post is therefore
+choosing between one large model and roughly sixty compact ones for the same serving budget, and the
+measurements here say the compact one need not be materially worse. The transfer set is what buys
+that, it is unlabelled, and unlabelled text from the platform is the cheapest input in the pipeline:
+no annotation is required, and Section~\ref{sec:5.8} shows that ordinary tweets work nearly as well as
+abuse-related ones, so it need not even be curated.
+"""
 
 # --------------------------------------------------------------------------------- chapter 4
 rep = json.load(open(os.path.join(ARCHIVE, "data", "tweets", "report.json"), encoding="utf-8"))
@@ -1245,27 +1492,61 @@ Session & What it added & GPU-hours & Student runs, cumulative \\
 """
 
 CH4 = "\n".join([
-    "\\chapter{Datasets and Experimental Setup}", "\\label{ch:4}",
-    wrap("Table~\\ref{tab:data} summarises the data. The primary benchmark is a cleaned fine-grained cyberbullying "
-         "tweet corpus. A benchmark that labels implication, built from a single corpus, and inference-only probe "
-         "sets measure what the tweet corpus cannot. An unlabelled transfer set, screened against all of them, "
-         "supplies the out-of-sample text."),
-    DATA_TABLE,
-    "\\section{%s}\n\\label{sec:4.1}\n%s\n\n%s" % (heading("4.1 "), convert(body("4.1 ")),
+    "\\chapter{Proposed Methodology}", "\\label{ch:4}",
+    wrap("This chapter gives the method the thesis set out to evaluate, the change of setting that "
+         "turned out to matter, the data all of it is measured on, and how the whole grid was "
+         "implemented and run."),
+    "\\section{Design Process or Methodology Overview}\n\\label{sec:4.overview}",
+    wrap("The design proceeds in four steps. The method is built exactly as the literature proposes it, "
+         "a committee of task-adapted teachers weighted per instance by reliability "
+         "(Section~\\ref{sec:4.design}). It is measured against the control that literature omits, the "
+         "same student trained with no teacher, over a grid of students, committees, objectives and "
+         "seeds. Whatever that grid shows, its cause is then established by measurement rather than by "
+         "argument, on the teachers themselves rather than on the students they train "
+         "(Section~\\ref{sec:5.2}). And where the cause points, the setting is changed and measured "
+         "again, with the predictions written down before each run. Figure~\\ref{fig:schematic} shows the distinction "
+         "the last step turns on: in both settings the same teacher and the same student are used, and "
+         "only the text on which the student imitates the teacher differs."),
+    FIG["schematic"],
+    "\\section{Preliminary Design or Design (Model) Specification}\n\\label{sec:4.design}",
+    wrap("Sections~\\ref{sec:3.1} to~\\ref{sec:3.4} define the committee, the per-instance weighting, "
+         "the objective and the specialist teacher exactly as they were audited; "
+         "Section~\\ref{sec:3.5} defines in-sample and out-of-sample distillation and their controls; "
+         "Section~\\ref{sec:3.6} states what is measured about the weighting; and "
+         "Section~\\ref{sec:3.7} gives the training procedure as an algorithm."),
+] + ["\\subsection{%s}\n\\label{sec:3.%d}\n%s%s" % (heading("3.%d " % k), k,
+                                                   convert(body("3.%d " % k), (), (), CH3_SUBS.get(k, ())),
+                                                   SYMBOL_TABLE if k == 1 else "")
+     for k in range(1, 7)] + [demote(ALGORITHM)] + [
+    "\\section{Data Collection}\n\\label{sec:4.data}",
+    wrap("The primary benchmark is a cleaned fine-grained cyberbullying tweet corpus. A benchmark that "
+         "labels implication, built from a single corpus, and inference-only probe sets measure what "
+         "the tweet corpus cannot. An unlabelled transfer set, screened against all of them, supplies "
+         "the out-of-sample text. Each is described below with the cleaning, transformation and "
+         "reduction applied to it, and Section~\\ref{sec:4.summary} summarises what survives."),
+    "\\subsection{%s}\n\\label{sec:4.1}\n%s\n\n%s" % (heading("4.1 "), convert(body("4.1 ")),
                                                   wrap("Table~\\ref{tab:classes} gives the class distribution of the cleaned splits.") + "\n" + CLASS_TABLE),
-    "\\section{%s}\n\\label{sec:4.2}\n%s" % (heading("4.2 "), convert(body("4.2 "))),
-    "\\section{%s}\n\\label{sec:4.3}\n%s" % (heading("4.3 "), convert(body("4.3 "))),
-    "\\section{%s}\n\\label{sec:4.4}\n%s\n\n%s" % (
+    "\\subsection{%s}\n\\label{sec:4.2}\n%s" % (heading("4.2 "), convert(body("4.2 "))),
+    "\\subsection{%s}\n\\label{sec:4.3}\n%s" % (heading("4.3 "), convert(body("4.3 "))),
+    "\\subsection{%s}\n\\label{sec:4.4}\n%s\n\n%s" % (
         heading("4.4 "),
         convert(body("4.4 "), (), (),
                 [("is regenerated by the run itself, with the\nsame seed, from the same public sources.",
                   "is regenerated by the run itself, with the same seed, from the same public sources; "
                   "[[Appendix:app:transfer]] says what each file records.")]),
                                                   wrap("Table~\\ref{tab:transfer} records every count.") + "\n" + TRANSFER_TABLE),
-    "\\section{%s}\n\\label{sec:4.5}\n%s" % (heading("4.5 "), convert(body("4.5 "))),
-    "\\section{%s}\n\\label{sec:4.6}\n%s" % (heading("4.6 "), convert(body("4.6 "))),
-    "\\section{%s}\n\\label{sec:4.7}\n%s" % (heading("4.7 "), convert(body("4.7 "))),
-    SESSIONS,
+    "\\subsection{Summary of the Preprocessed Data}\n\\label{sec:4.summary}\n" +
+    wrap("Table~\\ref{tab:data} is what survives every screen and is what the rest of the thesis is "
+         "measured on: 43,259 labelled tweets in six classes, split 80/10/10 and asserted disjoint on "
+         "normalised text; a 20,637-row implicit benchmark from one corpus with 27,096 rows of a second "
+         "held out whole; three inference-only probe sets no model trains on; and 205,593 unlabelled "
+         "tweets, of which 42,013 are abuse-domain and the rest generic, screened against every one of "
+         "the sets above.") + "\n" + DATA_TABLE,
+    "\\section{Implementation of Selected Design}\n\\label{sec:4.impl}",
+    "\\subsection{%s}\n\\label{sec:4.5}\n%s" % (heading("4.5 "), convert(body("4.5 "))),
+    "\\subsection{%s}\n\\label{sec:4.6}\n%s" % (heading("4.6 "), convert(body("4.6 "))),
+    "\\subsection{%s}\n\\label{sec:4.7}\n%s" % (heading("4.7 "), convert(body("4.7 "))),
+    demote(SESSIONS),
 ])
 
 # --------------------------------------------------------------------------------- chapter 5
@@ -1369,7 +1650,7 @@ The four questions of Section~\ref{sec:1.4} are decided here on the measurements
 fixed before any of them was run: a difference counts only if its paired bootstrap interval excludes
 zero, and on a test set of 4,326 posts that requires roughly 0.007 macro-F1 (Section~\ref{sec:4.7}).
 Table~\ref{tab:rq} states each decision beside the evidence that carries it; the paragraphs below give
-the numbers. Chapter~\ref{ch:6} takes up what the decisions mean.
+the numbers. Section~\ref{sec:6.2} takes up what they mean.
 
 \begin{table}[htbp]
 \centering
@@ -1552,26 +1833,6 @@ findings. It also says where the ceiling of this recipe is. The gain arrives as 
 moved across one boundary, and 101 and 117 rows are still on the wrong side of it.
 """
 
-CH5 = ["\\chapter{Results and Analysis}", "\\label{ch:5}", convert(body("5. Results"), (), (), [
-    ("transferred (5.10), and what survives for practice (5.11).",
-     "where that gain lands class by class (5.9), what never transferred (5.10), what survives for "
-     "practice (5.11), and the decision each research question comes to on this evidence "
-     "(5.12).")])]
-for k in ["5.1 ", "5.2 ", "5.3 ", "5.4 ", "5.5 ", "5.6 ", "5.7 ", "5.8 "]:
-    spec = R[k]
-    CH5.append("\\section{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
-                                                      convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
-                                                              spec.get("subs", ()))))
-CH5.append(CH5_PER_CLASS)
-for k in ["5.10 ", "5.11 "]:
-    spec = R[k]
-    CH5.append("\\section{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
-                                                      convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
-                                                              spec.get("subs", ()))))
-CH5.append(CH5_DECISIONS)
-CH5 = "\n".join(CH5)
-
-# --------------------------------------------------------------------------------- chapter 6
 CH6_RQ = r"""
 \section{Answers to the Research Questions}
 \label{sec:6.1}
@@ -1637,11 +1898,139 @@ be the source of the gain; the fourth was tested only under synthetic character 
 thesis does not call robustness. The final title names what the evidence supports.
 """
 
-CH6 = "\n".join(["\\chapter{Discussion}", "\\label{ch:6}", CH6_RQ, convert(body("6. Discussion")), CH6_HISTORY])
+CH5 = ["\\chapter{Result Analysis}", "\\label{ch:5}",
+       wrap("The sections run in the order of the argument rather than the order the runs were made. "
+            "Section~\\ref{sec:5.perf} states what was measured and how, and reports the teachers and "
+            "the in-sample grid. Section~\\ref{sec:5.analysis} takes the design apart: the weighting, "
+            "the committee, the specialist teacher, and the mechanism behind all three. "
+            "Section~\\ref{sec:5.adjust} reports the adjustment that followed and the curve it "
+            "produced. Section~\\ref{sec:5.stats} gives the statistics every claim is read against, "
+            "Section~\\ref{sec:5.compare} the comparisons across models and against the deployment "
+            "budget, and Section~\\ref{sec:5.discuss} decides the research questions and discusses "
+            "what the answers mean. Every difference is a paired bootstrap interval; single-seed rows "
+            "are marked and treated as indicative."),
+       "\\section{Performance Evaluation}\n\\label{sec:5.perf}",
+       "\\subsection{Key Evaluation Metrics and Criteria}\n\\label{sec:5.metrics}\n" +
+       wrap("The headline measure is macro-F1 on the 4,326-post test split, the unweighted mean of the "
+            "six per-class F1 scores, so that the two residual classes count as much as the four that "
+            "name a target. Beside it the thesis reports accuracy, expected calibration error and "
+            "per-class F1. The reading of implication is measured threshold-free, as the area under "
+            "the curve separating the ironic-abuse probe from the benign-sarcasm probe, with the "
+            "recall-against-false-positive pair beside it because a deployment must choose a threshold "
+            "even though an evaluation should not. Deployment is measured as parameters, latency at "
+            "batch 1 and batch 32, FLOPs per sequence, stored size and macro-F1 after INT8 "
+            "quantisation. Section~\\ref{sec:4.6} defines each of these."),
+       "\\subsection{Testing Methodology}\n\\label{sec:5.testing}\n" +
+       wrap("Section~\\ref{sec:4.7} gives the protocol; three of its provisions decide how the "
+            "sections below should be read. Main configurations are run at three seeds and "
+            "ablations and sweeps at one, and every single-seed row is marked as such. Differences "
+            "are paired bootstrap intervals rather than differences of means, and the tables "
+            "carrying them are generated from the run outputs rather than transcribed. And the "
+            "test set resolves about 0.007 macro-F1, which is the yardstick every number below is "
+            "held to: a difference smaller than that is reported as undetectable rather than as "
+            "small."),
+       "\\subsection{%s}\n\\label{sec:5.1}\n%s" % (heading("5.1 "), convert(body("5.1 "), R["5.1 "].get("tables", ()), (), R["5.1 "].get("subs", ()))),
+       "\\subsection{%s}\n\\label{sec:5.2}\n%s" % (heading("5.2 "), convert(body("5.2 "), R["5.2 "].get("tables", ()), (), R["5.2 "].get("subs", ()))),
+       "\\section{Analysis of Design Solutions}\n\\label{sec:5.analysis}"]
+for k in ["5.3 ", "5.4 ", "5.5 ", "5.6 "]:
+    spec = R[k]
+    CH5.append("\\subsection{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
+                                                          convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
+                                                                  spec.get("subs", ()))))
+CH5.append("\\section{Final Design Adjustments}\n\\label{sec:5.adjust}")
+for k in ["5.7 ", "5.8 "]:
+    spec = R[k]
+    CH5.append("\\subsection{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
+                                                          convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
+                                                                  spec.get("subs", ()))))
+CH5.append(demote(CH5_PER_CLASS))
+CH5.append("\\section{Statistical Analysis}\n\\label{sec:5.stats}")
+CH5.append(wrap("Every comparison in the grid is in Appendix~\\ref{app:significance}: 99 paired "
+                "bootstrap differences, each with its 95 per cent interval and whether that interval "
+                "excludes zero. Nine of the 99 do. One is the ablation that removes the student's "
+                "pre-training, $-$0.0488 [$-$0.0603, $-$0.0376], and the other eight are out-of-sample "
+                "distillation arms. None of the 27 comparisons that set in-sample distillation against "
+                "fine-tuning is among them."))
+CH5.append(wrap("Two properties of that table matter more than any single row. The first is that it is "
+                "generated from the run outputs rather than transcribed, so the intervals in the text "
+                "and the intervals in the appendix cannot drift apart. The second is that its "
+                "resolution is fixed by the test set rather than by the method: at 4,326 posts a "
+                "paired interval is about 0.014 wide, so a difference under about 0.007 macro-F1 "
+                "cannot be separated from zero however many seeds are run. Every in-sample effect in "
+                "this thesis is smaller than that, which is why Section~\\ref{sec:7.1} states the "
+                "in-sample result as an absence rather than as a zero. The out-of-sample endpoint, "
+                "+0.0123 [+0.0035, +0.0211] at 168,000 tweets, is above it."))
+CH5.append(wrap("The out-of-sample runs carry a second kind of evidence, which an interval cannot "
+                "supply. Each was predicted in writing before it ran, so the question of which arms to "
+                "report was settled before the numbers existed; "
+                "Appendix~\\ref{app:predictions} scores all eleven predictions against the generated "
+                "tables. What matters here is that the three that failed are reported in the sections "
+                "they bear on, not only in the appendix: the committee was predicted to be the better "
+                "labeller and was not (Section~\\ref{sec:5.7}), the pre-registered arm was predicted "
+                "to gain at least 0.010 and gained 0.007 (Section~\\ref{sec:5.7}), and the "
+                "sarcasm-discrimination AUC was predicted to hold its in-sample band and fell below it "
+                "on three arms of five (Section~\\ref{sec:5.10})."))
+CH5.append("\\section{Comparisons and Relationships}\n\\label{sec:5.compare}")
+for k in ["5.10 ", "5.11 "]:
+    spec = R[k]
+    CH5.append("\\subsection{%s}\n\\label{sec:%s}\n%s" % (heading(k), k.strip(),
+                                                          convert(body(k), spec.get("tables", ()), spec.get("inserts", ()),
+                                                                  spec.get("subs", ()))))
+CH5.append("\\section{Discussions}\n\\label{sec:5.discuss}")
+CH5.append(demote(CH5_DECISIONS))
+CH5.append(demote(CH6_RQ))
+CH5.append(convert(body("6. Discussion")))
+CH5.append("\\subsection{Limitations}\n\\label{sec:7.1}\n" + convert(body("7. Threats")))
+CH5.append(demote(CH6_HISTORY))
+CH5 = "\n".join(CH5)
 
+# --------------------------------------------------------------------------------- chapter 6
 # --------------------------------------------------------------------------------- chapter 7 and 8
+CONTRIB = r"""
+What this thesis leaves the field is a measurement and the apparatus that produced it, not a method.
+Four things are reusable by someone who never repeats our experiment. The first is the controlled
+comparison itself: a grid of five students, three committees, four objectives and three seeds in which
+every distilled arm is set against the same student trained with no teacher, which is the comparison
+the abusive-language multi-teacher literature omits and the one that decides whether a committee earns
+its cost. The second is the mechanism behind the answer, stated as a property of where reliability is
+read rather than of any implementation: a teacher fine-tuned on the split it is scored on has
+memorised it, so its soft labels are the gold labels and any rule weighting teachers by their loss on
+that split is weighting memorisation. Any scheme in the error-weighted family inherits that, and the
+way out is to move the text rather than to refine the rule.
+
+The third is a threshold-free protocol for implication and the evidence that it is necessary. Recall
+on ironic abuse and the false-positive rate on harmless sarcasm move together across 184 models at
+$r = 0.772$, so a method reporting only the first can show progress on implied abuse while having
+none; an area under the curve cannot be moved that way. The fourth is a set of artefacts: a
+single-source implicit-abuse benchmark with per-row provenance, a transfer-set construction screened
+against every evaluation set including a held-out corpus that one of its sources is incorporated in,
+and build scripts and manifests that let a reader rebuild both row by row without either party
+redistributing text.
+
+The practical recommendation that follows is narrow and, we think, dependable: distil a compact
+student from one large teacher on unlabelled text from the platform it will serve, screen that text
+against every evaluation set, and spend nothing on a committee.
+"""
+
+FINAL_REMARK = r"""
+The method this thesis set out to evaluate does not work in the setting its literature evaluates it
+in, and the reason is not a flaw in the method but a property of that setting. Measured against the
+control those papers leave out, a committee of teachers weighted by their reliability on the split
+they were fine-tuned on adds nothing a compact student can use, because on that split there is nothing
+left to add. Move the student's imitation to text no teacher has fitted and a gain appears, grows with
+how much of that text there is, and survives every control we could put against it; but it is a gain
+in task score, and the part of the task the work set out to reach, telling abuse that is implied from
+sarcasm that harms nobody, does not move at all.
+
+We think the useful result is the shape of that pair rather than either half of it. A field that
+reports gains without the no-teacher control will keep finding committees that work, and a field that
+reports recall at an unstated threshold will keep finding progress on implication. Both are cheap to
+rule out. The apparatus for doing so is released with this thesis, and the numbers it produced are in
+the appendices with the predictions that were written before them.
+"""
+
 FUTURE = r"""
-\section{Future Work}
+\section{Recommendations for Future Work}
 \label{sec:7.2}
 \begin{enumerate}
   \item \textbf{Transfer text that carries implication.} The out-of-sample gain is a task gain because
@@ -1663,9 +2052,13 @@ FUTURE = r"""
     it the natural first step there.
 \end{enumerate}
 """
-CH7 = "\n".join(["\\chapter{Limitations and Future Work}", "\\label{ch:7}",
-                 "\\section{Limitations}\n\\label{sec:7.1}", convert(body("7. Threats")), FUTURE])
-CH8 = "\n".join(["\\chapter{Conclusion}", "\\label{ch:8}", convert(body("8. Conclusion"))])
+CH6 = "\n".join([
+    "\\chapter{Conclusion}", "\\label{ch:6}",
+    "\\section{Summary of Findings}\n\\label{sec:6.summary}\n" + convert(body("8. Conclusion")),
+    "\\section{Contributions to the Field}\n\\label{sec:6.contrib}\n" + CONTRIB,
+    FUTURE,
+    "\\section{Final Remark}\n\\label{sec:6.final}\n" + FINAL_REMARK,
+])
 
 # --------------------------------------------------------------------------------- appendices
 PRED = [
@@ -1801,7 +2194,7 @@ MAIN = r"""
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[a4paper,margin=2.54cm]{geometry}
+\usepackage[a4paper,left=3cm,right=3cm,top=2.54cm,bottom=2.54cm]{geometry}
 \usepackage{setspace}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
@@ -1838,12 +2231,10 @@ MAIN = r"""
 \singlespacing
 \input{chapters/ch1_introduction}
 \input{chapters/ch2_literature}
-\input{chapters/ch3_methodology}
-\input{chapters/ch4_setup}
+\input{chapters/ch3_requirements}
+\input{chapters/ch4_methodology}
 \input{chapters/ch5_results}
-\input{chapters/ch6_discussion}
-\input{chapters/ch7_limitations}
-\input{chapters/ch8_conclusion}
+\input{chapters/ch6_conclusion}
 
 \singlespacing
 \bibliographystyle{unsrtnat}
@@ -1897,12 +2288,17 @@ write("main.tex", MAIN)
 write("frontmatter.tex", FRONT)
 write("chapters/ch1_introduction.tex", CH1)
 write("chapters/ch2_literature.tex", CH2)
-write("chapters/ch3_methodology.tex", CH3)
-write("chapters/ch4_setup.tex", CH4)
+write("chapters/ch3_requirements.tex", CH3)
+write("chapters/ch4_methodology.tex", CH4)
 write("chapters/ch5_results.tex", CH5)
-write("chapters/ch6_discussion.tex", CH6)
-write("chapters/ch7_limitations.tex", CH7)
-write("chapters/ch8_conclusion.tex", CH8)
+write("chapters/ch6_conclusion.tex", CH6)
+for stale in ("chapters/ch3_methodology.tex", "chapters/ch4_setup.tex",
+              "chapters/ch6_discussion.tex", "chapters/ch7_limitations.tex",
+              "chapters/ch8_conclusion.tex"):
+    p = os.path.join(HERE, stale)
+    if os.path.exists(p):
+        os.remove(p)
+        print("removed", stale)
 write("appendices/a_predictions.tex", APP_PRED)
 write("appendices/b_hyperparameters.tex", APP_HYPER)
 write("appendices/c_transfer.tex", APP_TRANSFER)

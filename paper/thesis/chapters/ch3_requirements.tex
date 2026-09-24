@@ -1,0 +1,217 @@
+
+\chapter{Requirements, Impacts and Constraints}
+\label{ch:3}
+This chapter states what the system was required to do, what it costs, whom it can affect and under
+what constraints it was built. The requirements were fixed before the grid was run and are checked
+against measurement in Chapter~\ref{ch:5}; the impacts and constraints are the conditions under which
+a detector of this kind may responsibly be deployed.
+
+\section{Final Specifications and Requirements}
+\label{sec:req}
+
+\subsection{Functional Requirements}
+\label{sec:req.func}
+\begin{enumerate}[label=F\arabic*., leftmargin=3.1em]
+  \item \textbf{Classify.} Assign every input post one of the corpus's six classes, four of which name
+    the group a post attacks and two of which hold abuse that names no group and text that is not
+    abusive at all.
+  \item \textbf{Score, not only decide.} Expose a probability for each class, so that a deployment can
+    choose its own operating point and so that discrimination can be measured without a threshold
+    (Section~\ref{sec:4.6}).
+  \item \textbf{Run without its teachers.} Perform inference from the student alone. The projections,
+    the auxiliary irony head and every teacher are discarded after training
+    (Section~\ref{sec:3.7}).
+  \item \textbf{Train from unlabelled text.} Accept unlabelled rows alongside the labelled split and
+    learn from the teacher's soft labels on them, with the supervised term averaged over the labelled
+    rows only so that adding unlabelled text does not dilute supervision (Section~\ref{sec:3.5}).
+  \item \textbf{Rebuild from source.} Regenerate every corpus, split, probe and transfer set from
+    public sources through the build scripts, and verify a rebuild row by row against a manifest of
+    split, label, source and the SHA-1 of the normalised text (Section~\ref{sec:4.2}).
+  \item \textbf{Report its own evidence.} Generate every table and interval from the run outputs by
+    script rather than by transcription, and score each pre-registered prediction against the
+    generated tables (Appendix~\ref{app:predictions}).
+\end{enumerate}
+
+\subsection{Non-Functional Requirements}
+\label{sec:req.nonfunc}
+Table~\ref{tab:requirements} states each non-functional requirement, the target set before the runs,
+and what was measured against it.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Non-functional requirements and what was measured]{Non-functional requirements, the target
+fixed before the grid was run, and the measurement that meets or misses it.}
+\label{tab:requirements}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{2.6cm}p{4.3cm}p{4.9cm}p{1.5cm}}
+\toprule
+Requirement & Target & Measured & Met \\
+\midrule
+Latency & Single-post inference in a few milliseconds on ordinary hardware & BERT-mini 3.47 ms at batch
+1 and 0.37 ms at batch 32; the BiLSTM 2.57 ms and 0.18 ms (Section~\ref{sec:5.11}) & yes \\
+Memory & A deployable model well under the 1,279 MB of the largest teacher & 43 MB for BERT-mini in
+fp32 and 33 MB after INT8 quantisation; 255 MB and 132 MB for DistilBERT & yes \\
+Compute at inference & The recipe must not add to inference cost & The transfer set is used once, in
+training; the deployed student is unchanged (Section~\ref{sec:5.11}) & yes \\
+Accuracy & A compact student within reach of the largest teacher & DistilBERT 0.8975 against
+BERT-large's 0.8973 macro-F1, at a fifth of the parameters (Section~\ref{sec:5.2}) & yes \\
+Resolution & Every claimed difference larger than the test set can resolve & A paired interval on
+4,326 posts is about 0.014 wide, so 0.007 is the floor; every in-sample effect falls below it and is
+reported as undetectable (Section~\ref{sec:4.7}) & partly \\
+Reproducibility & Fixed seeds, one environment, generated tables & Three seeds for every main
+configuration, 179 runs from one environment, all tables generated
+(Section~\ref{sec:4.8}) & yes \\
+Reading of implication & A measurable improvement in telling implied abuse from harmless sarcasm &
+No intervention in the grid raises the threshold-free AUC above its in-sample band of 0.756 to 0.777
+(Section~\ref{sec:5.10}) & no \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+The last row is the requirement the work does not meet, and Section~\ref{sec:5.10} reports it as such
+rather than as an open question.
+
+\section{Societal Impact}
+\label{sec:impact.social}
+Automated moderation acts on people, and it fails unevenly. The literature documents systems that
+misclassify dialect, reclaimed slurs and in-group speech as abuse
+\cite{davidson2017automated, borkan2019nuanced, vidgen2020directions}, and the benign-sarcasm probe
+used here measures one such failure directly: a compact student trained on this corpus calls between
+14 and 59 per cent of author-labelled sarcastic tweets abusive, depending on the model, while those
+tweets attack nobody (Section~\ref{sec:5.10}). A detector deployed at platform scale turns that rate
+into a volume of wrongly flagged posts.
+
+The recipe this thesis recommends changes that rate, and not only for the better. As the transfer set
+grows, the student fires less readily on sarcasm of both kinds: the false-positive rate on harmless
+sarcasm falls from 0.35 to 0.25 on BERT-mini and to 0.18 on the BiLSTM, and recall on ironic abuse
+falls with it, from 0.74 to 0.57 and to 0.50. Fewer people are wrongly flagged and more implied abuse
+is missed. That is a trade between two harms rather than an improvement, the discrimination behind it
+does not change, and Section~\ref{sec:5.10} reports both sides of it so a deployment can choose its
+operating point knowingly rather than by accident.
+
+\section{Environmental Impact}
+\label{sec:impact.env}
+The energy cost of a detector is dominated by inference rather than training, because a moderation
+pipeline runs the model on every post while training happens once
+\cite{schwartz2020green, patterson2021carbon}. That is the case for compact students, and it is the
+case this thesis's measurements support: BERT-mini uses 0.87 GFLOPs per sequence against BERT-large's
+78.92, a factor of 91, at 0.0018 of the teacher's macro-F1 deficit once the transfer set is used.
+
+Training for the whole thesis took 18.4 GPU-hours on Kaggle T4 accelerators across five sessions that
+ran to completion (Section~\ref{sec:4.8}). The teachers, the implicit specialist and the pre-trained
+student were each trained once and resumed by every later session rather than retrained. The
+out-of-sample recipe adds one forward pass of one teacher over the unlabelled text and a longer
+student run; it adds nothing at inference, which is where the energy is spent. The two failed sessions
+are counted in the record even though they produced no result, and the driver now kills any command
+that writes nothing for two hours rather than burning a session on a hung process.
+
+\section{Ethical Issues}
+\label{sec:ethics}
+The corpora contain offensive, hateful and harassing text. They are existing public research datasets,
+used under their licences and as text only; no new user data was collected, and no attempt was made to
+identify the authors of any post. Where a corpus's labels were not needed, as in the transfer set,
+they were discarded before anything read them (Section~\ref{sec:4.4}).
+
+Three ethical constraints bear on what the results can claim. The label for implication is contested:
+the two expert annotation efforts that mark it agree on only 48.2 per cent of the hateful texts they
+share, so every result on that class is bounded by a disagreement between annotators rather than by
+the model (Section~\ref{sec:4.2}). The annotation literature argues that such disagreement is signal
+and that a single majority label discards it
+\cite{uma2021learning, davani2022dealing, plank2022problem, peterson2019human}; the oracle analysis of
+Section~\ref{sec:5.4} finds the committee's unreachable headroom to be made of exactly that
+population. And the probes are built by rule from published corpora rather than validated by
+annotators, which Section~\ref{sec:7.1} records as a limitation; a 300-item human annotation is in
+progress. The models are released for research. Deployment would require human review, calibration to
+the platform, and monitoring for disparate impact, none of which this thesis evaluates.
+
+\section{Legal Impact}
+\label{sec:legal}
+Every corpus is used under its own licence: the cyberbullying tweet corpus as distributed under CC0;
+OLID, HatEval, the Davidson et al. corpus and TweetEval's configurations under their research licences;
+ISHate under BSL-1.0; the Implicit Hate Corpus and iSarcasmEval for research use. No corpus is
+redistributed. The implicit benchmark and the transfer set are released as build scripts together with
+a per-row manifest carrying the split, the label, the source and the SHA-1 of the normalised text, so
+that a reader can verify a rebuild row by row without either party redistributing text
+(Sections~\ref{sec:4.2} and~\ref{sec:4.4}).
+
+The texts are public posts and no author identifiers are retained, which is what keeps the work inside
+the terms the corpora were released under. A deployment would sit under different obligations from a
+research artefact: platform moderation is increasingly subject to duties of transparency, appeal and
+record-keeping, and the threshold-free reporting of Section~\ref{sec:4.6} is the form of evidence
+those duties require, because a single recall figure at an unstated threshold cannot support them.
+
+\section{Project Management Plan}
+\label{sec:pm}
+The work was organised around sessions of bounded length and decisions recorded before the run that
+tested them. Compute came in Kaggle sessions of at most twelve hours, so one driver script runs the
+whole grid and resumes finished work from the previous session's output; Table~\ref{tab:sessions}
+lists the seven sessions, what each added, and the cumulative number of student runs. A CPU smoke test
+runs every stage on tiny models before any GPU session begins.
+
+Design decisions are kept in the repository's decision log rather than in the thesis, and the four
+that changed the study are recorded with the evidence that forced each one (Section~\ref{sec:6.3}).
+The out-of-sample runs were pre-registered: nothing about them was decided after the numbers were
+seen, and Section~\ref{sec:5.stats} says what that buys and what it cost when a prediction failed.
+
+\section{Risk Management}
+\label{sec:risk}
+Table~\ref{tab:risks} lists the risks that materialised and what was done about each. They are not
+hypothetical: every row happened.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Risks that materialised, and the response to each]{The risks that materialised during the
+work, what each would have cost, and the response.}
+\label{tab:risks}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{p{3.1cm}p{4.6cm}p{5.6cm}}
+\toprule
+Risk & What it would have cost & Response \\
+\midrule
+Evaluation contamination & A transfer set that overlaps an evaluation set turns a leak into an
+apparent gain & Exact-match screens on normalised text against every split, probe and benchmark file;
+one screen alone removed 9,988 rows that occur in the held-out ISHate set
+(Section~\ref{sec:4.4}) \\
+A benchmark solvable by artefact & Pooling the two implicit-hate corpora gives a benchmark a
+classifier can score by recognising the source at 0.91 macro-F1 & Splits built from one corpus, the
+other held out whole as an out-of-domain test set (Section~\ref{sec:4.2}) \\
+Environment divergence & Identical code, data and seeds scored four points apart on a laptop and on
+Kaggle & Every table comes from one environment; comparisons are made only within it and numbers from
+elsewhere are excluded rather than reconciled (Section~\ref{sec:7.1}) \\
+Lost sessions & Two of seven Kaggle sessions failed, one at teacher caching and one frozen in a
+diagnostic cell & Resume from the previous session's output, and a watchdog that kills any command
+writing nothing for two hours; both sessions are reported rather than hidden
+(Section~\ref{sec:4.8}) \\
+Confirmation bias & A grid this large offers many arms to report selectively & Predictions and
+decision rules written before each out-of-sample run and scored by script; three of eleven failed and
+are reported as failures (Appendix~\ref{app:predictions}) \\
+Underpowered claims & Differences smaller than the test set can resolve read as results & The minimum
+detectable difference, about 0.007 macro-F1, computed before the results and stated wherever a
+difference falls below it (Section~\ref{sec:4.7}) \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Economic Analysis}
+\label{sec:econ}
+The economics of this task are a question about inference, not training. Training the entire grid,
+179 student runs and every teacher, took 18.4 GPU-hours; at the rate a commercial provider charges for
+a T4-class accelerator that is roughly the cost of a single working day of one engineer, and it was
+paid here in free Kaggle quota. The marginal cost of the recipe this thesis recommends over ordinary
+fine-tuning is one forward pass of one teacher over 168,000 unlabelled tweets, which is cached once
+and reused by every student, plus a student run over a training set about six times larger.
+
+Against that stands what the compact student saves at inference, and it recurs on every post. BERT-mini
+answers a single post in 3.47 ms and a batch of 32 in 0.37 ms per post, against 26.56 ms and 21.65 ms
+for BERT-large: a factor of 59 at batch 32, on the same machine. DistilBERT matches BERT-large's
+macro-F1 at a fifth of the parameters and 5.8 times lower batch-32 latency, and INT8 quantisation
+halves its stored size for 0.003 macro-F1. A platform running a detector on every post is therefore
+choosing between one large model and roughly sixty compact ones for the same serving budget, and the
+measurements here say the compact one need not be materially worse. The transfer set is what buys
+that, it is unlabelled, and unlabelled text from the platform is the cheapest input in the pipeline:
+no annotation is required, and Section~\ref{sec:5.8} shows that ordinary tweets work nearly as well as
+abuse-related ones, so it need not even be curated.
